@@ -1,0 +1,3 @@
+steampy
+colorama
+requests
