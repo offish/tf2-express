@@ -6,4 +6,4 @@ secrets = {
     'shared_secret': 'Aa11aA1+1aa1aAa1a=',
     'identity_secret': 'aA11aaaa/aa11a/aAAa1a1='
 }
-
+owners = ['']
