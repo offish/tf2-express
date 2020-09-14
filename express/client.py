@@ -20,7 +20,7 @@ class Client:
         else:
             log.error('Login was not executed')
 
-    def logut(self):
+    def logout(self):
         log.info('Logging out...')
         self.client.logout()
 
