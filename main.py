@@ -1,20 +1,79 @@
 from time import sleep
 
 from express.logging import Log, f
-from express.prices import get_price, get_pricelist
+from express.methods import add, write, read
+from express.prices import get_price, get_pricelist, get_prices, update
 from express.client import Client
-from express.trades import add
 from express.offer import Offer
 from express.utils import Items, to_scrap, to_refined
+from express.items import get_items
 
+import socketio
+
+
+log = Log()
 client = Client()
 client.login()
+socket = socketio.Client()
 
 processed = []
 values = {}
 
+log.info('Trying to get prices...')
+
+items = get_items()
+pricelist = get_pricelist()
+prices = get_prices(items, pricelist)
+del pricelist
+
+PRICES = 'express/json/prices.json' 
+write(PRICES, prices)
+del prices
+
+log.info(f'Pricelist was saved to {PRICES}')
+
+
+@socket.event
+def connect():
+    socket.emit('authentication')
+    log.info('Successfully connected to Prices.tf socket server')
+
+
+@socket.event
+def authenticated(data):
+    pass
+
+
+@socket.event
+def price(data):
+    for item in get_items():
+        if item == data['name']:
+            buy = data['buy']
+            sell = data['sell']
+            update(item, buy, sell)
+            log.info(f'Updated price for {item}')
+
+
+@socket.event
+def unauthorized(sid):
+    pass
+
+socket.connect('https://api.prices.tf')
+log.info('Listening to Prices.tf for price updates')
+
+
 while True:
-    offers = client.get_offers()  
+    # If item(s) were added or removed from items.json
+    if not items == get_items():
+        items = get_items()
+        pricelist = get_pricelist()
+        prices = get_prices(items, pricelist)
+        del pricelist
+
+        write(PRICES, prices)
+        del prices
+
+    offers = client.get_offers()
 
     for offer in offers:
         offer_id = offer['tradeofferid']
@@ -45,7 +104,7 @@ while True:
                     our_value = 0
                     our_items = offer['items_to_give']
 
-                    prices = get_pricelist()
+                    prices = read(PRICES)
 
                     # Their items
                     for _item in their_items:
@@ -61,17 +120,18 @@ while True:
                             elif item.is_craftable():
 
                                 if name in prices:
-                                    value = get_price(name, 'buy')
+                                    value = get_price(name, 'buy', prices)
 
-                                elif item.is_craft_hat():
-                                    value = get_price('Random Craft Hat', 'buy')
+                                #elif item.is_craft_hat():
+                                #    value = 1.44
                                 
                             elif not item.is_craftable():
                                 name = 'Non-Craftable ' + name
                                 
                                 if name in prices:
-                                    value = get_price(name, 'buy')
+                                    value = get_price(name, 'buy', prices)
                         
+                        value = value if value else 0.00
                         their_value += to_scrap(value)
 
                     # Our items
@@ -89,10 +149,10 @@ while True:
                             elif item.is_craftable():
                             
                                 if name in prices:
-                                    value = get_price(name, 'sell')
+                                    value = get_price(name, 'sell', prices)
 
-                                elif item.is_craft_hat():
-                                    value = get_price('Random Craft Hat', 'sell')
+                                #elif item.is_craft_hat():
+                                #    value = 1.55
                                 
                                 else:
                                     value = high
@@ -101,7 +161,7 @@ while True:
                                 name = 'Non-Craftable ' + name
 
                                 if name in prices:
-                                    value = get_price(name, 'sell')
+                                    value = get_price(name, 'sell', prices)
                                 
                                 else:
                                     value = high
@@ -112,6 +172,7 @@ while True:
                         else:
                             value = high
                     
+                        value = value if value else high
                         our_value += to_scrap(value)
                     
                     item_amount = len(their_items) + len(our_items)

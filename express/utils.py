@@ -1,7 +1,5 @@
 from math import floor, ceil
 
-#from .etc.pricestf import get_schema
-
 def get_steamid64(account_id: int) -> int:
     return 76561197960265728 + account_id
 
@@ -14,17 +12,10 @@ def to_scrap(number: float) -> int:
     return int(ceil(number * 9))
 
 
-#def get_defindex(name: str) -> int:
-#   schema = get_schema()
-#
-#    pass
-
-
 class Items:
     def __init__(self, item: dict):
         self.item = item
         self.name = item['market_hash_name']
-    #    self.marketable = item['marketable']
 
     def is_tf2(self) -> bool:
         return self.item['appid'] == 440
@@ -61,26 +52,6 @@ class Items:
     def is_key(self) -> bool:
         return self.is_craftable() \
             and self.has_name('Mann Co. Supply Crate Key')
-
-    #def is_painted(self) -> bool:
-    #    desc = self.item['descriptions']
-    #
-    #    for i in desc:
-    #        if i['value'].startswith('Paint Color: '):
-    #            return True
-    #    return False
-
-    #def get_paint(self) -> str:
-    #    # Vil kaste error om gjennstanden ikke er painta
-    #    # Retarda å ha is_painted innebygd her
-    #    # Hvis den ikke har paint bør du expecte at den føkker seg
-    #    desc = self.item['descriptions']
-    #    paint = 'Paint Color: '
-    #
-    #    for i in desc:
-    #        if i['value'].startswith(paint):
-    #            return i['value'][len(paint):]
-    #    return None
 
     def is_pure(self) -> bool:
         return self.is_craftable() \
