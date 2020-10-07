@@ -4,7 +4,7 @@ from steampy.exceptions import ConfirmationExpected
 from json import dumps
 
 from .logging import Log, f
-from .config import username, password, api_key, secrets
+from .config import api_key, username, password, secrets
 
 log = Log()
 
