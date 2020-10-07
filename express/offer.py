@@ -7,6 +7,7 @@ states = {
     '7': 'declined'
 }
 
+
 class Offer:
     def __init__(self, offer: dict):
         self.offer = offer
