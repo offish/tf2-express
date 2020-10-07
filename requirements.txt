@@ -1,3 +1,4 @@
 steampy
 colorama
 requests
+socketio
