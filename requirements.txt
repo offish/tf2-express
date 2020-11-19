@@ -3,3 +3,4 @@ colorama
 requests
 socketio
 pymongo
+flask
