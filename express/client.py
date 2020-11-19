@@ -1,12 +1,14 @@
-from steampy.client import SteamClient
-from steampy.exceptions import ConfirmationExpected
-
 from json import dumps
 
 from .logging import Log, f
 from .config import api_key, username, password, secrets
 
+from steampy.client import SteamClient
+from steampy.exceptions import ConfirmationExpected
+
+
 log = Log()
+
 
 class Client:
     def __init__(self):
