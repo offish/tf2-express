@@ -21,16 +21,22 @@ Configurate the config.py and add your credentials.
 
     python main.py
 
+To open the GUI run this command and go to 127.0.0.1
+
+.. code-block:: text
+
+    python -m express.ui.panel
+
 Features
 --------
-- Automatic pricing (from Prices.TF)
+- Automatic pricing from Prices.TF
+- Basic website GUI (going to be updated)
+- Uses MongoDB for saving/getting prices and trades
 - Supports both Non-Craftable and Craftable items
 - Supports Random Craft Hats
-- Automatically accepts donations
-- Automatically declines one-sided trades with items only on our side
+- Supports options listed in settings.py
 - Saves trade data after trade has gone through
 - Colored and readable logging
 - Bank as many items as you want
 
 Backpack.tf listing might be added in the future.
-Might also add an UI/panel later.
