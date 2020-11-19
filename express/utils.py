@@ -1,5 +1,8 @@
 from math import floor, ceil
 
+from .settings import * 
+
+
 def get_steamid64(account_id: int) -> int:
     return 76561197960265728 + account_id
 
@@ -47,7 +50,8 @@ class Items:
     def is_craft_hat(self) -> bool:
         return self.is_craftable() \
             and not self.is_halloween() \
-            and self.has_tag('Cosmetic')
+            and self.has_tag('Cosmetic') \
+            and allow_craft_hats
 
     def is_key(self) -> bool:
         return self.is_craftable() \

@@ -1,5 +1,7 @@
-from .utils import get_steamid64
+from .settings import decline_trade_hold
 from .config import owners
+from .utils import get_steamid64
+
 
 states = {
     '2': 'active',
@@ -46,9 +48,14 @@ class Offer:
             and not self.offer.get('items_to_receive') \
 
     def is_valid(self) -> bool:
-        return self.offer.get('items_to_receive') \
-            and self.offer.get('items_to_give') \
-            and self.has_escrow()
+        # This is disgusting
+        if self.offer.get('items_to_receive') \
+            and self.offer.get('items_to_give'):
+            if self.has_escrow():
+                return True
+            if (self.has_escrow() == decline_trade_hold):
+                return True
+        return False
 
     def get_partner(self) -> int:
         return get_steamid64(self.offer['accountid_other'])

@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from colorama import init
 from colorama import Fore as f
+from colorama import init
 
 init()
+
 
 def log(color, sort, text, offer_id = ''):
     if offer_id:

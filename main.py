@@ -1,12 +1,13 @@
 from time import sleep
 
+from express.database import *
+from express.settings import *
 from express.logging import Log, f
-from express.methods import add, write, read
-from express.prices import get_price, get_pricelist, get_prices, update
+from express.prices import get_price, update_pricelist
+from express.config import timeout
 from express.client import Client
 from express.offer import Offer
 from express.utils import Items, to_scrap, to_refined
-from express.items import get_items
 
 import socketio
 
@@ -19,18 +20,8 @@ socket = socketio.Client()
 processed = []
 values = {}
 
-log.info('Trying to get prices...')
-
-items = get_items()
-pricelist = get_pricelist()
-prices = get_prices(items, pricelist)
-del pricelist
-
-PRICES = 'express/json/prices.json' 
-write(PRICES, prices)
-del prices
-
-log.info(f'Pricelist was saved to {PRICES}')
+items = get_items() 
+update_pricelist(items)
 
 
 @socket.event
@@ -46,32 +37,28 @@ def authenticated(data):
 
 @socket.event
 def price(data):
-    for item in get_items():
-        if item == data['name']:
-            buy = data['buy']
-            sell = data['sell']
-            update(item, buy, sell)
-            log.info(f'Updated price for {item}')
+    if data['name'] in get_items():
+        buy = data['buy']
+        sell = data['sell']
+        update_price(item, buy, sell)
 
 
 @socket.event
 def unauthorized(sid):
     pass
 
+
 socket.connect('https://api.prices.tf')
 log.info('Listening to Prices.tf for price updates')
 
 
 while True:
-    # If item(s) were added or removed from items.json
     if not items == get_items():
+        log.info('Item(s) were added/removed from the database')
         items = get_items()
-        pricelist = get_pricelist()
-        prices = get_prices(items, pricelist)
-        del pricelist
-
-        write(PRICES, prices)
-        del prices
+        # This is a quickfix
+        # Should probably use something else than update_pricelist
+        update_pricelist(items)
 
     offers = client.get_offers()
 
@@ -87,11 +74,15 @@ while True:
             if trade.is_active() and not trade.is_our_offer():
                 log.trade(f'Received a new offer from {f.YELLOW + str(steam_id)}')
 
-                if trade.is_gift():
+                if trade.is_from_owner():
+                    log.trade('Offer is from owner')
+                    client.accept(offer_id)
+
+                elif trade.is_gift() and accept_donations:
                     log.trade('User is trying to give items')
                     client.accept(offer_id)
 
-                elif trade.is_scam():
+                elif trade.is_scam() and decline_scam_offers:
                     log.trade('User is trying to take items')
                     client.decline(offer_id)
 
@@ -103,8 +94,6 @@ while True:
 
                     our_value = 0
                     our_items = offer['items_to_give']
-
-                    prices = read(PRICES)
 
                     # Their items
                     for _item in their_items:
@@ -119,17 +108,17 @@ while True:
 
                             elif item.is_craftable():
 
-                                if name in prices:
-                                    value = get_price(name, 'buy', prices)
+                                if name in items:
+                                    value = get_price(name, 'buy')
 
-                                #elif item.is_craft_hat():
-                                #    value = 1.44
+                                elif item.is_craft_hat():
+                                    value = craft_hat_buy
                                 
                             elif not item.is_craftable():
                                 name = 'Non-Craftable ' + name
                                 
-                                if name in prices:
-                                    value = get_price(name, 'buy', prices)
+                                if name in items:
+                                    value = get_price(name, 'buy')
                         
                         value = value if value else 0.00
                         their_value += to_scrap(value)
@@ -148,29 +137,17 @@ while True:
 
                             elif item.is_craftable():
                             
-                                if name in prices:
-                                    value = get_price(name, 'sell', prices)
+                                if name in items:
+                                    value = get_price(name, 'sell')
 
-                                #elif item.is_craft_hat():
-                                #    value = 1.55
-                                
-                                else:
-                                    value = high
+                                elif item.is_craft_hat():
+                                    value = craft_hat_sell
                                 
                             elif not item.is_craftable():
                                 name = 'Non-Craftable ' + name
 
-                                if name in prices:
-                                    value = get_price(name, 'sell', prices)
-                                
-                                else:
-                                    value = high
-                            
-                            else:
-                                value = high
-
-                        else:
-                            value = high
+                                if name in items:
+                                    value = get_price(name, 'sell')
                     
                         value = value if value else high
                         our_value += to_scrap(value)
@@ -196,8 +173,7 @@ while True:
                         client.decline(offer_id)
 
                 else:
-                    log.trade('Offer is invalid or user has trade hold')
-                    client.decline(offer_id)
+                    log.trade('Offer is invalid')
 
             else:
                 log.trade('Offer is not active')
@@ -214,31 +190,33 @@ while True:
 
         if not trade.is_active():
             state = trade.get_state()
-            log.trade(f'Offer changed state to {f.YELLOW + state}')
+            log.trade(f'Offer state changed to {f.YELLOW + state}')
 
-            if trade.is_accepted() \
-                and 'tradeid' in offer:
-                log.info('Saving offer data...')
-                _values = {}
+            if trade.is_accepted() and 'tradeid' in offer:
+                if save_trades:
+                    log.info('Saving offer data...')
+                    _values = {}
 
-                if offer_id in values:
-                    _values = values[offer_id]
+                    if offer_id in values:
+                        _values = values[offer_id]
 
-                trade_id = offer['tradeid']
-                receipt = client.get_receipt(trade_id)
+                    trade_id = offer['tradeid']
+                    receipt = client.get_receipt(trade_id)
 
-                offer['receipt'] = receipt
-                offer['values'] = _values
-                offer.pop('items_to_give')
-                offer.pop('items_to_receive')
+                    offer['receipt'] = receipt
+                    offer['our_value'] = _values['our_value']
+                    offer['their_value'] = _values['their_value']
 
-                add(offer)
-                
-                log.info('Offer was saved')
+                    add_trade(offer)
+
                 values.pop(offer_id)
+                processed.remove(offer_id)
 
-                del _values
+            else:
+                if offer_id in values:
+                    values.pop(offer_id)
+                
+                if offer_id in processed:
+                    processed.remove(offer_id)
 
-            processed.remove(offer_id)
-
-    sleep(30)
+    sleep(timeout)

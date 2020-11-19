@@ -7,3 +7,4 @@ secrets = {
     'identity_secret': 'aA11aaaa/aa11a/aAAa1a1='
 }
 owners = ['']
+timeout = 30
