@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" 
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" 
+            integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+            crossorigin="anonymous">
+        <title>prices - tf2-express</title>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>PRICES</h1>
+
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Item name</th>
+                        <th>Buy keys</th>
+                        <th>Buy refined</th>
+                        <th>Sell keys</th>
+                        <th>Sell refined</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <form action="/add" method="POST" class="my-4 form-inline">
+                    <th><label for='name' class='sr-only'>Item name</label>
+                    <input required placeholder='Team Captain' type='text' name="name" id="name" class="form-control col mr-2"></th>
+                    
+                    <th>
+                    <label for="buy_keys">
+                    <input required value='0' type='number' name='buy_keys' id='buy_keys'></th>
+                    <th><label for="buy_refined">
+                    <input required placeholder='0.00' type='text' name='buy_refined' id='buy_refined'></th>
+                    
+                    <th><label for="sell_keys">
+                    <input required value='0' type='number' name='sell_keys' id='sell_keys'></th>
+                    <th><label for="sell_refined">
+                    <input required placeholder='0.00' type='text' name='sell_refined' id='sell_refined'></th>
+                    
+                    <th><button class="btn btn-success" type="submit">Add item</button></th>
+                </form>
+                    {% for item in items %}
+                        <tr>
+                            <th>{{ item['name'] }}</th>
+                            <th>{{ item['buy']['keys'] }}</th>
+                            <th>{{item['buy']['metal']}}</th>
+                            <th>{{ item['sell']['keys'] }}</th>
+                            <th>{{item['sell']['metal']}}</th>
+                            <th><a href="/delete/{{ item['name'] }}"><button type="button" class="btn btn-danger">Delete</button></a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            
+        </div>
+    </body>
+</html>
