@@ -2,3 +2,4 @@ steampy
 colorama
 requests
 socketio
+pymongo
