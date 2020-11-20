@@ -15,6 +15,15 @@
         <div class="container">
             <h1>PRICES</h1>
 
+            <p>Add multiple items separted by comma(s)</p>
+            <form action="/add" method="POST" class="my-4 form-inline">
+                <label for="names" class="sr-only">Item name</label>
+                <input required placeholder="The Team Captain, Non-Craftable Tour of Duty Ticket" type="text" name="names" id="names" class="form-control col mr-2"></th>                    
+                <button class="btn btn-success" type="submit">Add</button>
+            </form>
+            <p>Item prices will be added and updated when running <i>main.py</i>.</p>
+            <p>If the bot does not add its prices on startup you might have written in the wrong
+            item name. E.g. "Team Captain" instead of "The Team Captain".</p>
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -27,37 +36,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                <form action="/add" method="POST" class="my-4 form-inline">
-                    <th><label for='name' class='sr-only'>Item name</label>
-                    <input required placeholder='Team Captain' type='text' name="name" id="name" class="form-control col mr-2"></th>
-                    
-                    <th>
-                    <label for="buy_keys">
-                    <input required value='0' type='number' name='buy_keys' id='buy_keys'></th>
-                    <th><label for="buy_refined">
-                    <input required placeholder='0.00' type='text' name='buy_refined' id='buy_refined'></th>
-                    
-                    <th><label for="sell_keys">
-                    <input required value='0' type='number' name='sell_keys' id='sell_keys'></th>
-                    <th><label for="sell_refined">
-                    <input required placeholder='0.00' type='text' name='sell_refined' id='sell_refined'></th>
-                    
-                    <th><button class="btn btn-success" type="submit">Add item</button></th>
-                </form>
                     {% for item in items %}
                         <tr>
-                            <th>{{ item['name'] }}</th>
-                            <th>{{ item['buy']['keys'] }}</th>
-                            <th>{{item['buy']['metal']}}</th>
-                            <th>{{ item['sell']['keys'] }}</th>
-                            <th>{{item['sell']['metal']}}</th>
-                            <th><a href="/delete/{{ item['name'] }}"><button type="button" class="btn btn-danger">Delete</button></a></td>
+                            <th>{{ item["name"] }}</th>
+                            <th>{{ item["buy"]["keys"] }}</th>
+                            <th>{{ item["buy"]["metal"] }}</th>
+                            <th>{{ item["sell"]["keys"] }}</th>
+                            <th>{{ item["sell"]["metal"] }}</th>
+                            <th><a href="/delete/{{ item["name"] }}"><button type="button" class="btn btn-danger">Delete</button></a></td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            
-            
         </div>
     </body>
 </html>
