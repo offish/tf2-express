@@ -39,28 +39,24 @@ def _get_pricelist() -> dict:
     return prices.find()
 
 
-def add_price(name: str, buy: float, sell: float) -> None:
-    data = {
+def add_price(name: str) -> None:
+    prices.insert({
         'name': name,
-        'buy': buy,
-        'sell': sell
-    }
-    prices.insert(data)
+        'buy': None,
+        'sell': None
+    })
     log.info(f'Added {name} to the database')
 
 
-def update_price(name: str, buy: float, sell: float) -> None:
-    search = {'name': name}
-    data = prices.find_one(search)
-
-    data['buy'] = buy
-    data['sell'] = sell
-
-    prices.replace_one(search, data)
+def update_price(name: str, buy: dict, sell: dict) -> None:
+    prices.replace_one({'name': name}, {
+        'name': name,
+        'buy': buy,
+        'sell': sell
+    })
     log.info(f'Updated price for {name}')
 
 
 def remove_price(name: str) -> None:
-    search = {'name': name}
-    prices.delete_one(search)
+    prices.delete_one({'name': name})
     log.info(f'Removed {name} from the database')

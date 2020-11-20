@@ -22,7 +22,7 @@ values = {}
 
 items = get_items() 
 update_pricelist(items)
-
+log.info('Successfully updated all prices')
 
 @socket.event
 def connect():
@@ -54,11 +54,10 @@ log.info('Listening to Prices.tf for price updates')
 
 while True:
     if not items == get_items():
-        log.info('Item(s) were added/removed from the database')
+        log.info('Item(s) were added or removed from the database')
         items = get_items()
-        # This is a quickfix
-        # Should probably use something else than update_pricelist
         update_pricelist(items)
+        log.info('Successfully updated all prices')
 
     offers = client.get_offers()
 
