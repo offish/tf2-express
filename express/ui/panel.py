@@ -35,15 +35,9 @@ def delete(name):
 @app.route('/add', methods=['POST'])
 def add():
     data = dict(request.form.items())
-    buy, sell = ({
-        'keys': int(data['buy_keys']),
-        'metal': float(data['buy_refined'])
-    },
-    {
-        'keys': int(data['sell_keys']),
-        'metal': float(data['sell_refined'])
-    })
-    database.add_price(data['name'], buy, sell)
+    names = data['names'].split(', ')
+    for name in names:
+        database.add_price(name)
     return redirect('/prices')
 
 
