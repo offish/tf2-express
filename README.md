@@ -18,7 +18,8 @@ Automated trading bot for Team Fortress 2. Prices are provided by [Prices.tf](ht
 Backpack.tf listing might be added in the future.
 
 ## Screenshot
-![Screenshot](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
+![tf2-express terminal](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
+![tf2-express gui](https://user-images.githubusercontent.com/30203217/99878974-6eca1f80-2c09-11eb-83e1-07514a5d694f.png)
 
 ## Installation
 Download the repository, navigate to the folder, and install the required packages.
