@@ -7,14 +7,12 @@ from .logging import Log
 log = Log()
 
 
-def get_pricelist():
-    uri = 'https://api.prices.tf/items'
-    payload = {'src': 'bptf'}
+def get_pricelist() -> dict:
     log.info('Trying to get prices...')
-    return request(uri, payload)
+    return request('https://api.prices.tf/items', {'src': 'bptf'})
 
 
-def get_price(item: str, intent: str):
+def get_price(item: str, intent: str) -> float:
     return _get_price(item)[intent]['metal']
 
 

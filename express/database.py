@@ -18,21 +18,15 @@ def add_trade(data: dict) -> None:
 
 
 def get_items() -> list:
-    data = prices.find()
-    names = []
-    for i in data:
-        names.append(i['name'])
-    return names
+    return [item['name'] for item in prices.find()]
 
 
 def get_item(name: str) -> dict:
-    search = {'name': name}
-    return prices.find_one(search)
+    return prices.find_one({'name': name})
 
 
 def _get_price(name: str) -> dict:
-    search = {'name': name}
-    return prices.find_one(search)
+    return prices.find_one({'name': name})
 
 
 def _get_pricelist() -> dict:
@@ -48,7 +42,7 @@ def add_price(name: str) -> None:
     log.info(f'Added {name} to the database')
 
 
-def update_price(name: str, buy: dict, sell: dict) -> None:
+def update_price(name: str, buy, sell) -> None:
     prices.replace_one({'name': name}, {
         'name': name,
         'buy': buy,

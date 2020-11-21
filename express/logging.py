@@ -6,23 +6,30 @@ from colorama import init
 init()
 
 
-def log(color, sort, text, offer_id = ''):
+def log(color, sort, bot: str, text, offer_id = ''):
+    title = f'{f.GREEN}tf2-express | '
+    
+    if bot:
+        title = f'{title}[{bot}] '
+    
     if offer_id:
-        text = f'({f.YELLOW}{offer_id}{f.WHITE}) {text}'
+        text = f'({f.YELLOW}{offer_id}{f.WHITE}) {text}'   
+    
     time = datetime.now().time().strftime('%H:%M:%S')
-    print(f'{f.GREEN}tf2-express | {f.WHITE}{time} - {color + sort}{f.WHITE}: {text}{f.WHITE}')
+    print(f'{title}{f.WHITE}{time} - {color + sort}{f.WHITE}: {text}{f.WHITE}')
 
 
 class Log:
-    def __init__(self, offer_id: str = ''):
+    def __init__(self, bot: str = '', offer_id: str = ''):
+        self.bot = bot
         self.offer_id = offer_id
     
     def info(self, text: str):
-        log(f.GREEN, 'info', text)
+        log(f.GREEN, 'info', self.bot, text)
 
     def error(self, text: str):
-        log(f.RED, 'error', text)
+        log(f.RED, 'error', self.bot, text)
     
     def trade(self, text: str, offer_id: str = ''):
-        log(f.MAGENTA, 'trade', text, self.offer_id or offer_id)
+        log(f.MAGENTA, 'trade', self.bot, text, self.offer_id or offer_id)
 
