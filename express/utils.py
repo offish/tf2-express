@@ -1,10 +1,6 @@
 from math import floor, ceil
 
-from .settings import * 
-
-
-def get_steamid64(account_id: int) -> int:
-    return 76561197960265728 + account_id
+from .settings import allow_craft_hats
 
 
 def to_refined(number: int) -> float:
