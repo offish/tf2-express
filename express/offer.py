@@ -1,25 +1,17 @@
 from .settings import decline_trade_hold
 from .config import owners
-from .utils import get_steamid64
 
-
-states = {
-    '2': 'active',
-    '3': 'accepted',
-    '7': 'declined'
-}
+from steampy.models import TradeOfferState
+from steampy.utils import account_id_to_steam_id
 
 
 class Offer:
     def __init__(self, offer: dict):
         self.offer = offer
 
-    def get_state(self):
-        state = str(self.offer['trade_offer_state'])
-        
-        if state in states:
-            return states[state]
-        return state
+    def get_state(self) -> str:
+        state = self.offer['trade_offer_state']
+        return TradeOfferState(state).name
 
     def has_state(self, state: int) -> bool:
         return self.offer['trade_offer_state'] == state
@@ -58,7 +50,7 @@ class Offer:
         return False
 
     def get_partner(self) -> int:
-        return get_steamid64(self.offer['accountid_other'])
+        return account_id_to_steam_id(self.offer['accountid_other'])
 
     def is_from_owner(self) -> bool:
         return self.get_partner in owners
