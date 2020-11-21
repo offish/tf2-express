@@ -1,29 +1,29 @@
 from json import dumps
 
 from .logging import Log, f
-from .config import api_key, username, password, secrets
 
 from steampy.client import SteamClient
 from steampy.exceptions import ConfirmationExpected
 
 
-log = Log()
-
-
 class Client:
-    def __init__(self):
-        self.client = SteamClient(api_key)
+    def __init__(self, bot: dict):
+        self.log = Log(bot['name'])
+        self.username = bot['username']
+        self.password = bot['password']
+        self.secrets = bot['secrets']
+        self.client = SteamClient(bot['api_key'])
 
     def login(self):
-        self.client.login(username, password, dumps(secrets))
+        self.client.login(self.username, self.password, dumps(self.secrets))
 
         if self.client.was_login_executed:
-            log.info(f'Logged into Steam as {f.GREEN + username}')
+            self.log.info(f'Logged into Steam as {f.GREEN + self.username}')
         else:
-            log.error('Login was not executed')
+            self.log.error('Login was not executed')
 
     def logout(self):
-        log.info('Logging out...')
+        self.log.info('Logging out...')
         self.client.logout()
 
     def get_offers(self):
@@ -36,9 +36,9 @@ class Client:
         return self.client.get_trade_receipt(trade_id)
 
     def accept(self, offer_id: str):
-        log.trade('Trying to accept offer', offer_id)
+        self.log.trade('Trying to accept offer', offer_id)
         self.client.accept_trade_offer(offer_id)
 
     def decline(self, offer_id: str):
-        log.trade('Trying to decline offer', offer_id)
+        self.log.trade('Trying to decline offer', offer_id)
         self.client.decline_trade_offer(offer_id)
