@@ -17,6 +17,10 @@ def add_trade(data: dict) -> None:
     log.info(f'Offer was added to the database')
 
 
+def get_trades() -> dict:
+    return trades.find()
+
+
 def get_items() -> list:
     return [item['name'] for item in prices.find()]
 
@@ -42,7 +46,7 @@ def add_price(name: str) -> None:
     log.info(f'Added {name} to the database')
 
 
-def update_price(name: str, buy, sell) -> None:
+def update_price(name: str, buy: dict, sell: dict) -> None:
     prices.replace_one({'name': name}, {
         'name': name,
         'buy': buy,
