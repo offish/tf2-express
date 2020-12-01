@@ -11,7 +11,7 @@ def to_scrap(number: float) -> int:
     return int(ceil(number * 9))
 
 
-class Items:
+class Item:
     def __init__(self, item: dict):
         self.item = item
         self.name = item['market_hash_name']
@@ -19,16 +19,16 @@ class Items:
     def is_tf2(self) -> bool:
         return self.item['appid'] == 440
 
-    def has_tag(self, tag) -> bool:
+    def has_tag(self, tag: str) -> bool:
         for i in self.item['tags']:
             if i['localized_tag_name'] == tag:
                 return True
         return False
 
-    def has_name(self, name) -> bool:
+    def has_name(self, name: str) -> bool:
         return self.name == name
 
-    def has_description(self, description) -> bool:
+    def has_description(self, description: str) -> bool:
         if 'descriptions' not in self.item:
             return False
 
