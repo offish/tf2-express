@@ -1,25 +1,24 @@
 # tf2-express
-Automated trading bot for Team Fortress 2. Prices are provided by [Prices.tf](https://prices.tf).
-
-**THIS BOT DOES CURRENTLY NOT WORK FOR ITEMS PRICED WITH KEYS**
+Automated trading bot for Team Fortress 2 using prices provided by [Prices.TF](https://prices.tf).
 
 ## Features
-* Automatic pricing from [Prices.tf](https://prices.tf)
+* Automatic pricing from [Prices.TF](https://prices.tf)
 * Basic website GUI (going to be updated)
 * Uses MongoDB for saving/getting prices and trades
-* Run multiple bots at once
+* Support for running multiple bots at once
+* Accepts offer(s) sent by owner
 * Supports both Non-Craftable and Craftable items
 * Supports Random Craft Hats
-* Supports options listed in `settings.py`
+* Supports options listed in [`settings.py`](express/settings.py)
 * Saves trade data after trade has gone through
 * Colored and readable logging
 * Bank as many items as you want
 
 Backpack.tf listing might be added in the future.
 
-## Screenshot
-![tf2-express terminal](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
-![tf2-express gui](https://user-images.githubusercontent.com/30203217/99878974-6eca1f80-2c09-11eb-83e1-07514a5d694f.png)
+## Screenshots
+![GUI](https://user-images.githubusercontent.com/30203217/99878974-6eca1f80-2c09-11eb-83e1-07514a5d694f.png)
+![Screenshot](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
 
 ## Installation
 Download the repository, navigate to the folder, and install the required packages.
@@ -29,7 +28,7 @@ pip install -r requirements.txt
 ```
 
 ## Setup
-Configure the `bots` variable inside the `config.py` file under `express` folder. Here you need to add your bots credentials.
+Configure the `bots` variable inside the [`config.py`](express/config.py) file. Here you need to add your bots credentials.
 
 ```json
 {
@@ -57,7 +56,8 @@ Configure the `bots` variable inside the `config.py` file under `express` folder
 ```
 If you're running multiple bots, the variable should look something like this. `Name` is only for logging, this could be whatever you want (username, index, symbol, etc).
 
-You can also change your settings inside the `settings.py` which is also under `express` folder. Every option or setting here should be pretty self explanatory.
+You can also change your settings inside the [`settings.py`](express/settings.py) file. 
+Every option/setting here should be pretty self explanatory.
 
 ```python
 accept_donations    = True
@@ -77,7 +77,7 @@ After you have configured the bot you can run this command. Make sure you're in 
 python main.py
 ```
 
-To open the GUI run this command while being in the same directory as the `main.py` file, and open http://127.0.0.1:5000 in your browser.
+To open the GUI run this command while being in the same directory as the [`main.py`](main.py) file, and open http://127.0.0.1:5000 in your browser.
 ```
 python -m express.ui.panel
 ```
