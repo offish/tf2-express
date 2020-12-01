@@ -23,5 +23,5 @@ bots = [
     }
 ]
 
-owners = []
+owners = ['76511111111111111']
 timeout = 30
