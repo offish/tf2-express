@@ -6,17 +6,12 @@ from colorama import init
 init()
 
 
-def log(color, sort, bot: str, text, offer_id = ''):
-    title = f'{f.GREEN}tf2-express | '
-    
-    if bot:
-        title = f'{title}[{bot}] '
-    
-    if offer_id:
-        text = f'({f.YELLOW}{offer_id}{f.WHITE}) {text}'   
-    
+def log(color: int, sort: str, bot: str, text: str, offer_id: str = ''):
+    name = f' {f.GREEN}[{bot}]' if bot else ''
+    text = f'({f.YELLOW}{offer_id}{f.WHITE}) {text}' \
+        if offer_id else text
     time = datetime.now().time().strftime('%H:%M:%S')
-    print(f'{title}{f.WHITE}{time} - {color + sort}{f.WHITE}: {text}{f.WHITE}')
+    print(f'{f.GREEN}tf2-express | {f.WHITE}{time} - {color + sort}{name}{f.WHITE}: {text}{f.WHITE}')
 
 
 class Log:
