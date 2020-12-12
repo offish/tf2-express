@@ -3,8 +3,7 @@ from json import dumps
 from .logging import Log, f
 
 from steampy.client import SteamClient
-from steampy.exceptions import ConfirmationExpected
-
+from steampy.exceptions import InvalidCredentials
 
 class Client:
     def __init__(self, bot: dict):
@@ -15,12 +14,16 @@ class Client:
         self.client = SteamClient(bot['api_key'])
 
     def login(self):
-        self.client.login(self.username, self.password, dumps(self.secrets))
+        try:
+            self.client.login(self.username, self.password, dumps(self.secrets))
 
-        if self.client.was_login_executed:
-            self.log.info(f'Logged into Steam as {f.GREEN + self.username}')
-        else:
-            self.log.error('Login was not executed')
+            if self.client.was_login_executed:
+                self.log.info(f'Logged into Steam as {f.GREEN + self.username}')
+            else:
+                self.log.error('Login was not executed')
+        
+        except InvalidCredentials as e:
+            self.log.error(e)
 
     def logout(self):
         self.log.info('Logging out...')
@@ -29,10 +32,10 @@ class Client:
     def get_offers(self):
         return self.client.get_trade_offers(merge=True)['response']['trade_offers_received']
 
-    def get_offer(self, offer_id):
+    def get_offer(self, offer_id: str):
         return self.client.get_trade_offer(offer_id, merge=True)['response']['offer']
 
-    def get_receipt(self, trade_id):
+    def get_receipt(self, trade_id: str):
         return self.client.get_trade_receipt(trade_id)
 
     def accept(self, offer_id: str):
