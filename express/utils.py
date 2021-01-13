@@ -4,11 +4,19 @@ from .settings import allow_craft_hats
 
 
 def to_refined(scrap: int) -> float:
-    return float(floor(scrap / 9 * 100) / 100)
+    return floor(scrap / 9 * 100) / 100
 
 
 def to_scrap(refined: float) -> int:
-    return int(ceil(refined * 9))
+    return ceil(refined * 9)
+
+
+def refinedify(value: float) -> float:
+    return (
+        floor((round(value * 9, 0) * 100) / 9) / 100
+        if value > 0
+        else ceil((round(value * 9, 0) * 100) / 9) / 100
+    )
 
 
 class Item:
