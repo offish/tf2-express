@@ -8,7 +8,7 @@ from express.prices import update_pricelist
 from express.config import bots, timeout
 from express.client import Client
 from express.offer import Offer, valuate
-from express.utils import to_refined
+from express.utils import to_refined, refinedify
 
 import socketio
 
@@ -74,7 +74,7 @@ def run(bot: dict) -> None:
                                 summary.format(
                                     to_refined(their_value),
                                     to_refined(our_value),
-                                    difference,
+                                    refinedify(difference),
                                 )
                             )
 
@@ -111,29 +111,18 @@ def run(bot: dict) -> None:
                     if trade.is_accepted() and "tradeid" in offer:
                         if save_trades:
                             Log().info("Saving offer data...")
-                            _values = {}
 
                             if offer_id in values:
-                                _values = values[offer_id]
-                                trade_id = offer["tradeid"]
+                                offer["our_value"] = values[offer_id]["our_value"]
+                                offer["their_value"] = values[offer_id]["their_value"]
 
-                                receipt = client.get_receipt(trade_id)
-
-                                offer["our_value"] = _values["our_value"]
-                                offer["their_value"] = _values["their_value"]
-                                offer["receipt"] = receipt
-
+                            offer["receipt"] = client.get_receipt(offer["tradeid"])
                             add_trade(offer)
 
+                    if offer_id in values:
                         values.pop(offer_id)
-                        processed.remove(offer_id)
 
-                    else:
-                        if offer_id in values:
-                            values.pop(offer_id)
-
-                        if offer_id in processed:
-                            processed.remove(offer_id)
+                    processed.remove(offer_id)
 
             sleep(timeout)
 
