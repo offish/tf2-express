@@ -2,7 +2,12 @@
 
 from flask import Flask, render_template, request, redirect, abort
 
-from .. import database
+
+from ..database import *
+from ..prices import get_pricelist
+
+
+import json
 
 
 app = Flask(__name__)
@@ -15,17 +20,61 @@ def overview():
 
 @app.route("/trades")
 def trades():
-    return render_template("trades.html", trades=database.get_trades())
+    return render_template("trades.html", trades=get_trades())
 
 
 @app.route("/prices")
 def prices():
-    return render_template("prices.html", items=database._get_pricelist())
+    return render_template("prices.html", items=get_database_pricelist())
+
+
+@app.route("/pricelist")
+def pricelist():
+    with open("./express/ui/pricelist.json", "w") as f:
+        json.dump(get_pricelist(), f)
+    return redirect("/prices")
+
+
+@app.route("/price/<name>")
+def price(name):
+    try:
+        pricelist = json.loads(open("./express/ui/pricelist.json", "r").read())
+        item = {}
+
+        for i in pricelist["items"]:
+            if name == i["name"]:
+                item = i
+
+        if not (item.get("buy") and item["sell"]):
+            return redirect("/prices")
+
+        update_price(name, True, item["buy"], item["sell"])
+        return redirect("/prices")
+
+    except FileNotFoundError:
+        return redirect("/pricelist")
 
 
 @app.route("/delete/<name>")
 def delete(name):
-    database.remove_price(name)
+    remove_price(name)
+    return redirect("/prices")
+
+
+@app.route("/edit", methods=["POST"])
+def edit():
+    data = dict(request.form.items())
+
+    print(data)
+
+    name, buy, sell = (
+        data["name"],
+        {"keys": int(data["buy_keys"]), "metal": float(data["buy_metal"])},
+        {"keys": int(data["sell_keys"]), "metal": float(data["sell_metal"])},
+    )
+
+    update_price(name, False, buy, sell)
+
     return redirect("/prices")
 
 
@@ -34,7 +83,8 @@ def add():
     data = dict(request.form.items())
     names = data["names"].split(", ")
     for name in names:
-        database.add_price(name)
+        if not name in get_items():
+            add_price(name)
     return redirect("/prices")
 
 
