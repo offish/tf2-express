@@ -1,53 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <link rel="stylesheet" 
-            href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" 
-            integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
-            crossorigin="anonymous">
-        <title>prices - tf2-express</title>
-    </head>
 
-    <body>
-        <div class="container">
-            <h1>PRICES</h1>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <title>prices - tf2-express</title>
+</head>
 
-            <p>Add multiple items separted by comma(s)</p>
-            <form action="/add" method="POST" class="my-4 form-inline">
-                <label for="names" class="sr-only">Item name</label>
-                <input required placeholder="The Team Captain, Non-Craftable Tour of Duty Ticket" type="text" name="names" id="names" class="form-control col mr-2"></th>                    
-                <button class="btn btn-success" type="submit">Add</button>
-            </form>
-            <p>Item prices will be added and updated when running <i>main.py</i>.</p>
-            <p>If the bot does not add its prices on startup you might have written in the wrong
+<body class="bg-dark text-white">
+    <div class="container">
+        <h1 style="margin-top: 5%;">PRICES</h1>
+
+        <p>Add multiple items by using commas</p>
+        <form action="/add" method="POST" class="my-4 form-inline">
+            <label for="names" class="sr-only">Item name</label>
+            <input required placeholder="The Team Captain, Non-Craftable Tour of Duty Ticket" type="text" name="names"
+                id="names" class="form-control col mr-2"></th>
+            <button class="btn btn-success" type="submit">Add</button>
+        </form>
+        <p>Item prices will be added and updated when running <i>main.py</i>.</p>
+        <p>If the bot does not add its prices on startup you might have written in the wrong
             item name. E.g. "Team Captain" instead of "The Team Captain".</p>
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Item name</th>
-                        <th>Buy keys</th>
-                        <th>Buy refined</th>
-                        <th>Sell keys</th>
-                        <th>Sell refined</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                        <tr>
-                            <th>{{ item["name"] }}</th>
-                            <th>{{ item["buy"]["keys"] }}</th>
-                            <th>{{ item["buy"]["metal"] }}</th>
-                            <th>{{ item["sell"]["keys"] }}</th>
-                            <th>{{ item["sell"]["metal"] }}</th>
-                            <th><a href="/delete/{{ item["name"] }}"><button type="button" class="btn btn-danger">Delete</button></a></td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </body>
+        <p style="float: left;">Update pricelist to get all items and newer prices.</p>
+        <a style="float: right; margin-bottom: 20px;" href="/pricelist"><button class="btn btn-success">Update
+                pricelist</button></a>
+        <table class="table table-dark table-hover">
+            <thead>
+                <tr>
+                    <th>Item name</th>
+                    <th>Autoprice</th>
+                    <th>Buy keys</th>
+                    <th>Buy refined</th>
+                    <th>Sell keys</th>
+                    <th>Sell refined</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <form action="/edit" method="POST">
+                        <input name="name" id="name" style="display: none;" value="{{ item['name'] }}" type="text">
+                        <th>{{ item['name'] }}
+                        </th>
+                        <th>{{ item["autoprice"] }}</th>
+                        <th><input name="buy_keys" id="buy_keys" style="width: 50px;" value="{{ item['buy']['keys'] }}"
+                                min="0" type="number" step="any">
+                        </th>
+                        <th><input name="buy_metal" id="buy_metal" style="width: 70px;"
+                                value="{{ item['buy']['metal'] }}" min="0" type="number" step="any">
+                        </th>
+                        <th><input name="sell_keys" id="sell_keys" style="width: 50px;"
+                                value="{{ item['sell']['keys'] }}" min="0" type="number" step="any">
+                        </th>
+                        <th><input name="sell_metal" id="sell_metal" style="width: 70px;"
+                                value="{{ item['sell']['metal'] }}" min="0" type="number" step="any">
+                        </th>
+
+                        <th>
+                            <button type="submit" class="btn btn-success">Save</button>
+                            <a href="/price/{{ item['name'] }}"><button type="button"
+                                    class="btn btn-warning">Price</button></a>
+                            <a href="/delete/{{ item['name'] }}"><button type="button"
+                                    class="btn btn-danger">Delete</button></a></td>
+                </tr>
+                </form>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+
 </html>

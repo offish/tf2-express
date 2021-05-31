@@ -27,7 +27,7 @@ Automated trading bot for Team Fortress 2 using prices provided by [Prices.TF](h
 Backpack.tf listing might be added in the future.
 
 ## Screenshots
-![GUI](https://user-images.githubusercontent.com/30203217/99878974-6eca1f80-2c09-11eb-83e1-07514a5d694f.png)
+![GUI](https://user-images.githubusercontent.com/30203217/120229592-c2b76000-c24d-11eb-8d23-725556925ba3.png)
 ![Screenshot](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
 
 ## Installation
@@ -75,9 +75,6 @@ decline_trade_hold  = True
 decline_scam_offers = True
 allow_craft_hats    = True
 save_trades         = True
-
-craft_hat_buy       = 1.55
-craft_hat_sell      = 1.66
 ```
 
 

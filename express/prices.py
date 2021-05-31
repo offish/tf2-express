@@ -3,7 +3,7 @@ from .database import _get_price
 from .methods import request
 from .logging import Log
 from .utils import to_scrap, to_refined
-from .settings import craft_hat_buy, craft_hat_sell
+
 
 log = Log()
 
@@ -18,9 +18,6 @@ def get_pricelist() -> dict:
 
 
 def get_price(name: str, intent: str) -> float:
-    if name == "Random Craft Hat":
-        return craft_hat_sell if intent == "sell" else craft_hat_buy
-
     price = _get_price(name)[intent]
     metal = to_scrap(price["metal"])
     keys = price.get("keys")
@@ -44,11 +41,12 @@ def update_pricelist(items: list) -> None:
         if name in items:
             item = get_item(name)
 
-            if not (item["buy"] or item["sell"]):
-                update_price(name, i["buy"], i["sell"])
+            if item.get("autoprice"):
+                if not (item["buy"] or item["sell"]):
+                    update_price(name, True, i["buy"], i["sell"])
 
-            elif not (i["buy"] == item["buy"]) or not (i["sell"] == item["sell"]):
-                update_price(name, i["buy"], i["sell"])
+                elif not (i["buy"] == item["buy"]) or not (i["sell"] == item["sell"]):
+                    update_price(name, True, i["buy"], i["sell"])
 
     # Does not warn the user if an item in the database
     # can't be found in Prices.TF's pricelist

@@ -128,7 +128,7 @@ def run(bot: dict) -> None:
 
     except KeyboardInterrupt:
         client.logout()
-        log.error(f"Stopping")
+        log.info(f"Stopping")
 
 
 def database() -> None:
