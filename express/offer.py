@@ -9,7 +9,7 @@ from steampy.utils import account_id_to_steam_id
 
 def valuate(items: dict, intent: str, item_list: list) -> int:
     total = 0
-    high = float(10 ** 5)
+    high = float(10 ** 10)
 
     for i in items:
         item = Item(items[i])
