@@ -5,7 +5,7 @@ from express.database import *
 from express.settings import *
 from express.logging import Log, f
 from express.prices import update_pricelist
-from express.config import bots, timeout
+from express.config import *
 from express.client import Client
 from express.offer import Offer, valuate
 from express.utils import to_refined, refinedify
@@ -23,10 +23,11 @@ def run(bot: dict) -> None:
         processed = []
         values = {}
 
-        log.info(f"Polling offers every {timeout} seconds")
+        log.info(f"Polling offers every {TIMEOUT} seconds")
 
         while True:
-
+            log = Log(bot["name"])
+            log.debug("Polling offers...")
             offers = client.get_offers()
 
             for offer in offers:
@@ -86,7 +87,12 @@ def run(bot: dict) -> None:
                                 client.accept(offer_id)
 
                             else:
-                                client.decline(offer_id)
+                                if decline_bad_trade:
+                                    client.decline(offer_id)
+                                else:
+                                    log.trade(
+                                        "Ignoring offer as automatic decline is disabled"
+                                    )
 
                         else:
                             log.trade("Offer is invalid")
@@ -124,27 +130,33 @@ def run(bot: dict) -> None:
 
                     processed.remove(offer_id)
 
-            sleep(timeout)
+            sleep(TIMEOUT)
 
-    except KeyboardInterrupt:
-        client.logout()
-        log.info(f"Stopping")
+    except BaseException as e:
+        log.info(f"Caught {type(e).__name__}")
+
+        try:
+            client.logout()
+        except:
+            pass
+
+        log.info(f"Stopped")
 
 
 def database() -> None:
     try:
-        items = get_items()
+        items_in_database = get_items()
         log = Log()
 
         while True:
-            if not items == get_items():
+            if not items_in_database == get_items():
                 log.info("Item(s) were added or removed from the database")
-                items = get_items()
-                update_pricelist(items)
+                items_in_database = get_items()
+                update_pricelist(items_in_database)
                 log.info("Successfully updated all prices")
             sleep(10)
 
-    except KeyboardInterrupt:
+    except BaseException:
         pass
 
 
@@ -159,6 +171,8 @@ if __name__ == "__main__":
         update_pricelist(items)
         log.info("Successfully updated all prices")
 
+        del items
+
         @socket.event
         def connect():
             socket.emit("authentication")
@@ -171,7 +185,7 @@ if __name__ == "__main__":
         @socket.event
         def price(data):
             if data["name"] in get_items():
-                update_price(data["name"], data["buy"], data["sell"])
+                update_price(data["name"], True, data["buy"], data["sell"])
 
         @socket.event
         def unauthorized(sid):
@@ -180,15 +194,20 @@ if __name__ == "__main__":
         socket.connect("https://api.prices.tf")
         log.info("Listening to Prices.TF for price updates")
 
-        Process(target=database).start()
+        process = Process(target=database)
+        process.start()
 
-        with Pool(len(bots)) as p:
-            p.map(run, bots)
+        with Pool(len(BOTS)) as p:
+            p.map(run, BOTS)
 
-    except KeyboardInterrupt as e:
-        log.info(f"Caught {type(e).__name__}")
+    except BaseException as e:
+        if e:
+            log.error(e)
 
     finally:
+        socket.disconnect()
+        process.terminate()
         t2 = time()
         log.info(f"Done. Bot ran for {round(t2-t1, 1)} seconds")
-        exit()
+        log.close()
+        quit()
