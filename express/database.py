@@ -25,6 +25,10 @@ def get_items() -> list:
     return [item["name"] for item in prices.find()]
 
 
+def get_autopriced_items() -> list:
+    return [item["name"] for item in prices.find() if item.get("autoprice")]
+
+
 def get_item(name: str) -> dict:
     return prices.find_one({"name": name})
 
