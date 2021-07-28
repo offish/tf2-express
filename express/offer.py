@@ -1,6 +1,6 @@
 from .settings import decline_trade_hold
 from .prices import get_price, get_key_price
-from .config import owners
+from .config import OWNERS
 from .utils import Item, to_scrap
 
 from steampy.models import TradeOfferState
@@ -95,4 +95,4 @@ class Offer:
         return account_id_to_steam_id(self.offer["accountid_other"])
 
     def is_from_owner(self) -> bool:
-        return self.get_partner() in owners
+        return self.get_partner() in OWNERS

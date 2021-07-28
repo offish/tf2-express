@@ -1,4 +1,4 @@
-bots = [
+BOTS = [
     {
         "name": "bot1",
         "username": "username",
@@ -23,5 +23,6 @@ bots = [
     },
 ]
 
-owners = ["76511111111111111"]
-timeout = 30
+OWNERS = ["76511111111111111"]
+TIMEOUT = 30
+DEBUG = True
