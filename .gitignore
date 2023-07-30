@@ -1,0 +1,6 @@
+__pycache__
+.vscode
+# express/config.py
+express/__pycache__
+express/files/logs.txt
+express/config.json
