@@ -13,8 +13,7 @@ log = Log()
 
 
 def add_trade(data: dict) -> None:
-    trades.insert(data)
-    log.info(f"Offer was added to the database")
+    trades.insert_one(data)
 
 
 def get_trades() -> dict:
@@ -42,7 +41,7 @@ def get_database_pricelist() -> dict:
 
 
 def add_price(name: str) -> None:
-    prices.insert({"name": name, "autoprice": True, "buy": None, "sell": None})
+    prices.insert_one({"name": name, "autoprice": True, "buy": None, "sell": None})
     log.info(f"Added {name} to the database")
 
 

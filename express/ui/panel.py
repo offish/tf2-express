@@ -2,15 +2,16 @@
 
 from flask import Flask, render_template, request, redirect, abort
 
-
-from ..database import *
-from ..prices import get_pricelist
-
+from express.database import *
+from express.prices import get_pricelist
 
 import json
 
 
 app = Flask(__name__)
+
+PATH = "express/ui/"
+PRICESLIST = PATH + "pricelist.json"
 
 
 @app.route("/")
@@ -30,7 +31,7 @@ def prices():
 
 @app.route("/pricelist")
 def pricelist():
-    with open("./express/ui/pricelist.json", "w") as f:
+    with open(PRICESLIST, "w") as f:
         json.dump(get_pricelist(), f)
     return redirect("/prices")
 
@@ -38,7 +39,7 @@ def pricelist():
 @app.route("/price/<name>")
 def price(name):
     try:
-        pricelist = json.loads(open("./express/ui/pricelist.json", "r").read())
+        pricelist = json.loads(open(PRICESLIST, "r").read())
         item = {}
 
         for i in pricelist["items"]:

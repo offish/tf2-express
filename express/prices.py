@@ -19,6 +19,10 @@ def get_pricelist() -> dict:
 
 def get_price(name: str, intent: str) -> float:
     price = _get_price(name)[intent]
+
+    if name == "Craftable Weapon":
+        return price["metal"]
+
     metal = to_scrap(price["metal"])
     keys = price.get("keys")
 

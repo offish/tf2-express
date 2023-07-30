@@ -1,53 +1,65 @@
-from .settings import decline_trade_hold
+from .settings import DECLINE_TRADE_HOLD
 from .prices import get_price, get_key_price
 from .config import OWNERS
-from .utils import Item, to_scrap
+from .utils import to_scrap
+from .items import Item
 
 from steampy.models import TradeOfferState
 from steampy.utils import account_id_to_steam_id
 
 
-def valuate(items: dict, intent: str, item_list: list) -> int:
+def valuate(items: dict, intent: str, item_list: list) -> tuple[int, bool]:
+    has_unpriced = False
     total = 0
-    high = float(10 ** 10)
 
     for i in items:
+        # valute one item at a time
         item = Item(items[i])
         name = item.name
         value = 0.00
 
-        if item.is_tf2():
+        if not item.is_tf2():
+            # we dont add any price for that item -> skip
+            continue
 
-            if item.is_pure():
-                value = item.get_pure()
+        if item.is_pure():  # should be metal / add keys to pure
+            value = item.get_pure()
 
-            elif item.is_key():
-                value = get_key_price()
+        elif item.is_key():
+            # handle keys equal, at this time, but we maybe dont want to
+            value = get_key_price()
 
-            elif item.is_craftable():
+        elif item.is_craftable():
+            if name in item_list:
+                value = get_price(name, intent)
 
-                if name in item_list:
-                    value = get_price(name, intent)
+            elif item.is_craft_weapon():
+                value = get_price("Craftable Weapon", intent)
 
-                elif item.is_craft_hat():
-                    value = get_price("Random Craft Hat", intent)
+            elif item.is_craft_hat():
+                value = get_price("Random Craft Hat", intent)
 
-            elif not item.is_craftable():
-                name = "Non-Craftable " + name
+        elif not item.is_craftable():
+            name = "Non-Craftable " + name
 
-                if name in item_list:
-                    value = get_price(name, intent)
+            if name in item_list:
+                value = get_price(name, intent)
 
-        if not value:
-            value = high if intent == "sell" else 0.00
+        if not value and intent == "sell":
+            has_unpriced = True
+            # dont need to process rest of offer since we cant know the total price
+            break
 
-        total += to_scrap(value)
+        # gets prices in ref, and converts to scrap
+        # if price is less than 0.11 ref, it's a craft weapon
+        total += to_scrap(value) if value >= 0.11 else 0.50
 
-    return total
+    # total scrap
+    return total, has_unpriced
 
 
 class Offer:
-    def __init__(self, offer: dict):
+    def __init__(self, offer: dict) -> None:
         self.offer = offer
         self.state = offer["trade_offer_state"]
 
@@ -66,8 +78,8 @@ class Offer:
     def is_declined(self) -> bool:
         return self.has_state(7)
 
-    def has_escrow(self) -> bool:
-        return self.offer["escrow_end_date"] == 0
+    def has_trade_hold(self) -> bool:
+        return self.offer["escrow_end_date"] != 0
 
     def is_our_offer(self) -> bool:
         return self.offer["is_our_offer"]
@@ -83,13 +95,13 @@ class Offer:
         )
 
     def is_valid(self) -> bool:
-        return (
-            True
-            if self.offer.get("items_to_receive")
-            and self.offer.get("items_to_give")
-            and (self.has_escrow() or self.has_escrow() == decline_trade_hold)
-            else False
-        )
+        if self.has_trade_hold() and DECLINE_TRADE_HOLD:
+            return False
+
+        if self.offer.get("items_to_receive") and self.offer.get("items_to_give"):
+            return True
+
+        return False
 
     def get_partner(self) -> str:
         return account_id_to_steam_id(self.offer["accountid_other"])
