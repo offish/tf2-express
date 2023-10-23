@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ item.name }}
+{% endblock %}
+
+{% block contents %}
+<h1>{{ item.sku }}</h1>
+<img src="{{ item.image }}" style="background-color: #{{ item.color }};">
+<h2>{{ item.name }}</h2>
+<p>Last updated: {{ item.updated }}</p>
+<ul>
+    <li>
+        <a href="https://marketplace.tf/items/tf2/{{ item.sku }}">MarketplaceTF</a>
+    </li>
+    <li>
+        <a href="https://prices.tf/items/{{ item.sku }}">PricesTF</a>
+    </li>
+    <li>
+        <a href="https://autobot.tf/items/{{ item.sku }}">AutobotTF</a>
+    </li>
+</ul>
+<p>Item is autopriced? {{ item.autoprice }}</p>
+
+<h3>Buy</h3>
+<p>Buy keys: {{ item["buy"]["keys"] }}</p>
+<p>Buy metal: {{ item["buy"]["metal"] }}</p>
+
+<h3>Sell</h3>
+<p>Sell keys: {{ item["sell"]["keys"] }}</p>
+<p>Sell metal: {{ item["sell"]["metal"] }}</p>
+
+{% endblock %}

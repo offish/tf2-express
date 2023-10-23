@@ -1,0 +1,27 @@
+:root {
+    --green: #4CFF00;
+    --black: #1D1D1D;
+    --link-green: #72d587;
+}
+
+.table-dark {
+    --bs-table-bg: var(--black);
+}
+
+body {
+    background-color: var(--black);
+    color: white;
+}
+
+h1 {
+    color: var(--green);
+    margin-top: 5%;
+}
+
+h2 {
+    margin-top: 2.5%;
+}
+
+a {
+    color: var(--link-green);
+}

@@ -1,213 +1,179 @@
-from multiprocessing import Process, Pool
-from time import sleep, time
+# from multiprocessing import Process, Pool
+import time
+import logging
+import sys
+import json
 
-from express.database import *
-from express.settings import *
-from express.logging import Log, f
-from express.prices import update_pricelist
-from express.config import *
-from express.client import Client
-from express.offer import Offer, valuate
-from express.utils import to_refined, refinedify
+# from express.database import get_items
+from express.express import Express
+from express.options import Options
 
-import socketio
+# from express.prices import update_pricelist
 
+from express.utils import ExpressFormatter, ExpressFileFormatter, get_version
+from express import __version__ as tf2_express_version
 
-def run(bot: dict) -> None:
-    try:
-        client = Client(bot)
-        client.login()
+from tf2_utils import __version__ as tf2_utils_version
+from tf2_sku import __version__ as tf2_sku_version
 
-        log = Log(bot["name"])
-
-        processed = []
-        values = {}
-
-        log.info(f"Polling offers every {TIMEOUT} seconds")
-
-        while True:
-            log = Log(bot["name"])
-            log.debug("Polling offers...")
-            offers = client.get_offers()
-
-            for offer in offers:
-                offer_id = offer["tradeofferid"]
-
-                if offer_id not in processed:
-                    log = Log(bot["name"], offer_id)
-
-                    trade = Offer(offer)
-                    steam_id = trade.get_partner()
-
-                    if trade.is_active() and not trade.is_our_offer():
-                        log.trade(f"Received a new offer from {f.YELLOW + steam_id}")
-
-                        if trade.is_from_owner():
-                            log.trade("Offer is from owner")
-                            client.accept(offer_id)
-
-                        elif trade.is_gift() and accept_donations:
-                            log.trade("User is trying to give items")
-                            client.accept(offer_id)
-
-                        elif trade.is_scam() and decline_scam_offers:
-                            log.trade("User is trying to take items")
-                            client.decline(offer_id)
-
-                        elif trade.is_valid():
-                            log.trade("Processing offer...")
-
-                            their_items = offer["items_to_receive"]
-                            our_items = offer["items_to_give"]
-
-                            items = get_items()
-
-                            their_value = valuate(their_items, "buy", items)
-                            our_value = valuate(our_items, "sell", items)
-
-                            item_amount = len(their_items) + len(our_items)
-                            log.trade(f"Offer contains {item_amount} items")
-
-                            difference = to_refined(their_value - our_value)
-                            summary = "User value: {} ref, our value: {} ref, difference: {} ref"
-
-                            log.trade(
-                                summary.format(
-                                    to_refined(their_value),
-                                    to_refined(our_value),
-                                    refinedify(difference),
-                                )
-                            )
-
-                            if their_value >= our_value:
-                                values[offer_id] = {
-                                    "our_value": to_refined(our_value),
-                                    "their_value": to_refined(their_value),
-                                }
-                                client.accept(offer_id)
-
-                            else:
-                                if decline_bad_trade:
-                                    client.decline(offer_id)
-                                else:
-                                    log.trade(
-                                        "Ignoring offer as automatic decline is disabled"
-                                    )
-
-                        else:
-                            log.trade("Offer is invalid")
-
-                    else:
-                        log.trade("Offer is not active")
-
-                    processed.append(offer_id)
-
-            del offers
-
-            for offer_id in processed:
-                offer = client.get_offer(offer_id)
-                trade = Offer(offer)
-
-                log = Log(bot["name"], offer_id)
-
-                if not trade.is_active():
-                    state = trade.get_state()
-                    log.trade(f"Offer state changed to {f.YELLOW + state}")
-
-                    if trade.is_accepted() and "tradeid" in offer:
-                        if save_trades:
-                            Log().info("Saving offer data...")
-
-                            if offer_id in values:
-                                offer["our_value"] = values[offer_id]["our_value"]
-                                offer["their_value"] = values[offer_id]["their_value"]
-
-                            offer["receipt"] = client.get_receipt(offer["tradeid"])
-                            add_trade(offer)
-
-                    if offer_id in values:
-                        values.pop(offer_id)
-
-                    processed.remove(offer_id)
-
-            sleep(TIMEOUT)
-
-    except BaseException as e:
-        log.info(f"Caught {type(e).__name__}")
-
-        try:
-            client.logout()
-        except:
-            pass
-
-        log.info(f"Stopped")
+from tf2_utils import PricesTFSocket
+from threading import Thread
+from express.options import GlobalOptions
 
 
-def database() -> None:
-    try:
-        items_in_database = get_items()
-        log = Log()
+formatter = ExpressFormatter()
+stream_handler = logging.StreamHandler(sys.stdout)
 
-        while True:
-            if not items_in_database == get_items():
-                log.info("Item(s) were added or removed from the database")
-                items_in_database = get_items()
-                update_pricelist(items_in_database)
-                log.info("Successfully updated all prices")
-            sleep(10)
 
-    except BaseException:
-        pass
+import os
+
+LOG_PATH = os.getcwd() + "/logs/"
+LOG_FILE = LOG_PATH + "express.log"
+
+# create folder and empty log file
+if not os.path.isfile(LOG_FILE):
+    os.makedirs(LOG_PATH)
+    open(LOG_FILE, "x")
+
+file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    handlers=[
+        stream_handler,
+        file_handler,
+    ],
+)
+
+# only want to see info and above in console
+stream_handler.setLevel(logging.INFO)
+# stream_handler.setLevel(logging.DEBUG)
+stream_handler.setFormatter(ExpressFormatter())
+
+# want to have everything in the log file
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(ExpressFileFormatter())
+
+
+packages = [
+    (tf2_express_version, "tf2-express", "express"),
+    (tf2_utils_version, "tf2-utils", "src/tf2_utils"),
+    (tf2_sku_version, "tf2-sku", "src/tf2_sku"),
+]
+
+
+def create_bot_instance(bot: dict) -> Express:
+    options = Options(**bot["options"])
+    logging.debug(f"using options {options=}")
+    client = Express(bot, options)
+
+    logging.info(f"Created instance for {bot['username']}")
+    return client
+
+    # try:
+    # client.login()
+    # client.start()
+    # client.run()
+
+    # except BaseException as e:
+    #     logging.info(f"Caught {type(e).__name__}")
+    #     logging.error(e)
+
+    #     client.logout()
+
+    #     logging.info(f"Stopped")
+
+
+# def on_database_change() -> None:
+#     try:
+#         items_in_database = get_items()
+#         # log = Log()
+
+#         while True:
+#             if not items_in_database == get_items():
+#                 logging.info("Item(s) were added or removed from the database")
+#                 items_in_database = get_items()
+#                 update_pricelist(items_in_database)
+#                 logging.info("Successfully updated all prices")
+#             sleep(10)
+
+#     except BaseException:
+#         pass
+
+
+# check which database which should be used
+
+# def start(self):
+
+
+bots: list[Express] = []
+
+
+def get_config() -> dict:
+    config = {}
+
+    with open("./express/config.json", "r") as f:
+        config = json.loads(f.read())
+
+    return config
+
+
+def on_price_change(data: dict) -> None:
+    if data.get("type") != "PRICE_CHANGED":
+        return
+
+    if not data.get("data", {}).get("sku"):
+        return
+
+    logging.debug(f"Got new price change from prices.tf {data=}")
+
+    for bot in bots:
+        bot.append_new_price(data)
 
 
 if __name__ == "__main__":
-    t1 = time()
-    log = Log()
+    # t1 = time.time()
 
-    try:
-        socket = socketio.Client()
+    logging.info("Started tf2-express")
 
-        items = get_items()
-        update_pricelist(items)
-        log.info("Successfully updated all prices")
+    config = get_config()
 
-        del items
+    prices_tf_socket = PricesTFSocket(on_price_change)
+    prices_thread = Thread(target=prices_tf_socket.listen)
 
-        @socket.event
-        def connect():
-            socket.emit("authentication")
-            log.info("Successfully connected to Prices.TF socket server")
+    # bot_configs = []
 
-        @socket.event
-        def authenticated(data):
-            pass
+    options = GlobalOptions(**config)
 
-        @socket.event
-        def price(data):
-            if data["name"] in get_items():
-                update_price(data["name"], True, data["buy"], data["sell"])
+    if options.check_versions_on_startup:
+        for i in packages:
+            current_version, repo, folder = i
+            latest_version = get_version(repo, folder)
 
-        @socket.event
-        def unauthorized(sid):
-            pass
+            if current_version == latest_version:
+                continue
 
-        socket.connect("https://api.prices.tf")
-        log.info("Listening to Prices.TF for price updates")
+            logging.warning(
+                f"{repo} is at version {current_version} while {latest_version} is available"
+            )
 
-        process = Process(target=database)
-        process.start()
+    prices_thread.start()
+    bot_threads: list[Thread] = []
 
-        with Pool(len(BOTS)) as p:
-            p.map(run, BOTS)
+    for bot in options.bots:
+        bot_instance = create_bot_instance(bot)
+        bot_instance.login()
+        bot_thread = Thread(target=bot_instance.run)
+        bot_thread.start()
 
-    except BaseException as e:
-        if e:
-            log.error(e)
+        bots.append(bot_instance)
+        bot_threads.append(bot_thread)
 
-    finally:
-        socket.disconnect()
-        process.terminate()
-        t2 = time()
-        log.info(f"Done. Bot ran for {round(t2-t1, 1)} seconds")
-        log.close()
-        quit()
+    for thread in bot_threads:
+        thread.join()
+
+    prices_thread.join()
+
+    # run(bots[0])
+    # with Pool(len(bots)) as p:
+    #     p.map(run, bots)

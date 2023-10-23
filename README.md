@@ -6,31 +6,53 @@
 [![Discord](https://img.shields.io/discord/467040686982692865?color=7289da&label=Discord&logo=discord)](https://discord.gg/t8nHSvA)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-[![Donate Steam](https://img.shields.io/badge/donate-steam-green.svg)](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
-[![Donate PayPal](https://img.shields.io/badge/donate-paypal-blue.svg)](https://www.paypal.me/0ffish)
+Automated TF2 trading bot using prices provided by [Prices.TF](https://prices.tf).
 
-Automated trading bot for Team Fortress 2 using prices provided by [Prices.TF](https://prices.tf).
+## Donate
+- BTC: `bc1qntlxs7v76j0zpgkwm62f6z0spsvyezhcmsp0z2`
+- [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
+
 
 ## Features
-* Automatic pricing from [Prices.TF](https://prices.tf)
-* Basic website GUI (going to be updated)
-* Uses MongoDB for saving/getting prices and trades
-* Support for running multiple bots at once
-* Accepts offer(s) sent by owner
-* Supports both Non-Craftable and Craftable items
-* Supports Random Craft Hats
-* Supports options listed in [`settings.py`](express/settings.py)
-* Saves trade data after trade has gone through
-* Colored and readable logging
+* Automatic item pricing from [Prices.TF](https://prices.tf)
+* GUI for adding items, changing prices and browsing trades
 * Bank as many items as you want
+* Add items by SKU or name
+* Uses MongoDB for saving items, prices and trades
+* Supports Random Craft Hats [?](#random-craft-hats)
+* Supports running multiple bots at once (NEEDS TESTING)
+* Each bot has its own MongoDB database and collections
+* Supports SKU item formats for ease of use
+* Supports 3rd party inventory providers [?](#3rd-party-inventory-providers)
+* Uses [tf2-sku](https://github.com/offish/tf2-sku)
+* Uses [tf2-data](https://github.com/offish/tf2-data)
+* Uses [tf2-utils](https://github.com/offish/tf2-utils)
 
-Backpack.tf listing might be added in the future.
+*Backpack.tf listing is not supported yet.*
 
-## Screenshots
+## Showcase
+![GUI Prices]()
+![GUI Trades]()
+![tf2-express]()
+
+## Explanation
+### Random Craft Hats
+If our or their item doesnt have a specific price in the database, it will count the item as a Random Craft Hat (SKU: -100;6), if enabled in `options` and if the database contains a price.
+
+**WARNING: If `allow_craft_hats` is enabled, and the bots has higher valued craftable hats like Earbuds, Team Captain or Max Heads which do not have a specified price; they will be valued as a Random Craft Hat. Which is whatever you set the Random Craft Hat sell price to be. This is not a bug, but a feature.**
+
+### 3rd Party Inventory Providers
+
+
+## Showcase
 ![GUI](https://user-images.githubusercontent.com/30203217/120229592-c2b76000-c24d-11eb-8d23-725556925ba3.png)
 ![Screenshot](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
 
+
 ## Installation
+Follow the full installation in the [wiki]().
+
+
 Download the repository, navigate to the folder, and install the required packages.
 
 ```
@@ -92,7 +114,7 @@ python -m express.ui.panel
 ## License
 MIT License
 
-Copyright (c) 2020 [offish](https://offi.sh)
+Copyright (c) 2020-2023 offish
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

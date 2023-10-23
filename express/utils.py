@@ -1,79 +1,81 @@
-from math import floor, ceil
+# from .options import Options
 
-from .settings import allow_craft_hats
+# from threading import Thread
+import logging
 
-
-def to_refined(scrap: int) -> float:
-    return floor(scrap / 9 * 100) / 100
-
-
-def to_scrap(refined: float) -> int:
-    return ceil(refined * 9)
+# from tf2_utils import PricesTFSocket
+import requests
 
 
-def refinedify(value: float) -> float:
-    return (
-        floor((round(value * 9, 0) * 100) / 9) / 100
-        if value > 0
-        else ceil((round(value * 9, 0) * 100) / 9) / 100
-    )
+def get_version(repository: str, folder: str) -> str:
+    url = f"https://raw.githubusercontent.com/offish/{repository}/master/{folder}/__init__.py"
+
+    r = requests.get(url)
+    data = r.text
+
+    version_index = data.index("__version__")
+    start_quotation_mark = data.index('"', version_index)
+    end_quotation_mark = data.index('"', start_quotation_mark + 1)
+
+    # get rid of first "
+    return data[start_quotation_mark + 1 : end_quotation_mark]
 
 
-class Item:
-    def __init__(self, item: dict):
-        self.item = item
-        self.name = item["market_hash_name"]
+# class GlobalPricing:
+#     def __init__(self, bots: list) -> None:
+#         self.bots = bots
+#         prices_tf_socket = PricesTFSocket(self.on_price_receive)
+#         self.thread = Thread(prices_tf_socket)
+#         self.thread.start()
+#         self.default_options = Options()
 
-    def is_tf2(self) -> bool:
-        return self.item["appid"] == 440
+#     def __get_database_names(self) -> list[str]:
+#         db_names = []
 
-    def has_tag(self, tag: str) -> bool:
-        for i in self.item["tags"]:
-            if i["localized_tag_name"] == tag:
-                return True
-        return False
+#         for bot in self.bots:
+#             db_name = self.default_options.database
 
-    def has_name(self, name: str) -> bool:
-        return self.name == name
+#             specified_name = bot["options"].get("database")
 
-    def has_description(self, description: str) -> bool:
-        if "descriptions" not in self.item:
-            return False
+#             if specified_name:
+#                 db_name = specified_name
 
-        for i in self.item["descriptions"]:
-            if i["value"] == description:
-                return True
-        return False
+#             db_names.append(db_name)
 
-    def is_craftable(self) -> bool:
-        return not self.has_description("( Not Usable in Crafting )")
+#         return db_names
 
-    def is_halloween(self) -> bool:
-        return self.has_description("Holiday Restriction: Halloween / Full Moon")
+#
 
-    def is_craft_hat(self) -> bool:
-        return (
-            self.is_craftable()
-            and not self.is_halloween()
-            and self.has_tag("Cosmetic")
-            and allow_craft_hats
-        )
 
-    def is_key(self) -> bool:
-        return self.is_craftable() and self.has_name("Mann Co. Supply Crate Key")
+class ExpressFormatter(logging.Formatter):
+    _format = "tf2-express | %(asctime)s - [%(levelname)s]: %(message)s"
 
-    def is_pure(self) -> bool:
-        return self.is_craftable() and (
-            self.has_name("Refined Metal")
-            or self.has_name("Reclaimed Metal")
-            or self.has_name("Scrap Metal")
-        )
+    FORMATS = {
+        logging.DEBUG: _format,
+        logging.INFO: _format,
+        logging.WARNING: _format,
+        logging.ERROR: _format + "(%(filename)s:%(lineno)d)",
+        logging.CRITICAL: _format + "(%(filename)s:%(lineno)d)",
+    }
 
-    def get_pure(self) -> float:
-        if self.has_name("Refined Metal"):
-            return 1.00
-        elif self.has_name("Reclaimed Metal"):
-            return 0.33
-        elif self.has_name("Scrap Metal"):
-            return 0.11
-        return 0.00
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt="%H:%M:%S")
+        return formatter.format(record)
+
+
+class ExpressFileFormatter(logging.Formatter):
+    _format = "%(filename)s %(asctime)s - [%(levelname)s]: %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: _format,
+        logging.INFO: _format,
+        logging.WARNING: _format,
+        logging.ERROR: _format + "(%(filename)s:%(lineno)d)",
+        logging.CRITICAL: _format + "(%(filename)s:%(lineno)d)",
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt="%d/%m/%Y %H:%M:%S")
+        return formatter.format(record)

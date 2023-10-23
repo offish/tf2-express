@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}
+Trades
+{% endblock %}
+
+{% block contents %}
+<h1>Trades</h1>
+
+<button class="btn btn-success" onclick="window.location.href='?db={{ db_name }}&start={{ start - amount }}'">Previous
+    Page</button>
+<button class="btn btn-success" onclick="window.location.href='?db={{ db_name }}&start={{ start + amount }}'">Next
+    Page</button>
+
+Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ total_trades }} total trades.<br><br>
+<button class="btn btn-warning"
+    onclick="window.location.href='?db={{ db_name }}&start=0&amount={{ total_trades }}'">View all trades</button>
+<button class="btn btn-danger" onclick="window.location.href='?db={{ db_name }}&start=0'">Reset</button>
+
+{% for trade in trades %}
+<div>
+    <br><br>
+    <h2>Trade #{{ trade.tradeofferid }}</h2>
+    Message: {{ trade.message }}<br>
+    Created: {{ trade.time_created }}<br>
+    Accepted: {{ trade.time_updated }}<br>
+
+    {% if trade.their_items %}
+    <h3>Their items ({{ trade.their_items|length }}x)</h2>
+        {% for item in trade.their_items %}
+        <div>
+            <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_items[item].icon_url }}"
+                style="width: 75px;">
+            {{ trade.their_items[item].market_hash_name }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if trade.our_items %}
+        <h3>Our items ({{ trade.our_items|length }}x)</h2>
+            {% for item in trade.our_items %}
+            <div>
+                <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_items[item].icon_url }}"
+                    style="width: 75px;">
+                {{ trade.our_items[item].market_hash_name }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            <div>
+                {% endfor %}
+                {% endblock %}
