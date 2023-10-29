@@ -1,10 +1,48 @@
-# from .options import Options
-
-# from threading import Thread
 import logging
+import json
 
-# from tf2_utils import PricesTFSocket
 import requests
+
+
+def get_config() -> dict:
+    config = {}
+
+    with open("./express/config.json", "r") as f:
+        config = json.loads(f.read())
+
+    return config
+
+
+def summarize_items(items: list[dict]) -> dict:
+    summary = {}
+
+    for item in items:
+        item_name = items[item]["market_hash_name"]
+
+        if item_name not in summary:
+            summary[item_name] = {"count": 1, "image": items[item]["icon_url"]}
+        else:
+            summary[item_name]["count"] += 1
+
+    return summary
+
+
+def summarize_trades(trades: list[dict]) -> list[dict]:
+    summary = []
+
+    for trade in trades:
+        their_items_summary = summarize_items(trade.get("their_items", []))
+        our_items_summary = summarize_items(trade.get("our_items", []))
+
+        summary.append(
+            {
+                **trade,
+                "our_summary": our_items_summary,
+                "their_summary": their_items_summary,
+            }
+        )
+
+    return summary
 
 
 def get_version(repository: str, folder: str) -> str:
@@ -19,32 +57,6 @@ def get_version(repository: str, folder: str) -> str:
 
     # get rid of first "
     return data[start_quotation_mark + 1 : end_quotation_mark]
-
-
-# class GlobalPricing:
-#     def __init__(self, bots: list) -> None:
-#         self.bots = bots
-#         prices_tf_socket = PricesTFSocket(self.on_price_receive)
-#         self.thread = Thread(prices_tf_socket)
-#         self.thread.start()
-#         self.default_options = Options()
-
-#     def __get_database_names(self) -> list[str]:
-#         db_names = []
-
-#         for bot in self.bots:
-#             db_name = self.default_options.database
-
-#             specified_name = bot["options"].get("database")
-
-#             if specified_name:
-#                 db_name = specified_name
-
-#             db_names.append(db_name)
-
-#         return db_names
-
-#
 
 
 class ExpressFormatter(logging.Formatter):

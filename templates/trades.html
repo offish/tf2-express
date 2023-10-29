@@ -21,31 +21,35 @@ Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ 
 <div>
     <br><br>
     <h2>Trade #{{ trade.tradeofferid }}</h2>
-    Message: {{ trade.message }}<br>
-    Created: {{ trade.time_created }}<br>
-    Accepted: {{ trade.time_updated }}<br>
+    {% if trade.message %}
+    <p>Message: {{ trade.message }}</p>
+    {% endif %}
+    <p>Created: {{ trade.time_created }}</p>
+    <p>Accepted: {{ trade.time_updated }}</p>
+
+    {% if trade.our_items %}
+    <h3>Our items ({{ trade.our_items|length }}x)</h3>
+    <p>Our value: <b>{{ trade.our_value }}</b> refined</p>
+    {% for item in trade.our_summary %}
+    <div>
+        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_summary[item].image }}"
+            style="width: 75px;">
+        {{ trade.our_summary[item].count }}x {{ item }}
+    </div>
+    {% endfor %}
+    {% endif %}
 
     {% if trade.their_items %}
-    <h3>Their items ({{ trade.their_items|length }}x)</h2>
-        {% for item in trade.their_items %}
-        <div>
-            <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_items[item].icon_url }}"
-                style="width: 75px;">
-            {{ trade.their_items[item].market_hash_name }}
-        </div>
-        {% endfor %}
-        {% endif %}
-
-        {% if trade.our_items %}
-        <h3>Our items ({{ trade.our_items|length }}x)</h2>
-            {% for item in trade.our_items %}
-            <div>
-                <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_items[item].icon_url }}"
-                    style="width: 75px;">
-                {{ trade.our_items[item].market_hash_name }}
-            </div>
-            {% endfor %}
-            {% endif %}
-            <div>
-                {% endfor %}
-                {% endblock %}
+    <h3>Their items ({{ trade.their_items|length }}x)</h3>
+    <p>Their value: <b>{{ trade.their_value }}</b> refined</p>
+    {% for item in trade.their_summary %}
+    <div>
+        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_summary[item].image }}"
+            style="width: 75px;">
+        {{ trade.their_summary[item].count }}x {{ item }}
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

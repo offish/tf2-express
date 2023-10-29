@@ -1,15 +1,15 @@
 from express.database import Database
-from express import __version__ as tf2_express_version
+from express.utils import summarize_trades
 
 import json
 
 from flask import Flask, render_template, request, redirect
 from tf2_utils import SchemaItemsUtils, refinedify
 from tf2_data import COLORS
-
 from tf2_utils import __version__ as tf2_utils_version
 from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
+from express import __version__ as tf2_express_version
 
 
 app = Flask(__name__)
@@ -17,6 +17,7 @@ name = ""
 
 databases: dict = {}
 schema_items_utils = SchemaItemsUtils()
+first_database = ""
 
 
 def is_sku(item: str) -> bool:
@@ -36,23 +37,18 @@ def items_to_data(items: list, skus: list) -> list:
         if item.find(" ") == 0:
             item = item[1:]
 
-        if is_sku(item):
-            sku = item
-            name = schema_items_utils.sku_to_name(sku)
-        else:
-            name = item
-            sku = schema_items_utils.name_to_sku(name)
+        sku = item
+
+        if not is_sku(sku):
+            sku = schema_items_utils.name_to_sku(item)
+
+        name = schema_items_utils.sku_to_name(sku)
 
         if sku in skus:
             print(f"{sku=} already exists in the database")
             continue
 
-        # this can never be empty?
-        # if sku == "":
-        #     print(f"could not get sku for {item=}, ignoring...")
-        #     continue
-
-        if name == "":
+        if not name:
             print(f"could not get name for {sku=}, ignoring...")
             continue
 
@@ -81,7 +77,7 @@ def get_config() -> dict:
 
 
 def get_database(request) -> tuple[Database, str]:
-    default = "express"
+    default = first_database
     db_name = request.args.get("db", default)
 
     if not db_name:
@@ -126,10 +122,12 @@ def trades():
 
     selected_trades, total_trades, start_index, end_index = db.get_trades(start, amount)
 
+    summarized_trades = summarize_trades(selected_trades)
+
     return render(
         "trades",
         db_name,
-        trades=selected_trades,
+        trades=summarized_trades,
         total_trades=total_trades,
         start=start,
         amount=amount,
@@ -146,11 +144,11 @@ def item_info(sku):
     return render("item", db_name, item=item)
 
 
-@app.route("/prices")
-def prices():
+@app.route("/items")
+def items():
     db, db_name = get_database(request)
 
-    return render("prices", db_name, items=db.get_pricelist())
+    return render("items", db_name, items=db.get_pricelist())
 
 
 @app.route("/autoprice/<sku>")
@@ -158,7 +156,7 @@ def autoprice(sku):
     db, db_name = get_database(request)
     db.update_price(sku, {}, {}, True)
 
-    return redirect(f"/prices?db={db_name}")
+    return redirect(f"/items?db={db_name}")
 
 
 @app.route("/delete/<sku>")
@@ -166,7 +164,7 @@ def delete(sku):
     db, db_name = get_database(request)
     db.delete_price(sku)
 
-    return redirect(f"/prices?db={db_name}")
+    return redirect(f"/items?db={db_name}")
 
 
 @app.route("/edit", methods=["POST"])
@@ -205,7 +203,7 @@ def edit():
         autoprice=False,
     )
 
-    return redirect(f"/prices?db={db_name}")
+    return redirect(f"/items?db={db_name}")
 
 
 @app.route("/add", methods=["POST"])
@@ -217,24 +215,23 @@ def add():
     data = items_to_data(items, skus)
     add_items_to_database(db, data)
 
-    return redirect(f"/prices?db={db_name}")
+    return redirect(f"/items?db={db_name}")
 
 
 if __name__ == "__main__":
-    # TODO: choose database (account) after starting server
-    # db = Database("express")
     config = get_config()
 
     for bot in config["bots"]:
-        db = bot.get("database", "express")
-        host = bot.get("host", "localhost")
-        port = bot.get("port", 27017)
+        options = bot.get("options", {})
+        db = options.get("database", "express")
+        host = options.get("host", "localhost")
+        port = options.get("port", 27017)
+
+        if not first_database:
+            first_database = db
 
         databases[db] = Database(db, host, port)
 
     name = config.get("name", "express user")
-
-    # print(databases)
-    # print(database_names)
 
     app.run(debug=True)

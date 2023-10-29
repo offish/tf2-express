@@ -6,110 +6,149 @@
 [![Discord](https://img.shields.io/discord/467040686982692865?color=7289da&label=Discord&logo=discord)](https://discord.gg/t8nHSvA)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Automated TF2 trading bot using prices provided by [Prices.TF](https://prices.tf).
+Automated <abbr title="Team Fortress 2">TF2</abbr> trading bot with GUI support, built with Python. Prices are by default provided by [Prices.TF](https://prices.tf).
 
 ## Donate
+Donations are not required, but greatly appericated.
 - BTC: `bc1qntlxs7v76j0zpgkwm62f6z0spsvyezhcmsp0z2`
 - [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
 
 
 ## Features
-* Automatic item pricing from [Prices.TF](https://prices.tf)
+* Automated item pricing by [Prices.TF](https://prices.tf)
 * GUI for adding items, changing prices and browsing trades
 * Bank as many items as you want
-* Add items by SKU or name
+* Add items by name or SKU
 * Uses MongoDB for saving items, prices and trades
-* Supports Random Craft Hats [?](#random-craft-hats)
-* Supports running multiple bots at once (NEEDS TESTING)
-* Each bot has its own MongoDB database and collections
+* Supports Random Craft Hats [[?]](#random-craft-hats)
+* Run multiple bots at once, each with their own database
 * Supports SKU item formats for ease of use
-* Supports 3rd party inventory providers [?](#3rd-party-inventory-providers)
-* Uses [tf2-sku](https://github.com/offish/tf2-sku)
-* Uses [tf2-data](https://github.com/offish/tf2-data)
-* Uses [tf2-utils](https://github.com/offish/tf2-utils)
+* Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
+* Utilizes [tf2-sku](https://github.com/offish/tf2-sku)
+* Utilizes [tf2-data](https://github.com/offish/tf2-data)
+* Utilizes [tf2-utils](https://github.com/offish/tf2-utils)
 
 *Backpack.tf listing is not supported yet.*
 
 ## Showcase
-![GUI Prices]()
-![GUI Trades]()
-![tf2-express]()
-
-## Explanation
-### Random Craft Hats
-If our or their item doesnt have a specific price in the database, it will count the item as a Random Craft Hat (SKU: -100;6), if enabled in `options` and if the database contains a price.
-
-**WARNING: If `allow_craft_hats` is enabled, and the bots has higher valued craftable hats like Earbuds, Team Captain or Max Heads which do not have a specified price; they will be valued as a Random Craft Hat. Which is whatever you set the Random Craft Hat sell price to be. This is not a bug, but a feature.**
-
-### 3rd Party Inventory Providers
-
-
-## Showcase
-![GUI](https://user-images.githubusercontent.com/30203217/120229592-c2b76000-c24d-11eb-8d23-725556925ba3.png)
-![Screenshot](https://user-images.githubusercontent.com/30203217/99878862-a2587a00-2c08-11eb-9211-8c8ac86821e6.png)
-
+![GUI Prices](https://github.com/offish/tf2-express/assets/30203217/31dbe594-877b-486c-b06e-a243bcbce34c)
+![GUI Trades](https://github.com/offish/tf2-express/assets/30203217/7a5225a8-cbd6-4e12-b703-1bf9e0d0d674)
+![tf2-express](https://github.com/offish/tf2-express/assets/30203217/c32d6c2e-b59d-4923-97e7-8ba7cf5f8640)
 
 ## Installation
-Follow the full installation in the [wiki]().
+Full installation guide can be found on the [wiki](https://github.com/offish/tf2-express/wiki).
 
+If MongoDB is already installed, it should be fairly straight forward.
 
-Download the repository, navigate to the folder, and install the required packages.
-
-```
-pip install -r requirements.txt 
+```bash
+git clone git@github.com:offish/tf2-express.git
+cd tf2-express
+pip install -r requirements.txt
 ```
 
 ## Setup
-Configure the `bots` variable inside the [`config.py`](express/config.py) file. Here you need to add your bots credentials.
+Rename `config.example.json` to `config.json`. Update credentials and set your preferred `options`.
 
+Example config:
 ```json
 {
-    "name": "Bot 1",
-    "username": "steam-username",
-    "password": "steam-password",
-    "api_key": "api-key",
-    "secrets": {
-        "steamid": "steam-id-64",
-        "shared_secret": "sharedsecret=",
-        "identity_secret": "identitysecret="
-    }
-},
-{
-    "name": "Bot 2",
-    "username": "steam-username",
-    "password": "steam-password",
-    "api_key": "api-key",
-    "secrets": {
-        "steamid": "steam-id-64",
-        "shared_secret": "sharedsecret=",
-        "identity_secret": "identitysecret="
-    }
+    "name": "nickname",
+    "check_versions_on_startup": true,
+    "bots": [
+        {
+            "name": "bot1",
+            "username": "username",
+            "password": "password",
+            "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
+            "secrets": {
+                "steamid": "76511111111111111",
+                "shared_secret": "Aa11aA1+1aa1aAa1a=",
+                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
+            },
+            "options": {
+                "accept_donations": true,
+                "decline_bad_offers": false,
+                "decline_trade_hold": true,
+                "decline_scam_offers": true,
+                "allow_craft_hats": true,
+                "save_trades": true,
+                "poll_interval": 30,
+                "owners": [
+                    "76511111111111111",
+                    "76522222222222222"
+                ]
+            }
+        },
+        {
+            "name": "bot2",
+            "username": "username2",
+            "password": "password2",
+            "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
+            "secrets": {
+                "steamid": "76511111111111111",
+                "shared_secret": "Aa11aA1+1aa1aAa1a=",
+                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
+            },
+            "options": {
+                "accept_donations": true,
+                "decline_bad_offers": false,
+                "decline_trade_hold": false,
+                "decline_scam_offers": false,
+                "allow_craft_hats": false,
+                "save_trades": true,
+                "poll_interval": 60,
+                "database": "bot2database"
+            }
+        }
+    ]
 }
 ```
-If you're running multiple bots, the variable should look something like this. `Name` is only for logging, this could be whatever you want (username, index, symbol, etc).
 
-You can also change your settings inside the [`settings.py`](express/settings.py) file. 
-Every option/setting here should be pretty self explanatory.
-
-```python
-accept_donations    = True
-decline_trade_hold  = True
-decline_scam_offers = True
-allow_craft_hats    = True
-save_trades         = True
-```
-
+For more information follow the [wiki](https://github.com/offish/tf2-express/wiki).
 
 ## Running
-After you have configured the bot you can run this command. Make sure you're in the correct directory.
-```
-python main.py
+```bash
+# tf2-express/
+python main.py # start the bot
+python panel.py # start the gui
 ```
 
-To open the GUI run this command while being in the same directory as the [`main.py`](main.py) file, and open http://127.0.0.1:5000 in your browser.
+After starting the GUI, you can open http://127.0.0.1:5000/ in your browser. 
+
+Logs will be available under `logs/express.log`. 
+Level is set to DEBUG, so here you will be able to see every request etc. and more information than is shown in the terminal.
+
+*Do NOT share this log file with anyone else before removing sensitive information. This will leak your `API_KEY` and more.*
+
+## Updating
+```bash
+# tf2-express/
+git pull
+pip install --upgrade -r requirements.txt
+# update packages like tf2-utils, tf2-data and tf2-sku,
+# which the bot is dependant on
 ```
-python -m express.ui.panel
+
+## Explanation
+### Random Craft Hats
+If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
+
+**WARNING:** *This applies to any hat. Such as Ellis' Cap, Team Captain, Earbuds, Max Heads etc. This is a feature, not a bug.*
+
+Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. This item cannot get automatic price updates.
+
+### 3rd Party Inventory Providers
+Avoid Steam's inventory rate-limits by using a third party provider like SteamApis, Steam.supply or your own.
+
+## Testing
+```bash
+# tf2-express/
+python -m unittest
 ```
+
+## Todo
+- [ ] Add stock limits (in stock/max stock)
+- [ ] Add BackpackTF listing
 
 ## License
 MIT License

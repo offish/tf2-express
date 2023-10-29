@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 
 {% block title %}
-Prices
+Items
 {% endblock %}
 
 {% block contents %}
-<h1>Prices</h1>
+<h1>Items</h1>
 
 <!-- <p>Add multiple items by using commas</p> -->
 <form action="/add?db={{ db_name }}" method="POST" class="my-4 form-inline">
-    <label for="items" class="sr-only">Add items by name or SKU. For multiple items, use commas.</label>
+    <label for="items" class="sr-only">Add items by name or SKU. Separate with commas to add multiple items at
+        once.</label>
     <input required
         placeholder="5021;6, The Team Captain, Uncraftable Secret Saxton, 178;6;uncraftable, Non-Craftable Tour of Duty Ticket"
         type="text" name="items" id="items" class="form-control col mr-2">

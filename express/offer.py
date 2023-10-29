@@ -32,6 +32,7 @@ def valuate(
         keys = 0
         metal = 0.00
 
+        # TODO: what if intent is sell and the item is "fake"?
         if not item.is_tf2() and intent == "buy":
             # we dont add any price for that item -> skip
             continue

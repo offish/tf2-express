@@ -20,7 +20,7 @@
                 <a class="nav-link" href="/?db={{ db_name }}">Home</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/prices?db={{ db_name }}">Prices</a>
+                <a class="nav-link" href="/items?db={{ db_name }}">Items</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/trades?db={{ db_name }}">Trades</a>
@@ -30,6 +30,7 @@
                     aria-haspopup="true" aria-expanded="false">
                     Database ({{ db_name }})
                 </a>
+                <!-- TODO: fix dropdown menu -->
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                     {% for db in database_names %}
                     <a class="dropdown-item" href="?db={{ db }}">{{ db }}</a>

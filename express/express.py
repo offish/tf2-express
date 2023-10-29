@@ -8,7 +8,7 @@ import time
 
 from steampy.exceptions import InvalidCredentials
 from steampy.client import SteamClient
-from tf2_utils import Offer, to_refined, refinedify
+from tf2_utils import Offer, to_refined, refinedify, PricesTF
 
 
 class Express:
@@ -20,7 +20,9 @@ class Express:
         self.steam_id = self.secrets["steamid"]
         self.client = SteamClient(bot["api_key"])
         self.db = Database(options.database)
+        self.pricer = PricesTF()
 
+        # TODO: make processed and values into offers list[Offer]
         self.values = {}
         self.processed = []
         self.last_offer_fetch = 0
@@ -119,13 +121,16 @@ class Express:
         self.client.decline_trade_offer(offer_id)
 
     def __process_offer(self, offer: dict) -> None:
-        offer_id = offer["tradeofferid"]
+        offer_id = offer.get("tradeofferid", "")
 
-        self.__log_trade("Processing offer", offer_id)
+        if not offer_id:
+            return
 
         if offer_id in self.processed:
-            logging.debug(f"{offer_id} has already been processed")
+            logging.debug(f"({offer_id}) has already been processed")
             return
+
+        self.__log_trade("Processing offer", offer_id)
 
         # we assume we wont crash, add to processed now
         # so if we return early, we wont process again
@@ -201,7 +206,7 @@ class Express:
             our_value = to_refined(our_value)
 
             summary = (
-                "User value: {} ref, our value: {} ref, difference: {} ref".format(
+                "Their value: {} ref, our value: {} ref, difference: {} ref".format(
                     their_value,
                     our_value,
                     refinedify(difference),
@@ -233,23 +238,26 @@ class Express:
 
     def __process_offers(self) -> None:
         offers = self.__get_offers()
-        logging.info(f"Processing {len(offers)} offers")
-        logging.info(
-            "{} offer with values {} processed".format(
-                len(self.values), len(self.processed)
-            )
-        )
+        amount = len(offers)
+
+        if not amount:
+            logging.info("No new offers available")
+            return
+
+        logging.info(f"Processing {amount} offers")
 
         for offer in offers:
             self.__process_offer(offer)
 
     def __update_offer_states(self) -> None:
+        active_offers = 0
+
         for offer_id in self.processed:
             offer = self.__get_offer(offer_id)
             trade = Offer(offer)
 
             if trade.is_active():
-                self.__log_trade(f"Offer is still active", offer_id)
+                active_offers += 1
                 continue
 
             if not trade.is_active():
@@ -280,10 +288,25 @@ class Express:
             if offer_id in self.values:
                 self.values.pop(offer_id)
 
+        if active_offers:
+            logging.info(f"{active_offers} offer(s) are still active")
+
+    def __append_autopriced_items(self) -> None:
+        autopriced_items = self.db.get_autopriced()
+
+        self.pricer.request_access_token()
+
+        for sku in autopriced_items:
+            # get price
+            price = self.pricer.get_price(sku)
+            self.prices_to_check.append(price)
+            time.sleep(2)
+
     def run(self) -> None:
         logging.info(f"Fetching offers every {self.options.poll_interval} seconds")
 
-        # TODO: update prices on startup
+        self.__append_autopriced_items()
+        self.__update_prices()
 
         while True:
             # bot is disabled
@@ -299,9 +322,6 @@ class Express:
 
             self.__update_prices()
 
-            try:
-                logging.debug(f"Currently in processed: {self.processed}")
-                self.__process_offers()
-                self.__update_offer_states()
-            except Exception as e:
-                logging.error(e)
+            logging.debug(f"Currently in processed: {self.processed}")
+            self.__process_offers()
+            self.__update_offer_states()

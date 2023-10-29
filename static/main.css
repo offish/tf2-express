@@ -1,7 +1,8 @@
 :root {
     --green: #4CFF00;
+    --red: #BE1A1A;
     --black: #1D1D1D;
-    --link-green: #72d587;
+    --link-green: #72D587;
 }
 
 .table-dark {
