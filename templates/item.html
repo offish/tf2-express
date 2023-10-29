@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ item.name }}
+{% endblock %}
+
+{% block contents %}
+<h1>{{ item.sku }}</h1>
+<img src="{{ item.image }}" style="background-color: #{{ item.color }};">
+<h2>{{ item.name }}</h2>
+{% if item.autoprice %}
+<h4 style="color:var(--green)">Autopriced</h4>
+{% else %}
+<h4 style="color:var(--red)">Not autopriced</h4>
+{% endif %}
+<p>Last updated: {{ item.updated }}</p>
+<ul>
+    <li>
+        <a href="https://marketplace.tf/items/tf2/{{ item.sku }}">MarketplaceTF</a>
+    </li>
+    <li>
+        <a href="https://prices.tf/items/{{ item.sku }}">PricesTF</a>
+    </li>
+    <li>
+        <a href="https://autobot.tf/items/{{ item.sku }}">AutobotTF</a>
+    </li>
+</ul>
+
+
+<h3>Buy</h3>
+<p>Keys: {{ item["buy"]["keys"] }}</p>
+<p>Metal: {{ item["buy"]["metal"] }}</p>
+
+<h3>Sell</h3>
+<p>Keys: {{ item["sell"]["keys"] }}</p>
+<p>Metal: {{ item["sell"]["metal"] }}</p>
+
+<h3>Stock</h3>
+<p>In stock: TODO</p>
+<p>Max stock: TODO</p>
+
+{% endblock %}

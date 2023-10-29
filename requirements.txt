@@ -1,7 +1,8 @@
-steampy
-colorama
+steampy>=1.1.0
+tf2-sku>=2.0.1
+tf2-data>=0.0.4
+tf2-utils>=2.0.6
 requests
-python-socketio
 pymongo
 flask
-python-engineio==3.14.2
+black

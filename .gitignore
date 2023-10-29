@@ -1,0 +1,12 @@
+__pycache__
+.vscode
+config.json
+logs
+include
+lib
+Scripts
+bin
+pyvenv.cfg
+lib64
+*.log
+*.bat

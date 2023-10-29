@@ -1,98 +1,69 @@
-from .settings import decline_trade_hold
-from .prices import get_price, get_key_price
-from .config import OWNERS
-from .utils import Item, to_scrap
+from .database import Database
+from .options import Options
+from .items import Item
 
-from steampy.models import TradeOfferState
-from steampy.utils import account_id_to_steam_id
+import logging
+
+from tf2_utils import get_sku, to_scrap
 
 
-def valuate(items: dict, intent: str, item_list: list) -> int:
+def valuate(
+    db: Database,
+    items: dict,
+    intent: str,
+    all_skus: list,
+    key_prices: dict | None,
+    options: Options,
+) -> tuple[int, bool]:
+    has_unpriced = False
     total = 0
-    high = float(10 ** 10)
+
+    key_price = 0.0
+
+    if key_prices:
+        key_price = key_prices[intent]["metal"]
+    else:
+        logging.warning("No key price found, will valuate keys at 0 ref")
 
     for i in items:
+        # valute one item at a time
         item = Item(items[i])
-        name = item.name
-        value = 0.00
+        sku = get_sku(item)
+        keys = 0
+        metal = 0.00
 
-        if item.is_tf2():
+        # TODO: what if intent is sell and the item is "fake"?
+        if not item.is_tf2() and intent == "buy":
+            # we dont add any price for that item -> skip
+            continue
 
-            if item.is_pure():
-                value = item.get_pure()
+        elif item.is_key():
+            keys = 1
 
-            elif item.is_key():
-                value = get_key_price()
+        elif item.is_pure():  # should be metal / add keys to pure
+            metal = item.get_pure()
 
-            elif item.is_craftable():
+        # has a specifc price
+        elif sku in all_skus:
+            keys, metal = db.get_price(sku, intent)
 
-                if name in item_list:
-                    value = get_price(name, intent)
+        # TODO: AND ALLOW CRAFT WEPS
+        # elif item.is_craft_weapon():
+        #     keys, metal = db.get_price("-50;6", intent)
 
-                elif item.is_craft_hat():
-                    value = get_price("Random Craft Hat", intent)
+        elif item.is_craft_hat() and options.allow_craft_hats:
+            keys, metal = db.get_price("-100;6", intent)
 
-            elif not item.is_craftable():
-                name = "Non-Craftable " + name
+        value = keys * to_scrap(key_price) + to_scrap(metal)
 
-                if name in item_list:
-                    value = get_price(name, intent)
+        if not value and intent == "sell":
+            # dont need to process rest of offer since we cant know the total price
+            has_unpriced = True
+            break
 
-        if not value:
-            value = high if intent == "sell" else 0.00
+        # handle craft weapons
+        # total += value if value >= 1 else 0.50
+        total += value
 
-        total += to_scrap(value)
-
-    return total
-
-
-class Offer:
-    def __init__(self, offer: dict):
-        self.offer = offer
-        self.state = offer["trade_offer_state"]
-
-    def get_state(self) -> str:
-        return TradeOfferState(self.state).name
-
-    def has_state(self, state: int) -> bool:
-        return self.state == state
-
-    def is_active(self) -> bool:
-        return self.has_state(2)
-
-    def is_accepted(self) -> bool:
-        return self.has_state(3)
-
-    def is_declined(self) -> bool:
-        return self.has_state(7)
-
-    def has_escrow(self) -> bool:
-        return self.offer["escrow_end_date"] == 0
-
-    def is_our_offer(self) -> bool:
-        return self.offer["is_our_offer"]
-
-    def is_gift(self) -> bool:
-        return self.offer.get("items_to_receive") and not self.offer.get(
-            "items_to_give"
-        )
-
-    def is_scam(self) -> bool:
-        return self.offer.get("items_to_give") and not self.offer.get(
-            "items_to_receive"
-        )
-
-    def is_valid(self) -> bool:
-        return (
-            True
-            if self.offer.get("items_to_receive")
-            and self.offer.get("items_to_give")
-            and (self.has_escrow() or self.has_escrow() == decline_trade_hold)
-            else False
-        )
-
-    def get_partner(self) -> str:
-        return account_id_to_steam_id(self.offer["accountid_other"])
-
-    def is_from_owner(self) -> bool:
-        return self.get_partner() in OWNERS
+    # total scrap
+    return total, has_unpriced

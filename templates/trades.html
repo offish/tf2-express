@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}
+Trades
+{% endblock %}
+
+{% block contents %}
+<h1>Trades</h1>
+
+<button class="btn btn-success" onclick="window.location.href='?db={{ db_name }}&start={{ start - amount }}'">Previous
+    Page</button>
+<button class="btn btn-success" onclick="window.location.href='?db={{ db_name }}&start={{ start + amount }}'">Next
+    Page</button>
+
+Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ total_trades }} total trades.<br><br>
+<button class="btn btn-warning"
+    onclick="window.location.href='?db={{ db_name }}&start=0&amount={{ total_trades }}'">View all trades</button>
+<button class="btn btn-danger" onclick="window.location.href='?db={{ db_name }}&start=0'">Reset</button>
+
+{% for trade in trades %}
+<div>
+    <br><br>
+    <h2>Trade #{{ trade.tradeofferid }}</h2>
+    {% if trade.message %}
+    <p>Message: {{ trade.message }}</p>
+    {% endif %}
+    <p>Created: {{ trade.time_created }}</p>
+    <p>Accepted: {{ trade.time_updated }}</p>
+
+    {% if trade.our_items %}
+    <h3>Our items ({{ trade.our_items|length }}x)</h3>
+    <p>Our value: <b>{{ trade.our_value }}</b> refined</p>
+    {% for item in trade.our_summary %}
+    <div>
+        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_summary[item].image }}"
+            style="width: 75px;">
+        {{ trade.our_summary[item].count }}x {{ item }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if trade.their_items %}
+    <h3>Their items ({{ trade.their_items|length }}x)</h3>
+    <p>Their value: <b>{{ trade.their_value }}</b> refined</p>
+    {% for item in trade.their_summary %}
+    <div>
+        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_summary[item].image }}"
+            style="width: 75px;">
+        {{ trade.their_summary[item].count }}x {{ item }}
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
