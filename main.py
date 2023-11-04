@@ -74,7 +74,9 @@ def on_price_change(data: dict) -> None:
     if not data.get("data", {}).get("sku"):
         return
 
-    logging.debug(f"Got new price change from Prices.tf {data=}")
+    # already easy to find in the logs
+    # no need to log again, takes time
+    # logging.debug(f"Got new price change from Prices.tf {data=}")
 
     for bot in bots:
         bot.append_new_price(data.get("data", {}))
