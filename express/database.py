@@ -24,7 +24,7 @@ class Database:
     def get_trades(
         self, start_index: int, amount: int
     ) -> tuple[list[dict], int, int, int]:
-        all_trades = list(self.trades.find())
+        all_trades = list(self.trades.find().sort("time_updated", -1))
         total = len(all_trades)
         intended_end_index = start_index + amount
         result = all_trades[start_index:intended_end_index]
