@@ -24,6 +24,7 @@ class Database:
     def get_trades(
         self, start_index: int, amount: int
     ) -> tuple[list[dict], int, int, int]:
+        # sort newest trades first
         all_trades = list(self.trades.find().sort("time_updated", -1))
         total = len(all_trades)
         intended_end_index = start_index + amount
@@ -64,6 +65,33 @@ class Database:
 
     def get_pricelist(self) -> list[dict]:
         return self.items.find()
+
+    def get_stock(self, sku: str) -> list[int, int]:
+        """returns in_stock, max_stock"""
+        data = self.__get_data(sku)
+
+        return (data.get("in_stock", 0), data.get("max_stock", 0))
+
+    def replace_item(self, data: dict) -> None:
+        self.items.replace_one({"sku": data["sku"]}, data)
+
+    def update_stocks(self, stock: dict) -> None:
+        all_items = self.items.find()
+
+        for item in all_items:
+            sku = item["sku"]
+
+            if sku not in stock:
+                continue
+
+            in_stock = stock[sku]
+
+            # in_stock is the same, no need to update
+            if item.get("in_stock", 0) == in_stock:
+                continue
+
+            item["in_stock"] = in_stock
+            self.replace_item(item)
 
     def add_price(self, sku: str, color: str, image: str, name: str) -> None:
         self.items.insert_one(

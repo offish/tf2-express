@@ -20,10 +20,15 @@ Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ 
 {% for trade in trades %}
 <div>
     <br><br>
-    <h2>Trade #{{ trade.tradeofferid }}</h2>
+    <h2>Offer #{{ trade.offer_id }}</h2>
     {% if trade.message %}
     <p>Message: {{ trade.message }}</p>
     {% endif %}
+    <ul>
+        <li><a href="https://steamcommunity.com/profiles/{{ trade.steam_id_other }}">Steam Profile</a></li>
+        <li><a href="https://backpack.tf/profiles/{{ trade.steam_id_other }}">BackpackTF</a></li>
+        <li><a href="https://rep.tf/{{ trade.steam_id_other }}">RepTF</a></li>
+    </ul>
     <p>Created: {{ trade.time_created }}</p>
     <p>Accepted: {{ trade.time_updated }}</p>
 

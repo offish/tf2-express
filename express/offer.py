@@ -2,9 +2,26 @@ from .database import Database
 from .options import Options
 from .items import Item
 
+from dataclasses import dataclass, field
 import logging
 
 from tf2_utils import get_sku, to_scrap
+
+
+@dataclass
+class OfferData:
+    offer_id: str
+    steam_id_other: str = ""
+    message: str = ""
+    time_created: int = 0
+    time_updated: int = 0
+    their_items: dict = field(default_factory=dict)
+    our_items: dict = field(default_factory=dict)
+    our_value: float = 0.0
+    their_value: float = 0.0
+    state: str = "Processed"
+    has_unpriced: bool = True
+    receipt: dict = field(default_factory=dict)
 
 
 def valuate(

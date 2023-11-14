@@ -34,6 +34,7 @@ def summarize_trades(trades: list[dict]) -> list[dict]:
         their_items_summary = summarize_items(trade.get("their_items", []))
         our_items_summary = summarize_items(trade.get("our_items", []))
 
+        # add this to the db so it does not need to be done again?
         summary.append(
             {
                 **trade,

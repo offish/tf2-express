@@ -1,14 +1,23 @@
+from .inventory import get_inventory_stock
 from .database import Database
 from .options import Options
-from .offer import valuate
+from .offer import valuate, OfferData
 
+from dataclasses import asdict
 from json import dumps
 import logging
 import time
 
 from steampy.exceptions import InvalidCredentials
 from steampy.client import SteamClient
-from tf2_utils import Offer, to_refined, refinedify, PricesTF
+from tf2_utils import (
+    Offer,
+    Inventory,
+    PricesTF,
+    to_refined,
+    refinedify,
+    account_id_to_steam_id,
+)
 
 
 class Express:
@@ -21,15 +30,17 @@ class Express:
         self.client = SteamClient(bot["api_key"])
         self.db = Database(options.database)
         self.pricer = PricesTF()
+        self.inventory = Inventory("steamcommunity")  # use apikey?
 
-        # TODO: make processed and values into offers list[Offer]
-        self.values = {}
-        self.processed = []
+        self.stock = {}
+        self.processed: list[OfferData] = []
         self.last_offer_fetch = 0
         self.options = options
 
         self.is_enabled = True
-        # TODO: add processed_offers, accepted_offers, active_offers for status
+        self.active_offers = 0
+        self.processed_offers = 0
+        self.accepted_offers = 0
 
         self.prices_to_check = []
 
@@ -90,7 +101,7 @@ class Express:
                 "trade_offers_received"
             ]
         except Exception as e:
-            logging.error(f"Did not get wanted response when getting offers: {e}")
+            logging.error(f"{e}")
             return [{}]
 
     def __get_offer(self, offer_id: str) -> dict:
@@ -126,7 +137,10 @@ class Express:
         if not offer_id:
             return
 
-        if offer_id in self.processed:
+        for offer_data in self.processed:
+            if offer_id != offer_data.offer_id:
+                continue
+
             logging.debug(f"({offer_id}) has already been processed")
             return
 
@@ -134,8 +148,12 @@ class Express:
 
         # we assume we wont crash, add to processed now
         # so if we return early, we wont process again
-        self.processed.append(offer_id)
+        offer_data = OfferData(offer_id)
+        self.processed.append(offer_data)
         logging.debug(f"Added offer {offer_id} to processed list")
+
+        self.active_offers += 1
+        self.processed_offers += 1
 
         trade = Offer(offer)
 
@@ -153,10 +171,13 @@ class Express:
         their_items = offer["items_to_receive"]
         our_items = offer["items_to_give"]
 
-        self.values[offer_id] = {
-            "their_items": their_items,
-            "our_items": our_items,
-        }
+        # add offer data
+        offer_data.message = offer["message"]
+        offer_data.steam_id_other = account_id_to_steam_id(offer["accountid_other"])
+        offer_data.time_created = offer["time_created"]
+        offer_data.time_updated = offer["time_updated"]
+        offer_data.their_items = their_items
+        offer_data.our_items = our_items
 
         # is owner
         if partner_steam_id in self.options.owners:
@@ -188,6 +209,10 @@ class Express:
             # get mann co key buy and sell price
             key_prices = self.db.get_item("5021;6")
 
+            # TODO: handle if in_stock + new items would
+            # surpass max_stock. -100;6 is edge case
+            # max_stock = -1 is unlimited
+
             # we dont care about unpriced items on their side
             their_value, _ = valuate(
                 self.db, their_items, "buy", all_skus, key_prices, self.options
@@ -213,8 +238,9 @@ class Express:
                 )
             )
 
-            self.values[offer_id]["our_value"] = our_value
-            self.values[offer_id]["their_value"] = their_value
+            offer_data.their_value = their_value
+            offer_data.our_value = our_value
+            offer_data.has_unpriced = has_unpriced
 
             self.__log_trade(summary)
 
@@ -244,52 +270,45 @@ class Express:
             logging.info("No new offers available")
             return
 
-        logging.info(f"Processing {amount} offers")
+        # logging.info(f"Processing {amount} offers")
 
         for offer in offers:
             self.__process_offer(offer)
 
     def __update_offer_states(self) -> None:
-        active_offers = 0
+        if self.active_offers:
+            logging.info(f"{self.active_offers} offer(s) are still active")
 
-        for offer_id in self.processed:
-            offer = self.__get_offer(offer_id)
+        for offer_data in self.processed.copy():
+            offer = self.__get_offer(offer_data.offer_id)
             trade = Offer(offer)
 
+            offer_data.state = trade.get_state()
+
             if trade.is_active():
-                active_offers += 1
                 continue
 
-            if not trade.is_active():
-                self.__log_trade(
-                    f"Offer state changed to {trade.get_state()}", offer_id
-                )
-                # we have processed the offer if its not active anymore
-                self.processed.remove(offer_id)
+            self.active_offers -= 1
+
+            self.__log_trade(
+                f"Offer state changed to {trade.get_state()}", offer_data.offer_id
+            )
 
             if trade.is_accepted():
+                self.accepted_offers += 1
+
+                # TODO: increment in_stock, -100;6 edge case
+
                 if self.options.save_trades:
                     logging.info("Saving offer data...")
 
-                    if offer_id in self.values:
-                        offer["their_items"] = self.values[offer_id]["their_items"]
-                        offer["our_items"] = self.values[offer_id]["our_items"]
-                        offer["our_value"] = self.values[offer_id].get("our_value", 0.0)
-                        offer["their_value"] = self.values[offer_id].get(
-                            "their_value", 0.0
-                        )
-
                     if offer.get("tradeid") and self.options.save_receipt:
-                        offer["receipt"] = self.__get_receipt(offer["tradeid"])
+                        offer_data.receipt = self.__get_receipt(offer["tradeid"])
 
-                    self.db.insert_trade(offer)
+                    self.db.insert_trade(asdict(offer_data))
                     logging.info("Offer was added to the database")
 
-            if offer_id in self.values:
-                self.values.pop(offer_id)
-
-        if active_offers:
-            logging.info(f"{active_offers} offer(s) are still active")
+            self.processed.remove(offer_data)
 
     def __append_autopriced_items(self) -> None:
         autopriced_items = self.db.get_autopriced()
@@ -307,6 +326,13 @@ class Express:
 
         self.__append_autopriced_items()
         self.__update_prices()
+
+        inventory = self.inventory.fetch(self.steam_id)
+        self.stock = get_inventory_stock(inventory)
+
+        self.db.update_stocks(self.stock)
+
+        del inventory
 
         while True:
             # bot is disabled
