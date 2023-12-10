@@ -1,6 +1,6 @@
 steampy>=1.1.0
 tf2-sku>=2.0.1
-tf2-data>=0.0.4
+tf2-data>=0.0.5
 tf2-utils>=2.0.7
 requests
 pymongo

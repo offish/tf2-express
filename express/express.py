@@ -324,8 +324,9 @@ class Express:
     def run(self) -> None:
         logging.info(f"Fetching offers every {self.options.poll_interval} seconds")
 
-        self.__append_autopriced_items()
-        self.__update_prices()
+        if self.options.fetch_prices_on_startup:
+            self.__append_autopriced_items()
+            self.__update_prices()
 
         inventory = self.inventory.fetch(self.steam_id)
         self.stock = get_inventory_stock(inventory)

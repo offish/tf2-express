@@ -14,6 +14,7 @@ import os
 
 from tf2_utils import PricesTFSocket
 from tf2_utils import __version__ as tf2_utils_version
+from tf2_data import __version__ as tf2_data_version
 from express import __version__ as tf2_express_version
 from tf2_sku import __version__ as tf2_sku_version
 
@@ -23,6 +24,7 @@ bots: list[Express] = []
 packages = [
     (tf2_express_version, "tf2-express", "express"),
     (tf2_utils_version, "tf2-utils", "src/tf2_utils"),
+    (tf2_data_version, "tf2-data", "src/tf2_data"),
     (tf2_sku_version, "tf2-sku", "src/tf2_sku"),
 ]
 
@@ -88,11 +90,6 @@ if __name__ == "__main__":
     config = get_config()
     options = GlobalOptions(**config)
 
-    prices_tf_socket = PricesTFSocket(on_price_change)
-    prices_thread = Thread(target=prices_tf_socket.listen, daemon=True)
-
-    logging.info("Listening to Prices.tf for price updates")
-
     if options.check_versions_on_startup:
         for i in packages:
             current_version, repo, folder = i
@@ -107,7 +104,13 @@ if __name__ == "__main__":
                 )
             )
 
-    prices_thread.start()
+    if options.listen_to_pricer:
+        prices_tf_socket = PricesTFSocket(on_price_change)
+        prices_thread = Thread(target=prices_tf_socket.listen, daemon=True)
+        prices_thread.start()
+
+        logging.info("Listening to Prices.tf for price updates")
+
     bot_threads: list[Thread] = []
 
     for bot in options.bots:
@@ -122,4 +125,5 @@ if __name__ == "__main__":
     for thread in bot_threads:
         thread.join()
 
-    prices_thread.join()
+    if options.listen_to_pricer:
+        prices_thread.join()

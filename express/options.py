@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Options:
+    fetch_prices_on_startup: bool = True
     accept_donations: bool = False
     decline_bad_offers: bool = False
     decline_trade_hold: bool = False
@@ -18,5 +19,6 @@ class Options:
 @dataclass
 class GlobalOptions:
     bots: list[dict]
-    name: str = "express user" # nickname
+    name: str = "express user"  # nickname for gui
     check_versions_on_startup: bool = True
+    listen_to_pricer: bool = True
