@@ -31,8 +31,7 @@ Donations are not required, but greatly appericated.
 *Backpack.tf listing is not supported yet.*
 
 ## Showcase
-![GUI Prices](https://github.com/offish/tf2-express/assets/30203217/31dbe594-877b-486c-b06e-a243bcbce34c)
-![GUI Trades](https://github.com/offish/tf2-express/assets/30203217/7a5225a8-cbd6-4e12-b703-1bf9e0d0d674)
+![GUI Showcase](https://github.com/offish/tf2-express/assets/30203217/3093be18-412d-4852-a9a1-270f2e16f194)
 ![tf2-express](https://github.com/offish/tf2-express/assets/30203217/c32d6c2e-b59d-4923-97e7-8ba7cf5f8640)
 
 ## Installation
