@@ -20,7 +20,11 @@ def summarize_items(items: list[dict]) -> dict:
         item_name = items[item]["market_hash_name"]
 
         if item_name not in summary:
-            summary[item_name] = {"count": 1, "image": items[item]["icon_url"]}
+            summary[item_name] = {
+                "count": 1,
+                "image": items[item]["icon_url"],
+                "color": items[item]["name_color"],
+            }
         else:
             summary[item_name]["count"] += 1
 
