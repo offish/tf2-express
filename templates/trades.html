@@ -38,7 +38,7 @@ Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ 
     {% for item in trade.our_summary %}
     <div>
         <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_summary[item].image }}"
-            style="width: 75px;">
+            style="width: 75px; margin:10px; background-color: #{{ trade.our_summary[item].color }}">
         {{ trade.our_summary[item].count }}x {{ item }}
     </div>
     {% endfor %}
@@ -50,7 +50,7 @@ Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ 
     {% for item in trade.their_summary %}
     <div>
         <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_summary[item].image }}"
-            style="width: 75px;">
+            style="width: 75px; margin:10px; background-color: #{{ trade.their_summary[item].color }}">
         {{ trade.their_summary[item].count }}x {{ item }}
     </div>
     {% endfor %}
