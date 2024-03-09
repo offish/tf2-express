@@ -13,7 +13,7 @@
 {% else %}
 <h4 style="color:var(--red)">Not autopriced</h4>
 {% endif %}
-<p>Last updated: {{ item.updated }}</p>
+<p>Last updated: {{ updated }} ({{ passed_time }} minutes ago)</p>
 <ul>
     <li>
         <a href="https://marketplace.tf/items/tf2/{{ item.sku }}">MarketplaceTF</a>
@@ -36,7 +36,12 @@
 <p>Metal: {{ item["sell"]["metal"] }}</p>
 
 <h3>Stock</h3>
-<p>In stock: TODO</p>
-<p>Max stock: TODO</p>
+<p>In stock: {{ item["in_stock" ]}}</p>
+
+{% if item["max_stock"] == -1 %}
+<p>Max stock: No max stock</p>
+{% else %}
+<p>Max stock: {{ item["max_stock"] }}</p>
+{% endif %}
 
 {% endblock %}

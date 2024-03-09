@@ -1,11 +1,15 @@
 from express.database import Database
-from express.utils import summarize_trades
+from express.utils import (
+    summarize_trades,
+    get_config,
+    sku_to_item_data,
+)
 
-import json
+from datetime import datetime
+import time
 
 from flask import Flask, render_template, request, redirect
-from tf2_utils import SchemaItemsUtils, refinedify
-from tf2_data import COLORS
+from tf2_utils import SchemaItemsUtils, refinedify, is_sku
 from tf2_utils import __version__ as tf2_utils_version
 from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
@@ -18,15 +22,6 @@ name = ""
 databases: dict = {}
 schema_items_utils = SchemaItemsUtils()
 first_database = ""
-
-
-def is_sku(item: str) -> bool:
-    return item.find(";") != -1
-
-
-def sku_to_color(sku: str) -> str:
-    quality = sku.split(";")[1:][0]
-    return COLORS[quality]
 
 
 def items_to_data(items: list, skus: list) -> list:
@@ -42,38 +37,26 @@ def items_to_data(items: list, skus: list) -> list:
         if not is_sku(sku):
             sku = schema_items_utils.name_to_sku(item)
 
-        name = schema_items_utils.sku_to_name(sku)
+        item_data = sku_to_item_data(sku)
 
         if sku in skus:
             print(f"{sku=} already exists in the database")
             continue
 
-        if not name:
+        if not item_data["name"]:
             print(f"could not get name for {sku=}, ignoring...")
             continue
 
-        color = sku_to_color(sku)
-        image = schema_items_utils.sku_to_image_url(sku)
-
-        data.append({"sku": sku, "name": name, "image": image, "color": color})
+        data.append(item_data)
 
     return data
 
 
 def add_items_to_database(db, data: list) -> None:
     for item in data:
-        db.add_price(**item)
+        db.add_item(**item)
 
     return
-
-
-def get_config() -> dict:
-    config = {}
-
-    with open("./express/config.json", "r") as f:
-        config = json.loads(f.read())
-
-    return config
 
 
 def get_database(request) -> tuple[Database, str]:
@@ -88,7 +71,11 @@ def get_database(request) -> tuple[Database, str]:
 
 def render(page: str, db_name: str, **kwargs) -> str:
     return render_template(
-        f"{page}.html", db_name=db_name, database_names=list(databases.keys()), **kwargs
+        f"{page}.html",
+        db_name=db_name,
+        database_names=list(databases.keys()),
+        tf2_express_version=tf2_express_version,
+        **kwargs,
     )
 
 
@@ -100,7 +87,6 @@ def overview():
         "home",
         db_name,
         name=name,
-        tf2_express_version=tf2_express_version,
         tf2_utils_version=tf2_utils_version,
         tf2_data_version=tf2_data_version,
         tf2_sku_version=tf2_sku_version,
@@ -141,7 +127,11 @@ def item_info(sku):
     db, db_name = get_database(request)
     item = db.get_item(sku)
 
-    return render("item", db_name, item=item)
+    time_updated = item.get("updated", 0)
+    updated = datetime.fromtimestamp(time_updated).strftime("%c")
+    passed_time = int((time.time() - time_updated) / 60)
+
+    return render("item", db_name, item=item, updated=updated, passed_time=passed_time)
 
 
 @app.route("/items")
@@ -174,9 +164,9 @@ def edit():
 
     buy_keys = data["buy_keys"]
     buy_metal = data["buy_metal"]
-
     sell_keys = data["sell_keys"]
     sell_metal = data["sell_metal"]
+    max_stock = data["max_stock"]
 
     if not buy_keys:
         buy_keys = 0
@@ -190,6 +180,9 @@ def edit():
     if not sell_metal:
         sell_metal = 0.0
 
+    if not max_stock or int(max_stock) <= 0:
+        max_stock = -1
+
     db.update_price(
         sku=data["sku"],
         buy={
@@ -201,6 +194,7 @@ def edit():
             "metal": refinedify(float(sell_metal)),
         },
         autoprice=False,
+        max_stock=int(max_stock),
     )
 
     return redirect(f"/items?db={db_name}")

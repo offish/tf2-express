@@ -1,16 +1,42 @@
 import logging
 import json
 
+from tf2_utils import SchemaItemsUtils, sku_to_color
 import requests
 
 
+schema_items_utils = SchemaItemsUtils()
+
+
+def sku_to_item_data(sku: str) -> dict:
+    name = schema_items_utils.sku_to_name(sku)
+    color = sku_to_color(sku)
+    image = schema_items_utils.sku_to_image_url(sku)
+    return {"sku": sku, "name": name, "image": image, "color": color}
+
+
+def encode_data(data: dict) -> bytes:
+    if data.get("_id"):
+        del data["_id"]
+
+    return (json.dumps(data) + "NEW_DATA").encode()
+
+
+def decode_data(data: bytes) -> list[dict]:
+    return [json.loads(doc) for doc in data.decode().split("NEW_DATA") if doc]
+
+
+def read_json_file(filename: str) -> dict:
+    content = {}
+
+    with open(filename, "r") as f:
+        content = json.loads(f.read())
+
+    return content
+
+
 def get_config() -> dict:
-    config = {}
-
-    with open("./express/config.json", "r") as f:
-        config = json.loads(f.read())
-
-    return config
+    return read_json_file("./express/config.json")
 
 
 def summarize_items(items: list[dict]) -> dict:
@@ -51,17 +77,19 @@ def summarize_trades(trades: list[dict]) -> list[dict]:
 
 
 def get_version(repository: str, folder: str) -> str:
-    url = f"https://raw.githubusercontent.com/offish/{repository}/master/{folder}/__init__.py"
+    url = "https://raw.githubusercontent.com/offish/{}/master/{}/__init__.py".format(
+        repository, folder
+    )
 
     r = requests.get(url)
     data = r.text
 
     version_index = data.index("__version__")
-    start_quotation_mark = data.index('"', version_index)
-    end_quotation_mark = data.index('"', start_quotation_mark + 1)
+    start_quotation_mark = data.index('"', version_index) + 1
+    end_quotation_mark = data.index('"', start_quotation_mark)
 
     # get rid of first "
-    return data[start_quotation_mark + 1 : end_quotation_mark]
+    return data[start_quotation_mark:end_quotation_mark]
 
 
 class ExpressFormatter(logging.Formatter):

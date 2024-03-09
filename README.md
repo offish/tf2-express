@@ -15,18 +15,23 @@ Donations are not required, but greatly appericated.
 
 
 ## Features
+* GUI for adding and changing items, prices, `max_stock` + browsing trades
 * Automated item pricing by [Prices.TF](https://prices.tf)
-* GUI for adding items, changing prices and browsing trades
 * Bank as many items as you want
-* Add items by name or SKU
+* Add items by either name or SKU
 * Uses MongoDB for saving items, prices and trades
 * Supports Random Craft Hats [[?]](#random-craft-hats)
 * Run multiple bots at once, each with their own database
+* Keeps track of item stock and checks if trades surpass their related item's `max_stock`
+* Fetches the bot's inventory once, and keeps track of items using receipts
 * Supports SKU item formats for ease of use
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
+* Supports 3rd party emitted "deals" [[?]](#3rd-party-deals)
 * Utilizes [tf2-sku](https://github.com/offish/tf2-sku)
 * Utilizes [tf2-data](https://github.com/offish/tf2-data)
 * Utilizes [tf2-utils](https://github.com/offish/tf2-utils)
+
+Available options can be found [here](express/options.py).
 
 *Backpack.tf listing is not supported yet.*
 
@@ -37,12 +42,21 @@ Donations are not required, but greatly appericated.
 ## Installation
 Full installation guide can be found on the [wiki](https://github.com/offish/tf2-express/wiki).
 
-If MongoDB is already installed, it should be fairly straight forward.
+If MongoDB is already installed, installation should be fairly straight forward.
 
 ```bash
 git clone git@github.com:offish/tf2-express.git
 cd tf2-express
 pip install -r requirements.txt
+```
+
+## Updating
+```bash
+# tf2-express/
+git pull
+pip install --upgrade -r requirements.txt
+# update packages like tf2-utils, tf2-data and tf2-sku,
+# which the bot is dependant on
 ```
 
 ## Setup
@@ -53,6 +67,7 @@ Example config:
 {
     "name": "nickname",
     "check_versions_on_startup": true,
+    "listen_to_pricer": true,
     "bots": [
         {
             "name": "bot1",
@@ -65,13 +80,19 @@ Example config:
                 "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
             },
             "options": {
+                "enable_deals": false,
+                "inventory_provider": "steamcommunity or steamsupply or steamapis",
+                "inventory_api_key": "inventory api key or empty",
+                "fetch_prices_on_startup": true,
                 "accept_donations": true,
                 "decline_bad_offers": false,
                 "decline_trade_hold": true,
                 "decline_scam_offers": true,
-                "allow_craft_hats": true,
+                "allow_craft_hats": false,
                 "save_trades": true,
+                "save_receipt": true,
                 "poll_interval": 30,
+                "database": "mydatabasename",
                 "owners": [
                     "76511111111111111",
                     "76522222222222222"
@@ -90,10 +111,7 @@ Example config:
             },
             "options": {
                 "accept_donations": true,
-                "decline_bad_offers": false,
-                "decline_trade_hold": false,
-                "decline_scam_offers": false,
-                "allow_craft_hats": false,
+                "allow_craft_hats": true,
                 "save_trades": true,
                 "poll_interval": 60,
                 "database": "bot2database"
@@ -119,14 +137,6 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 
 *Do NOT share this log file with anyone else before removing sensitive information. This will leak your `API_KEY` and more.*
 
-## Updating
-```bash
-# tf2-express/
-git pull
-pip install --upgrade -r requirements.txt
-# update packages like tf2-utils, tf2-data and tf2-sku,
-# which the bot is dependant on
-```
 
 ## Explanation
 ### Random Craft Hats
@@ -137,7 +147,12 @@ If a craftable hat does not have a specific price in the database, it will be vi
 Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. This item cannot get automatic price updates.
 
 ### 3rd Party Inventory Providers
-Avoid Steam's inventory rate-limits by using a third party provider like SteamApis, Steam.supply or your own.
+Avoid Steam's inventory rate-limits by using a third party provider like SteamApis, Steam.Supply or your own.
+
+
+### 3rd Party Deals
+"Deals" in this context are data which is emitted by third party using a TCP socket. This data will be acted on, such as sending an offer using the included trade URL and price. They are named "deals" as I've been using it for arbitrage purposes.
+
 
 ## Testing
 ```bash
@@ -145,14 +160,12 @@ Avoid Steam's inventory rate-limits by using a third party provider like SteamAp
 python -m unittest
 ```
 
-## Todo
-- [ ] Add stock limits (in stock/max stock)
-- [ ] Add BackpackTF listing
+All of the tests should output OK, except for the version check. They should be equal.
 
 ## License
 MIT License
 
-Copyright (c) 2020-2023 offish
+Copyright (c) 2020-2024 offish ([confern](https://steamcommunity.com/id/confern))
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

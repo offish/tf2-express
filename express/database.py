@@ -1,7 +1,9 @@
+from .utils import sku_to_item_data
+
 import logging
 import time
 
-from tf2_utils import refinedify
+from tf2_utils import refinedify, is_pure
 from pymongo import MongoClient
 
 
@@ -12,14 +14,28 @@ class Database:
 
         self.trades = db["trades"]
         self.items = db["items"]
+        self.deals = db["deals"]
+
+        # bot needs key price to work
+        if not self.get_item("5021;6"):
+            self.__add_key_first_time()
+
+    def __add_key_first_time(self) -> None:
+        self.add_item(**sku_to_item_data("5021;6"))
 
     @staticmethod
     def has_price(data: dict) -> bool:
         return data.get("buy", {}) != {} and data.get("sell", {}) != {}
 
+    def is_temporarily_priced(self, sku: str) -> bool:
+        if is_pure(sku):
+            return False
+
+        return self.get_item(sku).get("temporary", False)
+
     def insert_trade(self, data: dict) -> None:
-        logging.debug("Adding new trade to database")
         self.trades.insert_one(data)
+        logging.info("Offer was added to the database")
 
     def get_trades(
         self, start_index: int, amount: int
@@ -33,14 +49,20 @@ class Database:
 
         return (result, total, start_index, actual_end_index)
 
-    def __get_data(self, sku: str) -> dict | None:
-        return self.items.find_one({"sku": sku})
-
     def get_price(self, sku: str, intent: str) -> tuple[int, float]:
-        item_price = self.__get_data(sku)
+        # metals does not exist in the database
+        if sku == "5002;6":
+            return 0, 1.0
 
+        if sku == "5001;6":
+            return 0, 0.33
+
+        if sku == "5000;6":
+            return 0, 0.11
+
+        item_price = self.get_item(sku)
         # item does not exist in db or does not have a price
-        if item_price is None or not self.has_price(item_price):
+        if not item_price or not self.has_price(item_price):
             return (0, 0.0)
 
         price = item_price[intent]
@@ -60,20 +82,28 @@ class Database:
             if item["sku"] != "-100;6"
         ]
 
-    def get_item(self, sku: str) -> dict | None:
-        return self.items.find_one({"sku": sku})
+    def get_item(self, sku: str) -> dict:
+        item = self.items.find_one({"sku": sku})
+
+        if item is None:
+            logging.warning(f"{sku} not found in database, returning empty dict")
+            return {}
+
+        return item
 
     def get_pricelist(self) -> list[dict]:
         return self.items.find()
 
-    def get_stock(self, sku: str) -> list[int, int]:
+    def get_stock(self, sku: str) -> tuple[int, int]:
         """returns in_stock, max_stock"""
-        data = self.__get_data(sku)
-
-        return (data.get("in_stock", 0), data.get("max_stock", 0))
+        data = self.get_item(sku)
+        return (data.get("in_stock", 0), data.get("max_stock", -1))
 
     def replace_item(self, data: dict) -> None:
-        self.items.replace_one({"sku": data["sku"]}, data)
+        sku = data["sku"]
+        # del data["_id"]
+        logging.debug(f"Updating {sku} with {data=}")
+        self.items.replace_one({"sku": sku}, data)
 
     def update_stocks(self, stock: dict) -> None:
         all_items = self.items.find()
@@ -87,34 +117,96 @@ class Database:
             in_stock = stock[sku]
 
             # in_stock is the same, no need to update
-            if item.get("in_stock", 0) == in_stock:
+            if in_stock == item.get("in_stock", 0):
                 continue
 
             item["in_stock"] = in_stock
             self.replace_item(item)
 
-    def add_price(self, sku: str, color: str, image: str, name: str) -> None:
+        logging.info("Updated stock for all items")
+
+    def add_item(
+        self,
+        sku: str,
+        color: str,
+        image: str,
+        name: str,
+        autoprice: bool = True,
+        in_stock: int = 0,
+        max_stock: int = -1,
+        temporary: bool = False,
+        buy: dict = {},
+        sell: dict = {},
+    ) -> None:
+        if sku in self.get_skus():
+            logging.warning(f"{sku} already exists in the database")
+            return
+
         self.items.insert_one(
             {
                 "sku": sku,
                 "name": name,
+                "buy": buy,
+                "sell": sell,
+                "autoprice": autoprice,
+                "temporary": temporary,  # delete price after we have sold
+                "in_stock": in_stock,
+                "max_stock": max_stock,
                 "color": color,
                 "image": image,
-                "autoprice": True,  # default to autoprice
-                "buy": {},
-                "sell": {},
             }
         )
+
+        if buy or sell:
+            logging.info(f"Added {sku} to the database with {buy=} and {sell=}")
+            return
+
         logging.info(f"Added {sku} to the database")
 
-    def update_price(
-        self, sku: str, buy: dict, sell: dict, autoprice: bool = False
+    def add_price(
+        self,
+        sku: str,
+        color: str,
+        image: str,
+        name: str,
+        buy: dict,
+        sell: dict,
+        in_stock: int = 0,
+        max_stock: int = 1,
+        temporary: bool = True,
     ) -> None:
-        data = self.__get_data(sku)
+        self.add_item(
+            sku,
+            color,
+            image,
+            name,
+            buy=buy,
+            sell=sell,
+            autoprice=False,
+            in_stock=in_stock,
+            max_stock=max_stock,
+            temporary=temporary,
+        )
+
+    def update_price(
+        self,
+        sku: str,
+        buy: dict,
+        sell: dict,
+        autoprice: bool = False,
+        max_stock: int = -1,
+    ) -> None:
+        data = self.get_item(sku)
+
+        if not data:
+            raise ValueError(
+                f"Cannot update price for {sku} as it does not exist in database"
+            )
 
         data["buy"] = buy
         data["sell"] = sell
         data["autoprice"] = autoprice
+        data["max_stock"] = max_stock
         data["updated"] = time.time()
 
         self.items.replace_one(
@@ -141,3 +233,24 @@ class Database:
     def delete_price(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})
         logging.info(f"Removed {sku} from the database")
+
+    def add_deal(self, deal: dict) -> None:
+        if self.deals.find_one({"sku": deal["sku"]}):
+            logging.warning(f"Deal {deal['sku']} already exists in the database")
+            return
+
+        self.deals.insert_one(deal)
+        logging.info("Deal was added to the database")
+
+    def get_deals(self) -> list[dict]:
+        return list(self.deals.find())
+
+    def get_deal(self, sku: str) -> dict:
+        return self.deals.find_one({"sku": sku})
+
+    def update_deal(self, deal: dict) -> None:
+        self.deals.replace_one({"sku": deal["sku"]}, deal)
+
+    def delete_deal(self, sku: str) -> None:
+        self.deals.delete_one({"sku": sku})
+        logging.info("Deal was removed from the database")

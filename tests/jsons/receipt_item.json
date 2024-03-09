@@ -1,0 +1,73 @@
+{
+    "id": "13751702840",
+    "owner": "76561198253325712",
+    "amount": "1",
+    "classid": "67503",
+    "instanceid": "11042697",
+    "icon_url": "fWFc82js0fmoRAP-qOIPu5THSWqfSmTELLqcUywGkijVjZULUrsm1j-9xgEDYwkSVRTxhzBGiczhCPOeN-wBid0wq8JW32Q5yFkvZ7ezZGExK1yQVqUGWaxqpFC7UH5msZA0AYTn9e5RLwjx9NyRzOc79JI",
+    "icon_url_large": "fWFc82js0fmoRAP-qOIPu5THSWqfSmTELLqcUywGkijVjZULUrsm1j-9xgEDYwkSVRTxhzBGiczhCPOeN-wBid0wq8JW32Q5yFkvZ7ezZGExK1yQVqUGWaxqpFC7UH5msZA0AYTn9e5RLwjx9NyRzOc79JI",
+    "icon_drag_url": "",
+    "name": "Honcho's Headgear",
+    "market_hash_name": "Honcho's Headgear",
+    "market_name": "Honcho's Headgear",
+    "name_color": "7D6D00",
+    "background_color": "3C352E",
+    "type": "Level 65 Hat",
+    "tradable": 1,
+    "marketable": 0,
+    "commodity": 0,
+    "market_tradable_restriction": "7",
+    "market_marketable_restriction": "0",
+    "descriptions": [
+        {
+            "value": "This hat has mean written all over it.\n(Note from Legal: This hat has nothing written on it.)"
+        }
+    ],
+    "tags": [
+        {
+            "internal_name": "Unique",
+            "name": "Unique",
+            "category": "Quality",
+            "color": "7D6D00",
+            "category_name": "Quality"
+        },
+        {
+            "internal_name": "misc",
+            "name": "Cosmetic",
+            "category": "Type",
+            "category_name": "Type"
+        },
+        {
+            "internal_name": "Soldier",
+            "name": "Soldier",
+            "category": "Class",
+            "category_name": "Class"
+        }
+    ],
+    "app_data": {
+        "def_index": "391",
+        "quality": "6",
+        "slot": "Cosmetic",
+        "filter_data": {
+            "931505789": {
+                "element_ids": [
+                    "991457757",
+                    "8"
+                ]
+            },
+            "1662615936": {
+                "element_ids": [
+                    "991457757",
+                    "3"
+                ]
+            }
+        },
+        "player_class_ids": [
+            "3"
+        ],
+        "highlight_color": "7a6e65"
+    },
+    "pos": 6,
+    "appid": 440,
+    "contextid": 2
+}

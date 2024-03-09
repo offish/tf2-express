@@ -1,11 +1,10 @@
 from .database import Database
 from .options import Options
-from .items import Item
 
 from dataclasses import dataclass, field
 import logging
 
-from tf2_utils import get_sku, to_scrap
+from tf2_utils import Item, get_sku, to_scrap, is_metal, get_metal, to_refined
 
 
 @dataclass
@@ -57,8 +56,8 @@ def valuate(
         elif item.is_key():
             keys = 1
 
-        elif item.is_pure():  # should be metal / add keys to pure
-            metal = item.get_pure()
+        elif is_metal(sku):  # should be metal
+            metal = to_refined(get_metal(sku))
 
         # has a specifc price
         elif sku in all_skus:
@@ -78,6 +77,7 @@ def valuate(
             has_unpriced = True
             break
 
+        logging.debug(f"{intent} {sku=} has {value=}")
         # handle craft weapons
         # total += value if value >= 1 else 0.50
         total += value

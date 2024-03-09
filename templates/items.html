@@ -29,11 +29,12 @@ Items
         <tr>
             <th>Icon</th>
             <th>SKU</th>
-            <th>Autopriced</th>
+            <th>Autopriced?</th>
             <th>Buy keys</th>
             <th>Buy refined</th>
             <th>Sell keys</th>
             <th>Sell refined</th>
+            <th>Max stock</th>
             <th>Action</th>
         </tr>
     </thead>
@@ -42,8 +43,13 @@ Items
         <tr>
             <th><img src="{{ item.image }}" style="width: 50px;"></th>
             <th><a href="/item/{{ item.sku }}?db={{ db_name }}" style="color: #{{ item.color }};">
-                    {{ item.sku }} ({{ item.name }})</a></th>
-            <th>{{ item.autoprice }}</th>
+                {{ item.sku }} ({{ item.name }})</a></th>
+            
+            {% if item.autoprice %}
+            <th><p style="color: var(--green);">Yes</p></th>
+            {% else %}
+            <th><p style="color: var(--red);">No</p></th>
+            {% endif %}
 
             <form action="/edit?db={{ db_name }}" method="POST">
                 <input name="sku" id="sku" style="display: none;" value="{{ item.sku }}" type="text">
@@ -63,6 +69,10 @@ Items
                 <th>
                     <input name="sell_metal" id="sell_metal" style="width: 70px;" value="{{ item['sell']['metal'] }}"
                         min="0" type="number" step="any">
+                </th>
+                <th>
+                    <input name="max_stock" id="max_stock" style="width: 70px;" value="{{ item['max_stock'] }}"
+                        min="-1" type="number" step="1">
                 </th>
 
                 <th>
