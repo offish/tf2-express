@@ -3,6 +3,7 @@ import time
 
 from express.options import Options
 from express.express import Express
+from express.deals import Deal
 
 
 class TestDatabase(TestCase):
@@ -46,14 +47,14 @@ class TestDatabase(TestCase):
 
         self.deals.add_deal(deal)
 
-        self.assertEqual(self.deals.get_deals(), [deal])
-        self.assertEqual(self.deals.get_deal("978;6"), deal)
+        self.assertEqual(self.deals.get_deals(), [Deal(**deal)])
+        self.assertEqual(self.deals.get_deal("978;6"), Deal(**deal))
 
         self.deals.add_deal(deal)
-        self.assertEqual(self.deals.get_deals(), [deal])
+        self.assertEqual(self.deals.get_deals(), [Deal(**deal)])
 
         data = self.deals.get_deal("978;6")
-        data["updated"] = time.time() - 3 * 60
+        data.time = time.time() - 3 * 60
         self.deals.update_deal(data)
 
         self.assertEqual(self.deals.get_deal("978;6"), data)

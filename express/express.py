@@ -208,14 +208,14 @@ class Express:
                 logging.warning(f"{steam_id} does not have {sku} in their inventory")
                 return {}
 
-            their_items.append(self.inventory.get_last_item_in_their_inventory(sku))
+            their_items.append(self.inventory.get_their_last_item(sku))
 
         else:
             if not self.inventory.has_sku_in_our_inventory(sku):
                 logging.warning(f"We do not have {sku} in our inventory")
                 return {}
 
-            our_items.append(self.inventory.get_last_item_in_our_inventory(sku))
+            our_items.append(self.inventory.get_our_last_item(sku))
 
         if not self.__passed_item_check(their_items, our_items):
             logging.warning("Offer did not pass the offer item check")
@@ -228,7 +228,7 @@ class Express:
 
         logging.info(f"{offer=}")
 
-        if not offer["success"]:
+        if not offer.get("success"):
             return offer
 
         their_items = format_items_list_to_dict(their_items)
@@ -479,7 +479,7 @@ class Express:
                         item = Item(i)
                         sku = get_sku(item)
 
-                        self.deals.update_deal_state(sku, "is_sold")
+                        self.deals.update_deal_value(sku, is_sold=True)
                         self.inventory.remove_item(i)
                         break
 
@@ -501,8 +501,7 @@ class Express:
                             item = Item(inventory_item)
                             sku = get_sku(item)
 
-                            self.deals.update_deal_state(sku, "is_bought")
-
+                            self.deals.update_deal_value(sku, is_bought=True)
                             inventory_item["sku"] = sku
                             self.inventory.add_item(inventory_item)
 

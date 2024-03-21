@@ -16,15 +16,15 @@ class ExpressInventory(Inventory):
         self.stock = {"-100;6": 0}
         super().__init__(provider_name, api_key)
 
-    def __fetch_inventory(self, steam_id: str) -> list[dict]:
+    def _fetch_inventory(self, steam_id: str) -> list[dict]:
         return map_inventory(self.fetch(steam_id), True)
 
     def fetch_our_inventory(self) -> list[dict]:
-        self.our_inventory = self.__fetch_inventory(self.steam_id)
+        self.our_inventory = self._fetch_inventory(self.steam_id)
         return self.our_inventory
 
     def fetch_their_inventory(self, steam_id: str) -> list[dict]:
-        self.their_inventory = self.__fetch_inventory(steam_id)
+        self.their_inventory = self._fetch_inventory(steam_id)
         return self.their_inventory
 
     def get_our_inventory(self) -> list[dict]:
@@ -56,7 +56,7 @@ class ExpressInventory(Inventory):
 
         self.db.update_stocks(self.stock)
 
-    def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
+    def has_sku(self, sku: str, who: str = "us") -> bool:
         inventory = self.our_inventory if who == "us" else self.their_inventory
 
         for item in inventory:
@@ -66,26 +66,45 @@ class ExpressInventory(Inventory):
         return False
 
     def has_sku_in_their_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "them")
+        return self.has_sku(sku, "them")
 
     def has_sku_in_our_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "us")
+        return self.has_sku(sku, "us")
+
+    def get_first_item(self, sku: str, who: str = "us") -> dict:
+        inventory = self.our_inventory if who == "us" else self.their_inventory
+
+        for item in inventory:
+            if item["sku"] != sku:
+                continue
+
+            return item
+
+        return {}
 
     def get_last_item(self, sku: str, who: str = "us") -> dict:
         inventory = self.our_inventory if who == "us" else self.their_inventory
         last_item = {}
 
         for item in inventory:
-            if item["sku"] == sku:
-                last_item = item
+            if item["sku"] != sku:
+                continue
+
+            last_item = item
 
         return last_item
 
-    def get_last_item_in_their_inventory(self, sku: str) -> dict:
+    def get_their_last_item(self, sku: str) -> dict:
         return self.get_last_item(sku, "them")
 
-    def get_last_item_in_our_inventory(self, sku: str) -> dict:
+    def get_our_last_item(self, sku: str) -> dict:
         return self.get_last_item(sku, "us")
+
+    def get_their_first_item(self, sku: str) -> dict:
+        return self.get_first_item(sku, "them")
+
+    def get_our_first_item(self, sku: str) -> dict:
+        return self.get_first_item(sku, "us")
 
     def remove_item(self, item: dict) -> None:
         self.our_inventory.remove(item)

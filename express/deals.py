@@ -1,8 +1,39 @@
+from .inventory import ExpressInventory
+from .database import Database
 from .utils import decode_data, encode_data, sku_to_item_data
 
+from dataclasses import dataclass, asdict
 from threading import Thread
 import logging
 import socket
+import time
+
+
+@dataclass
+class Deal:
+    is_deal: bool
+    sku: str
+    name: str
+    profit: float
+    sites: list[str]
+    buy_site: str
+    buy_price: dict
+    sell_site: str
+    sell_price: dict
+    stock: dict
+    request_buy: bool = False
+    buy_requested: bool = False
+    is_bought: bool = False
+    buy_data: dict = {}
+    buy_offer_sent: bool = False
+    request_sell: bool = False
+    sell_requested: bool = False
+    sell_data: dict = {}
+    sell_offer_sent: bool = False
+    our_item: str = ""
+    is_sold: bool = False
+    time: float = 0.0
+    tries: int = 5
 
 
 class Deals:
@@ -13,8 +44,8 @@ class Deals:
             return
 
         self.express = express
-        self.inventory = self.express.inventory
-        self.db = self.express.db
+        self.inventory: ExpressInventory = self.express.inventory
+        self.db: Database = self.express.db
 
     def begin(self) -> None:
         if not self.enabled:
@@ -57,115 +88,136 @@ class Deals:
                 self.add_deal(deal)
 
     def add_deal(self, deal: dict) -> None:
+        deal["time"] = time.time()
         self.db.add_deal(deal)
 
-    def update_deal(self, deal: dict) -> None:
-
-        self.db.update_deal(deal)
+    def update_deal(self, deal: Deal) -> None:
+        self.db.update_deal(asdict(deal))
 
     def delete_deal(self, sku: str) -> None:
         self.db.delete_deal(sku)
 
-    def get_deal(self, sku: str) -> dict:
-        return self.db.get_deal(sku)
+    def get_deal(self, sku: str) -> Deal:
+        return Deal(**self.db.get_deal(sku))
 
-    def get_deals(self) -> list[dict]:
-        return self.db.get_deals().copy()
+    def get_deals(self) -> list[Deal]:
+        return [Deal(**deal) for deal in self.db.get_deals()]
 
-    def update_deal_state(self, sku: str, intent: str) -> None:
-        for deal in self.get_deals():
-            if sku != deal["sku"]:
-                continue
+    def update_deal_value(self, sku: str, **kwargs) -> None:
+        deal = self.get_deal(sku)
 
-            deal[intent] = True
-            self.update_deal(deal)
+        for key, value in kwargs.items():
+            setattr(deal, key, value)
 
-            intent_text = "bought" if intent == "is_bought" else "sold"
-            logging.info(sku + " was {}".format(intent_text))
+            intent_text = "bought" if key == "is_bought" else "sold"
+            logging.info(f"{sku} was {intent_text}")
 
-        if intent == "is_sold" and self.db.is_temporarily_priced(sku):
-            logging.info(f"Deleting temporary price for {sku}")
+            if key == "is_sold":
+                self.db.delete_price(sku)
+                logging.info(f"Deleting temporary price for {sku}")
+
+        self.update_deal(deal)
+
+    @staticmethod
+    def is_outdated(deal: Deal) -> bool:
+        return (
+            time.time() > deal.time + 5 * 60
+            and deal.buy_requested
+            and not deal.is_bought
+            and deal.buy_site != "pricestf"
+        )
+
+    @staticmethod
+    def is_going_to_buy(deal: Deal) -> bool:
+        return not deal.buy_requested and not deal.is_bought and deal.buy_data
+
+    @staticmethod
+    def is_going_to_sell(deal: Deal) -> bool:
+        return not deal.sell_requested and deal.is_bought and deal.sell_data
+
+    @staticmethod
+    def is_going_to_buy_offer(deal: Deal) -> bool:
+        return deal.buy_data and not deal.buy_offer_sent
+
+    @staticmethod
+    def is_going_to_sell_offer(deal: Deal) -> bool:
+        return deal.sell_data and not deal.sell_offer_sent and deal.is_bought
+
+    def process_deal(self, deal: Deal) -> None:
+        sku = deal.sku
+
+        if self.is_outdated(deal):
+            logging.info(f"{sku} buy request old, deleting deal")
+            self.delete_deal(sku)
             self.db.delete_price(sku)
+            return
+
+        # TODO: if bought but failed to sell, find another buyer
+
+        # deal is completed
+        if deal.is_sold:
+            logging.info(f"{sku} deal successfully completed!")
+            self.delete_deal(sku)
+            return
+
+        # NOTE: request tf2-arbitrage to buy/sell an item
+        if self.is_going_to_buy(deal):
+            deal.request_buy = True
+
+            logging.info(f"Requesting to buy {sku}")
+            self.send(deal)
+
+            deal.buy_requested = True
+            self.update_deal(deal)
+            return
+
+        if self.is_going_to_sell(deal):
+            deal.request_sell = True
+            logging.info(f"Requesting to sell {sku}")
+
+            asset_id = self.inventory.get_our_last_item(sku)["assetid"]
+            deal.our_item = asset_id
+            self.send(deal)
+
+            deal.sell_requested = True
+            self.update_deal(deal)
+            return
+
+        # send offer to buy order
+        if self.is_going_to_buy_offer(deal):
+            logging.info(f"Sending offer to buy {sku}")
+            buy_data = deal.buy_data
+            trade_url = buy_data["trade_url"]
+            response = self.express.send_offer(trade_url, "buy", sku)
+
+            if response.get("success"):
+                deal.buy_offer_sent = True
+                self.update_deal(deal)
+
+        if self.is_going_to_sell_offer(deal):
+            logging.info(f"Sending offer to sell {sku}")
+            sell_data = deal.sell_data
+            trade_url = sell_data["trade_url"]
+            response = self.express.send_offer(trade_url, "sell", sku)
+
+            if response.get("success"):
+                deal.sell_offer_sent = True
+                self.update_deal(deal)
 
     def process_deals(self) -> None:
         if not self.enabled:
             return
 
-        for deal in self.get_deals():
-            sell_requested = (
-                deal.get("sell_requested", False) and "pricestf" != deal["sell_site"]
-            )
-            buy_requested = (
-                deal.get("buy_requested", False) and "pricestf" != deal["buy_site"]
-            )
-            is_bought = deal.get("is_bought", False)
-            is_sold = deal.get("is_sold", False)
-            sku = deal["sku"]
+        for deal in self.get_deals().copy():
+            self.process_deal(deal)
 
-            logging.info(
-                f"{sku} {sell_requested=} {buy_requested=} {is_bought=} {is_sold=}"
-            )
-
-            # deal is completed
-            if is_sold:
-                logging.info(f"{sku} deal successfully completed!")
-                self.delete_deal(deal["sku"])
-                continue
-
-            # NOTE: request tf2-arbitrage to buy/sell an item
-            if not buy_requested:
-                deal["request_buy"] = True
-                logging.info(f"Requesting to buy {sku}")
-                self.send(deal)
-
-                deal["buy_requested"] = True
-                self.update_deal(deal)
-                continue
-
-            if is_bought and not sell_requested and "sell_data" not in deal:
-                deal["request_sell"] = True
-                logging.info(f"Requesting to sell {sku}")
-
-                asset_id = self.inventory.get_last_item_in_our_inventory(sku)["assetid"]
-                deal["our_item"] = asset_id
-                self.send(deal)
-
-                deal["sell_requested"] = True
-                self.update_deal(deal)
-                continue
-
-            # send offer to buy order
-            if "buy_data" in deal:
-                logging.info(f"Sending offer to buy {sku}")
-                buy_data = deal["buy_data"]
-                trade_url = buy_data["trade_url"]
-                response = self.express.send_offer(trade_url, "buy", sku)
-
-                if response.get("success"):
-                    deal["buy_offer_sent"] = True
-                    self.update_deal(deal)
-
-            if "sell_data" in deal:
-                if not is_bought:
-                    logging.info(f"{sku} still not bought")
-                    continue
-
-                logging.info(f"Sending offer to sell {sku}")
-                sell_data = deal["sell_data"]
-                trade_url = sell_data["trade_url"]
-                response = self.express.send_offer(trade_url, "sell", sku)
-
-                if response.get("success"):
-                    deal["sell_offer_sent"] = True
-                    self.update_deal(deal)
-
-                # response =
-                # if response.get("success") set true to is_sold
-
-    def send(self, data: dict) -> None:
+    def send(self, data: Deal | dict) -> None:
         if not self.socket:
             logging.warning("Socket empty, could not send data")
             return
+
+        if isinstance(data, Deal):
+            data = asdict(data)
 
         logging.info(f"Sending data {data=}")
 
