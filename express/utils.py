@@ -1,9 +1,9 @@
-import logging
 import json
+import logging
+from pathlib import Path
 
-from tf2_utils import SchemaItemsUtils, sku_to_color
 import requests
-
+from tf2_utils import SchemaItemsUtils, sku_to_color
 
 schema_items_utils = SchemaItemsUtils()
 
@@ -26,7 +26,7 @@ def decode_data(data: bytes) -> list[dict]:
     return [json.loads(doc) for doc in data.decode().split("NEW_DATA") if doc]
 
 
-def read_json_file(filename: str) -> dict:
+def read_json_file(filename: str | Path) -> dict:
     content = {}
 
     with open(filename, "r") as f:
@@ -36,7 +36,8 @@ def read_json_file(filename: str) -> dict:
 
 
 def get_config() -> dict:
-    return read_json_file("./express/config.json")
+    path = Path(__file__).parent / "config.json"
+    return read_json_file(path)
 
 
 def summarize_items(items: list[dict]) -> dict:

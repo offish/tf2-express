@@ -1,30 +1,32 @@
-from .database import Database
+from typing import Any
 
-from tf2_utils import Item, Inventory, map_inventory
+from tf2_utils import Inventory, Item, map_inventory
 
 
 class ExpressInventory(Inventory):
     def __init__(
         self,
-        db: Database,
-        steam_id: str,
+        our_steam_id: str,
         provider_name: str = "steamcommunity",
         api_key: str = "",
     ) -> None:
-        self.db = db
-        self.steam_id = steam_id
+        self.steam_id = our_steam_id
         self.stock = {"-100;6": 0}
         super().__init__(provider_name, api_key)
 
-    def __fetch_inventory(self, steam_id: str) -> list[dict]:
+    def _fetch_inventory(self, steam_id: str) -> list[dict]:
         return map_inventory(self.fetch(steam_id), True)
 
+    def set_our_inventory(self, inventory: list[dict]) -> list[dict]:
+        self.our_inventory = inventory
+        return self.our_inventory
+
     def fetch_our_inventory(self) -> list[dict]:
-        self.our_inventory = self.__fetch_inventory(self.steam_id)
+        self.our_inventory = self._fetch_inventory(self.steam_id)
         return self.our_inventory
 
     def fetch_their_inventory(self, steam_id: str) -> list[dict]:
-        self.their_inventory = self.__fetch_inventory(steam_id)
+        self.their_inventory = self._fetch_inventory(steam_id)
         return self.their_inventory
 
     def get_our_inventory(self) -> list[dict]:
@@ -34,10 +36,7 @@ class ExpressInventory(Inventory):
         return self.their_inventory.copy()
 
     def get_stock(self) -> dict:
-        return self.stock.copy()
-
-    def update_stock(self) -> None:
-        self.stock = {"-100;6": 0}
+        stock = {"-100;6": 0}
 
         for item in self.our_inventory:
             item_util = Item(item)
@@ -47,14 +46,14 @@ class ExpressInventory(Inventory):
                 continue
 
             if item_util.is_craft_hat():
-                self.stock["-100;6"] += 1
+                stock["-100;6"] += 1
 
             if sku not in self.stock:
-                self.stock[sku] = 1
+                stock[sku] = 1
             else:
-                self.stock[sku] += 1
+                stock[sku] += 1
 
-        self.db.update_stocks(self.stock)
+        return stock
 
     def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
         inventory = self.our_inventory if who == "us" else self.their_inventory
@@ -94,11 +93,7 @@ class ExpressInventory(Inventory):
         self.our_inventory.append(item)
 
 
-def format_items_list_to_dict(items: list[dict]) -> dict:
-    return {item["assetid"]: item for item in items}
-
-
-def receipt_item_to_inventory_item(receipt_item: dict) -> dict:
+def receipt_item_to_inventory_item(receipt_item: dict[str, Any]) -> dict[str, Any]:
     """receipt items are formatted differently than inventory items"""
     defindex = receipt_item["app_data"]["def_index"]
     asset_id = receipt_item["id"]

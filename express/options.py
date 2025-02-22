@@ -1,5 +1,11 @@
 from dataclasses import dataclass, field
 
+FRIEND_ACCEPT_MESSAGE = """Hi {username}, thanks for adding me!
+Get started by sending a command like "buy_1x_5021_6" or check out my listings!
+"""
+SEND_OFFER_MESSAGE = "Thank you!"
+OFFER_ACCEPTED_MESSAGE = "Success, offer was accepted. Thank you for the trade!"
+
 
 @dataclass
 class Options:
@@ -16,7 +22,9 @@ class Options:
     save_receipt: bool = True
     poll_interval: int = 30
     database: str = "express"
-    owners: list[str] = field(default_factory=list)
+    groups: list[int] = field(default_factory=list)
+    owners: list[int] = field(default_factory=list)
+    client_options: dict = field(default_factory=dict)
 
 
 @dataclass

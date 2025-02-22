@@ -1,10 +1,11 @@
-from .utils import sku_to_item_data
-
 import logging
 import time
+from typing import Any
 
-from tf2_utils import refinedify, is_pure
 from pymongo import MongoClient
+from tf2_utils import is_pure, refinedify
+
+from .utils import sku_to_item_data
 
 
 class Database:
@@ -18,14 +19,22 @@ class Database:
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
-            self.__add_key_first_time()
+            self._add_key_for_first_time()
 
-    def __add_key_first_time(self) -> None:
+    def _add_key_for_first_time(self) -> None:
         self.add_item(**sku_to_item_data("5021;6"))
 
     @staticmethod
-    def has_price(data: dict) -> bool:
+    def _has_price(data: dict) -> bool:
         return data.get("buy", {}) != {} and data.get("sell", {}) != {}
+
+    def has_price(self, sku: str) -> bool:
+        data = self.get_item(sku)
+
+        if not data:
+            return False
+
+        return self._has_price(data)
 
     def is_temporarily_priced(self, sku: str) -> bool:
         if is_pure(sku):
@@ -62,7 +71,7 @@ class Database:
 
         item_price = self.get_item(sku)
         # item does not exist in db or does not have a price
-        if not item_price or not self.has_price(item_price):
+        if not item_price or not self._has_price(item_price):
             return (0, 0.0)
 
         price = item_price[intent]
@@ -82,7 +91,7 @@ class Database:
             if item["sku"] != "-100;6"
         ]
 
-    def get_item(self, sku: str) -> dict:
+    def get_item(self, sku: str) -> dict[str, Any]:
         item = self.items.find_one({"sku": sku})
 
         if item is None:

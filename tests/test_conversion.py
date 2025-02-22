@@ -1,0 +1,78 @@
+from express.conversion import item_data_to_item_object
+
+data = {
+    "assetid": "13751702840",
+    "appid": 440,
+    "classid": "67503",
+    "instanceid": "11042697",
+    "currency": False,
+    "background_color": "3C352E",
+    "icon_url": "fWFc82js0fmoRAP-qOIPu5THSWqfSmTELLqcUywGkijVjZULUrsm1j-9xgEDYwkSVRTxhzBGiczhCPOeN-wBid0wq8JW32Q5yFkvZ7ezZGExK1yQVqUGWaxqpFC7UH5msZA0AYTn9e5RLwjx9NyRzOc79JI",
+    "icon_url_large": "fWFc82js0fmoRAP-qOIPu5THSWqfSmTELLqcUywGkijVjZULUrsm1j-9xgEDYwkSVRTxhzBGiczhCPOeN-wBid0wq8JW32Q5yFkvZ7ezZGExK1yQVqUGWaxqpFC7UH5msZA0AYTn9e5RLwjx9NyRzOc79JI",
+    "descriptions": [
+        {
+            "type": "text",
+            "value": "This hat has mean written all over it.\n(Note from Legal: This hat has nothing written on it.)",
+        }
+    ],
+    "tradable": True,
+    "actions": [
+        {
+            "link": "http://wiki.teamfortress.com/scripts/itemredirect.php?id=391&lang=en_US",
+            "name": "Item Wiki Page...",
+        },
+        {
+            "link": "steam://rungame/440/76561202255233023/+tf_econ_item_preview%20S%owner_steamid%A%assetid%D4786210030132005813",
+            "name": "Inspect in Game...",
+        },
+    ],
+    "name": "Honcho's Headgear",
+    "name_color": "7D6D00",
+    "type": "Level 65 Hat",
+    "market_name": "Honcho's Headgear",
+    "market_hash_name": "Honcho's Headgear",
+    "market_actions": [
+        {
+            "link": "steam://rungame/440/76561202255233023/+tf_econ_item_preview%20M%listingid%A%assetid%D4786210030132005813",
+            "name": "Inspect in Game...",
+        }
+    ],
+    "commodity": False,
+    "market_tradable_restriction": 7,
+    "market_marketable_restriction": 0,
+    "marketable": False,
+    "tags": [
+        {
+            "category": "Quality",
+            "internal_name": "Unique",
+            "localized_category_name": "Quality",
+            "localized_tag_name": "Unique",
+            "color": "7D6D00",
+        },
+        {
+            "category": "Type",
+            "internal_name": "misc",
+            "localized_category_name": "Type",
+            "localized_tag_name": "Cosmetic",
+        },
+        {
+            "category": "Class",
+            "internal_name": "Soldier",
+            "localized_category_name": "Class",
+            "localized_tag_name": "Soldier",
+        },
+    ],
+    "contextid": "2",
+    "amount": "1",
+}
+
+
+def test_item_data_to_item_object() -> None:
+    item = item_data_to_item_object(None, None, data)
+
+    assert item is not None
+    assert item.id == 13751702840
+    assert item._app_id == 440
+    assert item.class_id == 67503
+    assert item.instance_id == 11042697
+    assert item.market_hash_name == "Honcho's Headgear"
