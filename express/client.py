@@ -1,12 +1,14 @@
 import asyncio
 import logging
 import time
+from threading import Thread
 from typing import Any
 
 import steam
 from tf2_utils import (
     CurrencyExchange,
     Item,
+    PricesTFSocket,
     get_metal,
     get_sku,
     is_metal,
@@ -16,9 +18,10 @@ from tf2_utils import (
     to_scrap,
 )
 
+from .command import parse_command
 from .conversion import item_data_to_item_object, item_object_to_item_data
 from .database import Database
-from .inventory import ExpressInventory
+from .inventory import ExpressInventory, get_first_non_pure_sku
 from .offer import is_only_taking_items, is_two_sided_offer
 from .options import (
     FRIEND_ACCEPT_MESSAGE,
@@ -26,7 +29,6 @@ from .options import (
     SEND_OFFER_MESSAGE,
     Options,
 )
-from .sku import parse_command
 
 
 class ExpressClient(steam.Client):
@@ -37,6 +39,10 @@ class ExpressClient(steam.Client):
 
         self._processed_offers = {}
         self._set_defaults()
+
+        if self._options.fetch_prices_on_startup:
+            self._autopriced_skus = self._db.get_autopriced()
+            self._set_pricer()
 
         super().__init__(
             app=steam.TF2,
@@ -49,6 +55,44 @@ class ExpressClient(steam.Client):
         self._send_offer_message = SEND_OFFER_MESSAGE
         self._friend_accept_message = FRIEND_ACCEPT_MESSAGE
         self._offer_accepted_message = OFFER_ACCEPTED_MESSAGE
+
+    def _set_pricer(self) -> None:
+        self._pricer = PricesTFSocket(self._on_price_update)
+        prices_thread = Thread(target=self._pricer.listen, daemon=True)
+        prices_thread.start()
+
+        logging.info("Listening to PricesTF")
+
+        self._prices_tf = self._pricer.prices_tf
+
+        if not self._options.fetch_prices_on_startup:
+            return
+
+        self._update_autopriced_items()
+
+    def _on_price_update(self, data: dict) -> None:
+        if data.get("type") != "PRICE_CHANGED":
+            return
+
+        if "sku" not in data.get("data", {}):
+            return
+
+        sku = data["data"]["sku"]
+
+        if sku not in self._autopriced_skus:
+            return
+
+        self._db.update_autoprice(data)
+
+    def _update_autopriced_items(self) -> None:
+        skus = self._autopriced_skus
+        self._prices_tf.request_access_token()
+
+        for sku in skus:
+            price = self._prices_tf.get_price(sku)
+            self._db.update_autoprice(price)
+
+        logging.info(f"Updated prices for {len(skus)} autopriced items")
 
     def _get_inventory_instance(self) -> ExpressInventory:
         return ExpressInventory(
@@ -125,6 +169,65 @@ class ExpressClient(steam.Client):
                 return True
 
         return False
+
+    def _is_owner(self, partner_steam_id: int) -> bool:
+        return partner_steam_id in self._options.owners
+
+    def _valuate(
+        self, items: dict, intent: str, all_skus: list[str], key_prices: dict[str, Any]
+    ) -> tuple[int, bool]:
+        has_unpriced = False
+        key_price = 0.0
+        total = 0
+
+        if key_prices:
+            key_price = key_prices[intent]["metal"]
+        else:
+            logging.warning("No key price found, will valuate keys at 0 ref")
+
+        key_scrap_price = to_scrap(key_price)
+
+        # valute one item at a time
+        for i in items:
+            item = Item(items[i])
+            sku = get_sku(item)
+            keys = 0
+            metal = 0.0
+
+            # appid is not 440, means no pricing for that item
+            if not item.is_tf2() and intent == "sell":
+                has_unpriced = True
+                break
+
+            # we dont add any price for that item -> skip
+            if not item.is_tf2() and intent == "buy":
+                continue
+
+            elif item.is_key():
+                keys = 1
+
+            elif is_metal(sku):  # should be metal
+                metal = to_refined(get_metal(sku))
+
+            # has a specifc price
+            elif sku in all_skus:
+                keys, metal = self._db.get_price(sku, intent)
+
+            elif item.is_craft_hat() and self._options.allow_craft_hats:
+                keys, metal = self._db.get_price("-100;6", intent)
+
+            value = keys * key_scrap_price + to_scrap(metal)
+
+            # dont need to process rest of offer since we cant know the total price
+            if not value and intent == "sell":
+                has_unpriced = True
+                break
+
+            logging.debug(f"{intent} {sku=} has {value=}")
+            total += value
+
+        # total scrap
+        return total, has_unpriced
 
     async def _create_offer(
         self, partner: steam.PartialUser, sku: str, intent: str, token: str = None
@@ -218,80 +321,11 @@ class ExpressClient(steam.Client):
             offer_data,
         )
 
-    def _is_owner(self, partner_steam_id: int) -> bool:
-        return partner_steam_id in self._options.owners
-
-    def _valuate(
-        self, items: dict, intent: str, all_skus: list[str], key_prices: dict[str, Any]
-    ) -> tuple[int, bool]:
-        has_unpriced = False
-        key_price = 0.0
-        total = 0
-
-        if key_prices:
-            key_price = key_prices[intent]["metal"]
-        else:
-            logging.warning("No key price found, will valuate keys at 0 ref")
-
-        key_scrap_price = to_scrap(key_price)
-
-        # valute one item at a time
-        for i in items:
-            item = Item(items[i])
-            sku = get_sku(item)
-            keys = 0
-            metal = 0.0
-
-            # appid is not 440, means no pricing for that item
-            if not item.is_tf2() and intent == "sell":
-                has_unpriced = True
-                break
-
-            # we dont add any price for that item -> skip
-            if not item.is_tf2() and intent == "buy":
-                continue
-
-            elif item.is_key():
-                keys = 1
-
-            elif is_metal(sku):  # should be metal
-                metal = to_refined(get_metal(sku))
-
-            # has a specifc price
-            elif sku in all_skus:
-                keys, metal = self._db.get_price(sku, intent)
-
-            elif item.is_craft_hat() and self._options.allow_craft_hats:
-                keys, metal = self._db.get_price("-100;6", intent)
-
-            value = keys * key_scrap_price + to_scrap(metal)
-
-            # dont need to process rest of offer since we cant know the total price
-            if not value and intent == "sell":
-                has_unpriced = True
-                break
-
-            logging.debug(f"{intent} {sku=} has {value=}")
-            total += value
-
-        # total scrap
-        return total, has_unpriced
-
-    @staticmethod
-    def _get_first_non_pure_sku(items: list[dict]) -> str | None:
-        for i in items:
-            sku = get_sku(i)
-
-            if is_pure(sku):
-                continue
-
-            return sku
-
     async def _counter_offer(
         self, trade: steam.TradeOffer, our_items: list[dict]
     ) -> None:
         # only supported counter offer for one item
-        sku = self._get_first_non_pure_sku(our_items)
+        sku = get_first_non_pure_sku(our_items)
 
         if sku is None:
             logging.warning("Found no non-pure items to counter offer")
@@ -403,6 +437,10 @@ class ExpressClient(steam.Client):
 
     def set_ready(self) -> None:
         self._is_ready = True
+
+    def update_stock(self, inventory: ExpressInventory) -> None:
+        stock = inventory.get_stock()
+        self._db.update_stock(stock)
 
     async def join_groups(self) -> None:
         group_id = 103582791463210868

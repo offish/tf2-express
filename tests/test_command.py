@@ -1,4 +1,4 @@
-from express.sku import parse_command
+from express.command import parse_command
 
 
 def test_parse_command() -> None:

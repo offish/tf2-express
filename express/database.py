@@ -114,7 +114,7 @@ class Database:
         logging.debug(f"Updating {sku} with {data=}")
         self.items.replace_one({"sku": sku}, data)
 
-    def update_stocks(self, stock: dict) -> None:
+    def update_stock(self, stock: dict) -> None:
         all_items = self.items.find()
 
         for item in all_items:

@@ -46,35 +46,28 @@ def summarize_items(items: list[dict]) -> dict:
     for item in items:
         item_name = items[item]["market_hash_name"]
 
-        if item_name not in summary:
-            summary[item_name] = {
-                "count": 1,
-                "image": items[item]["icon_url"],
-                "color": items[item]["name_color"],
-            }
-        else:
+        if item_name in summary:
             summary[item_name]["count"] += 1
+            continue
+
+        summary[item_name] = {
+            "count": 1,
+            "image": items[item]["icon_url"],
+            "color": items[item]["name_color"],
+        }
 
     return summary
 
 
 def summarize_trades(trades: list[dict]) -> list[dict]:
-    summary = []
-
-    for trade in trades:
-        their_items_summary = summarize_items(trade.get("their_items", []))
-        our_items_summary = summarize_items(trade.get("our_items", []))
-
-        # add this to the db so it does not need to be done again?
-        summary.append(
-            {
-                **trade,
-                "our_summary": our_items_summary,
-                "their_summary": their_items_summary,
-            }
-        )
-
-    return summary
+    return [
+        {
+            **trade,
+            "our_summary": summarize_items(trade.get("our_items", [])),
+            "their_summary": summarize_items(trade.get("their_items", [])),
+        }
+        for trade in trades
+    ]
 
 
 def get_version(repository: str, folder: str) -> str:

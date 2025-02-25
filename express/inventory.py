@@ -1,6 +1,6 @@
 from typing import Any
 
-from tf2_utils import Inventory, Item, map_inventory
+from tf2_utils import Inventory, Item, get_sku, is_pure, map_inventory
 
 
 class ExpressInventory(Inventory):
@@ -93,35 +93,38 @@ class ExpressInventory(Inventory):
         self.our_inventory.append(item)
 
 
+def get_first_non_pure_sku(items: list[dict]) -> str | None:
+    for i in items:
+        sku = get_sku(i)
+
+        if not is_pure(sku):
+            return sku
+
+
 def receipt_item_to_inventory_item(receipt_item: dict[str, Any]) -> dict[str, Any]:
     """receipt items are formatted differently than inventory items"""
     defindex = receipt_item["app_data"]["def_index"]
     asset_id = receipt_item["id"]
-    context_id = str(receipt_item["contextid"])
 
     wiki_link = "http://wiki.teamfortress.com/scripts/itemredirect.php?id={}&lang=en_US"
 
-    tags = []
-
-    for tag in receipt_item["tags"]:
-        color = tag.get("color", "")
-        tag_data = {
-            "color": color,
+    tags = [
+        {
+            "color": tag.get("color", ""),
             "category": tag["category"],
             "internal_name": tag["internal_name"],
             "localized_tag_name": tag["name"],
             "localized_category_name": tag["category_name"],
         }
-        tags.append(tag_data)
+        for tag in receipt_item["tags"]
+    ]
 
     del receipt_item["tags"]
     del receipt_item["id"]
     del receipt_item["app_data"]
     del receipt_item["pos"]
-    del receipt_item["contextid"]
 
-    return {
-        **receipt_item,
+    return receipt_item | {
         # add keys which are missing
         "assetid": asset_id,
         "actions": [
@@ -131,5 +134,4 @@ def receipt_item_to_inventory_item(receipt_item: dict[str, Any]) -> dict[str, An
             }
         ],
         "tags": tags,
-        "contextid": context_id,
     }

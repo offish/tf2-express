@@ -42,12 +42,9 @@ def item_data_to_item_object(
 
 
 def item_object_to_item_data(item: Item) -> dict[str, Any]:
-    return {
-        "assetid": item.id,
-        "appid": item._app_id,
+    return item.to_dict() | {
         "classid": item.class_id,
         "instanceid": item.instance_id,
-        "contextid": item.context_id,
         "icon_url": item.icon,
         "tradable": item._is_tradable,
         "actions": [{"link": i.link, "name": i.name} for i in item.actions],

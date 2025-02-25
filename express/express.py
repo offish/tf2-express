@@ -16,6 +16,7 @@ class Express(ExpressClient):
 
         inventory = self._get_inventory_instance()
         self.our_inventory = inventory.fetch_our_inventory()
+        self.update_stock(inventory)
         self.set_ready()
 
         logging.info("Fetched our inventory")

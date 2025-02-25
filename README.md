@@ -6,7 +6,7 @@
 [![Discord](https://img.shields.io/discord/467040686982692865?color=7289da&label=Discord&logo=discord)](https://discord.gg/t8nHSvA)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Automated <abbr title="Team Fortress 2">TF2</abbr> trading bot with GUI support, built with Python. Prices are by default provided by [Prices.TF](https://prices.tf).
+Automated TF2 trading bot with GUI support, built with Python. Prices are by default provided by [Prices.TF](https://prices.tf).
 
 ## Donate
 Donations are not required, but greatly appericated.
