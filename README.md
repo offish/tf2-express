@@ -58,7 +58,8 @@ pip install --upgrade -r requirements.txt
 ```
 
 ## Setup
-Rename `config.example.json` to `config.json`. Update credentials and set your preferred `options`.
+> [!NOTE]
+> Make a copy of `config.example.json` and name it `config.json` (it must be in the same folder). Update credentials and set your preferred `options`.
 
 Example config:
 ```json
@@ -72,12 +73,11 @@ Example config:
             "username": "username",
             "password": "password",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
-            "secrets": {
-                "steamid": "76511111111111111",
-                "shared_secret": "Aa11aA1+1aa1aAa1a=",
-                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
-            },
+            "shared_secret": "Aa11aA1+1aa1aAa1a=",
+            "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
+                "use_backpack_tf": true,
+                "backpack_tf_token": "token",
                 "enable_deals": false,
                 "inventory_provider": "steamcommunity or steamsupply or steamapis",
                 "inventory_api_key": "inventory api key or empty",
@@ -89,7 +89,6 @@ Example config:
                 "allow_craft_hats": false,
                 "save_trades": true,
                 "save_receipt": true,
-                "poll_interval": 30,
                 "database": "mydatabasename",
                 "owners": [
                     "76511111111111111",
@@ -102,24 +101,18 @@ Example config:
             "username": "username2",
             "password": "password2",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
-            "secrets": {
-                "steamid": "76511111111111111",
-                "shared_secret": "Aa11aA1+1aa1aAa1a=",
-                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
-            },
+            "shared_secret": "Aa11aA1+1aa1aAa1a=",
+            "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
                 "accept_donations": true,
                 "allow_craft_hats": true,
                 "save_trades": true,
-                "poll_interval": 60,
                 "database": "bot2database"
             }
         }
     ]
 }
 ```
-
-For more information follow the [wiki](https://github.com/offish/tf2-express/wiki).
 
 ## Running
 ```bash
@@ -141,7 +134,7 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
 
 > [!CAUTION]
-> This applies to any craftable unique hat, which includes hats such as Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
+> This applies to any craftable unique hat, which includes hats such as The Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
 
 Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
 

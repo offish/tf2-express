@@ -31,13 +31,7 @@ def main() -> None:
     options = Options()
     express = Express(options)
     bot_config = get_config()["bots"][0]
-    config = {
-        "username": bot_config["username"],
-        "password": bot_config["password"],
-        "shared_secret": bot_config["shared_secret"],
-        "identity_secret": bot_config["identity_secret"],
-    }
-    express.run(**config)
+    express.start(**bot_config)
 
 
 if __name__ == "__main__":

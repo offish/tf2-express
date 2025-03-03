@@ -85,6 +85,10 @@ class ExpressClient(steam.Client):
 
         # update database price
         self._db.update_autoprice(data)
+
+        if not self._options.use_backpack_tf:
+            return
+
         # update listing price
         self._listing_manager.set_price_changed(sku)
 

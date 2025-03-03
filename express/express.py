@@ -80,3 +80,21 @@ class Express(ExpressClient):
         partner = self.get_user(int(steam_id))
 
         return await self.send_offer(partner, intent, sku, token)
+
+    def start(
+        self,
+        username: str,
+        password: str,
+        identity_secret: str,
+        shared_secret: str,
+        **kwargs,
+    ) -> None:
+        del kwargs
+
+        self.run(
+            username=username,
+            password=password,
+            identity_secret=identity_secret,
+            shared_secret=shared_secret,
+            debug=False,
+        )
