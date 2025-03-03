@@ -141,7 +141,7 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
 
 > [!CAUTION]
-> This applies to any craftable unique hat, which includes more expensive hats such as the Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
+> This applies to any craftable unique hat, which includes hats such as Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
 
 Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
 

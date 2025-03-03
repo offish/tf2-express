@@ -8,3 +8,7 @@ class NoConfigFound(ExpressException):
 
 class ListingDoesNotExist(ExpressException):
     pass
+
+
+class SKUNotFound(ExpressException):
+    pass

@@ -5,6 +5,7 @@ from typing import Any
 from pymongo import MongoClient
 from tf2_utils import is_pure, refinedify
 
+from .exceptions import SKUNotFound
 from .utils import sku_to_item_data
 
 
@@ -208,9 +209,7 @@ class Database:
         data = self.get_item(sku)
 
         if not data:
-            raise ValueError(
-                f"Cannot update price for {sku} as it does not exist in database"
-            )
+            raise SKUNotFound(f"{sku} does not exist in database!")
 
         data["buy"] = buy
         data["sell"] = sell

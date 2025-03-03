@@ -22,6 +22,7 @@ from .command import parse_command
 from .conversion import item_data_to_item_object, item_object_to_item_data
 from .database import Database
 from .inventory import ExpressInventory, get_first_non_pure_sku
+from .listing_manager import ListingManager
 from .offer import is_only_taking_items, is_two_sided_offer
 from .options import (
     FRIEND_ACCEPT_MESSAGE,
@@ -82,7 +83,10 @@ class ExpressClient(steam.Client):
         if sku not in self._autopriced_skus:
             return
 
+        # update database price
         self._db.update_autoprice(data)
+        # update listing price
+        self._listing_manager.set_price_changed(sku)
 
     def _update_autopriced_items(self) -> None:
         skus = self._autopriced_skus
@@ -102,7 +106,7 @@ class ExpressClient(steam.Client):
         )
 
     def _update_inventory_with_receipt(self, receipt: steam.TradeOfferReceipt) -> None:
-        updated_inventory = self.our_inventory.copy()
+        updated_inventory = self._inventory.our_inventory.copy()
 
         for item in receipt.sent:
             item_data = item_object_to_item_data(item)
@@ -122,9 +126,15 @@ class ExpressClient(steam.Client):
             item_data = item_object_to_item_data(item)
             updated_inventory.append(item_data)
 
-        self.our_inventory = updated_inventory
+        self._inventory.set_our_inventory(updated_inventory)
 
         logging.info("Our inventory was updated")
+
+        if not self._options.use_backpack_tf:
+            return
+
+        # notify listing manager inventory has changed (stock needs to be updated)
+        self._listing_manager.set_inventory_changed()
 
     def _get_key_price(self, intent: str) -> int:
         item = self._db.get_item("5021;6")
@@ -229,6 +239,14 @@ class ExpressClient(steam.Client):
         # total scrap
         return total, has_unpriced
 
+    def _create_listings(self) -> None:
+        items = self._db.get_pricelist()
+
+        for item in items:
+            sku = item["sku"]
+            intent = item["intent"]
+            self._listing_manager.create_listing(sku, intent)
+
     async def _create_offer(
         self, partner: steam.PartialUser, sku: str, intent: str, token: str = None
     ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
@@ -256,7 +274,7 @@ class ExpressClient(steam.Client):
 
         # get fresh instance of inventory (stores both our and theirs)
         inventory = self._get_inventory_instance()
-        our_inventory = inventory.set_our_inventory(self.our_inventory)
+        our_inventory = inventory.set_our_inventory(self._inventory.our_inventory)
         their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
 
         currencies = CurrencyExchange(
@@ -435,12 +453,32 @@ class ExpressClient(steam.Client):
 
         logging.info("Ignoring offer as automatic decline is disabled")
 
-    def set_ready(self) -> None:
+    async def setup(self) -> None:
+        # set inventory
+        self._inventory = self._get_inventory_instance()
+        self._inventory.fetch_our_inventory()
+
+        # get inventory stock and update database
+        stock = self._inventory.get_stock()
+        self._db.update_stock(stock)
+
+        # we are now ready (other events can now fire)
         self._is_ready = True
 
-    def update_stock(self, inventory: ExpressInventory) -> None:
-        stock = inventory.get_stock()
-        self._db.update_stock(stock)
+        if not self._options.use_backpack_tf:
+            return
+
+        self._listing_manager = ListingManager(
+            backpack_tf_token=self._options.backpack_tf_token,
+            steam_id=str(self.user.id64),
+            database=self._db,
+            inventory=self._inventory,
+        )
+
+        listing_manager_thread = Thread(target=self._listing_manager.run, daemon=True)
+        listing_manager_thread.start()
+
+        self._create_listings()
 
     async def join_groups(self) -> None:
         group_id = 103582791463210868
@@ -522,7 +560,8 @@ class ExpressClient(steam.Client):
         if trade.state != steam.TradeOfferState.Accepted:
             return
 
-        await trade.user.send(self._offer_accepted_message)
+        if trade.user.is_friend():
+            await trade.user.send(self._offer_accepted_message)
 
         offer_data |= {
             "offer_id": trade.id,

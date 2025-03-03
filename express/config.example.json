@@ -14,6 +14,8 @@
                 "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
             },
             "options": {
+                "use_backpack_tf": true,
+                "backpack_tf_token": "token",
                 "enable_deals": false,
                 "inventory_provider": "steamcommunity or steamsupply or steamapis",
                 "inventory_api_key": "inventory api key or empty",
@@ -25,7 +27,6 @@
                 "allow_craft_hats": false,
                 "save_trades": true,
                 "save_receipt": true,
-                "poll_interval": 30,
                 "database": "mydatabasename",
                 "owners": [
                     "76511111111111111",
@@ -47,7 +48,6 @@
                 "accept_donations": true,
                 "allow_craft_hats": true,
                 "save_trades": true,
-                "poll_interval": 60,
                 "database": "bot2database"
             }
         }

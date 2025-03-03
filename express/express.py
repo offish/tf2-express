@@ -14,14 +14,10 @@ class Express(ExpressClient):
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")
 
-        inventory = self._get_inventory_instance()
-        self.our_inventory = inventory.fetch_our_inventory()
-        self.update_stock(inventory)
-        self.set_ready()
-
         logging.info("Fetched our inventory")
 
         await self.join_groups()
+        await self.setup()
 
     async def on_message(self, message: steam.Message) -> None:
         # ignore our own messages
@@ -34,7 +30,7 @@ class Express(ExpressClient):
 
         msg = message.content.lower()
 
-        logging.info(message.author.name + " sent: " + msg)
+        logging.info(f"{message.author.name} sent: {msg}")
 
         # only care about buy and sell messages
         if not msg.startswith("buy") and not msg.startswith("sell"):

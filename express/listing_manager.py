@@ -1,3 +1,4 @@
+import logging
 import time
 from dataclasses import asdict
 
@@ -14,14 +15,8 @@ class ListingManager:
         backpack_tf_token: str,
         steam_id: str,
         database: Database,
-        inventory: ExpressInventory = None,
+        inventory: ExpressInventory,
     ) -> None:
-        self._use_internal_inventory = False
-
-        if inventory is None:
-            inventory = ExpressInventory(steam_id)
-            self._use_internal_inventory = True
-
         self._inventory = inventory
         self._db = database
         self._bptf = BackpackTF(
@@ -117,14 +112,16 @@ class ListingManager:
 
         success = self._bptf.delete_listing(self._listings[key].id)
 
-        if success:
-            del self._listings[key]
+        if success is not True:
+            logging.error(f"Error when trying to delete {intent} listing for {sku}")
+            logging.error(success)
+            return
+
+        del self._listings[key]
+        logging.info(f"Deleted {intent} listing for {sku}")
 
     def set_inventory_changed(self) -> None:
         self._has_updated_listings = False
-
-        if self._use_internal_inventory:
-            self._inventory.fetch_our_inventory()
 
     def set_price_changed(self, sku: str) -> None:
         self.create_listing(sku, "buy")
@@ -156,20 +153,37 @@ class ListingManager:
         self.create_listing(sku, intent)
 
     def run(self) -> None:
-        self._bptf.register_user_agent()
+        user_agent = self._bptf.register_user_agent()
+
+        if user_agent["status"] == "active":
+            logging.info("Backpack.TF user agent was is active")
+        else:
+            logging.error("Could not register Backpack.TF user agent")
+            logging.error(user_agent)
+            return
+
+        self._bptf.delete_all_listings()
+        logging.info("Deleted all listings")
 
         while True:
             # TODO: bump listings
+            # TODO: create flow for creating multiple listings at once
 
             if self._has_updated_listings:
                 time.sleep(0.1)
                 continue
 
+            logging.info("Updating our listings...")
+
             for i in self._listings:
                 listing = self._listings[i]
                 self._update_listing(listing)
 
+            logging.info("All listings were updated!")
+
             self._has_updated_listings = True
 
     def __del__(self):
+        self._bptf.delete_all_listings()
+        self._listings.clear()
         self._bptf.stop_user_agent()

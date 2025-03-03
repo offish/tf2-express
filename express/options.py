@@ -9,6 +9,8 @@ OFFER_ACCEPTED_MESSAGE = "Success, offer was accepted. Thank you for the trade!"
 
 @dataclass
 class Options:
+    use_backpack_tf: bool
+    backpack_tf_token: str
     enable_deals: bool = False
     inventory_provider: str = "steamcommunity"
     inventory_api_key: str = ""
@@ -20,7 +22,6 @@ class Options:
     allow_craft_hats: bool = False
     save_trades: bool = True
     save_receipt: bool = True
-    poll_interval: int = 30
     database: str = "express"
     groups: list[int] = field(default_factory=list)
     owners: list[int] = field(default_factory=list)
