@@ -5,6 +5,7 @@
 [![Size](https://img.shields.io/github/repo-size/offish/tf2-express.svg)](https://github.com/offish/tf2-express)
 [![Discord](https://img.shields.io/discord/467040686982692865?color=7289da&label=Discord&logo=discord)](https://discord.gg/t8nHSvA)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 Automated TF2 trading bot with GUI support, built with Python. Prices are by default provided by [Prices.TF](https://prices.tf).
 
@@ -13,27 +14,24 @@ Donations are not required, but greatly appericated.
 - BTC: `bc1qntlxs7v76j0zpgkwm62f6z0spsvyezhcmsp0z2`
 - [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
 
-
 ## Features
 * GUI for adding and changing items, prices, `max_stock` + browsing trades
 * Automated item pricing by [Prices.TF](https://prices.tf)
+* Creates, modifies and deletes listings from [Backpack.TF](https://backpack.tf)
 * Bank as many items as you want
 * Add items by either name or SKU
 * Uses MongoDB for saving items, prices and trades
-* Supports Random Craft Hats [[?]](#random-craft-hats)
-* Run multiple bots at once, each with their own database
-* Keeps track of item stock and checks if trades surpass their related item's `max_stock`
-* Fetches the bot's inventory once, and keeps track of items using receipts
+* Limited inventory fetching to mitigate rate-limits
 * Supports SKU item formats for ease of use
+* Supports Random Craft Hats [[?]](#random-craft-hats)
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
 * Supports 3rd party emitted "deals" [[?]](#3rd-party-deals)
+* Utilizes [backpack-tf](https://github.com/offish/backpack-tf)
 * Utilizes [tf2-sku](https://github.com/offish/tf2-sku)
 * Utilizes [tf2-data](https://github.com/offish/tf2-data)
 * Utilizes [tf2-utils](https://github.com/offish/tf2-utils)
 
 Available options can be found [here](express/options.py).
-
-*Backpack.tf listing is not supported yet.*
 
 ## Showcase
 ![GUI Showcase](https://github.com/offish/tf2-express/assets/30203217/3093be18-412d-4852-a9a1-270f2e16f194)
@@ -55,7 +53,7 @@ pip install -r requirements.txt
 # tf2-express/
 git pull
 pip install --upgrade -r requirements.txt
-# update packages like tf2-utils, tf2-data and tf2-sku,
+# update packages like bptf, tf2-utils, tf2-data and tf2-sku
 # which the bot is dependant on
 ```
 
@@ -130,42 +128,44 @@ python main.py # start the bot
 python panel.py # start the gui
 ```
 
-After starting the GUI, you can open http://127.0.0.1:5000/ in your browser. 
+Now you can visit the GUI at http://127.0.0.1:5000/ 
 
 Logs will be available under `logs/express.log`. 
 Level is set to DEBUG, so here you will be able to see every request etc. and more information than is shown in the terminal.
 
-*Do NOT share this log file with anyone else before removing sensitive information. This will leak your `API_KEY` and more.*
-
+> [!WARNING]
+> Do NOT share your logs or config files with anyone before removing sensitive information. This might leak your `API_KEY` and more.
 
 ## Explanation
 ### Random Craft Hats
 If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
 
-**WARNING:** *This applies to any hat. Such as Ellis' Cap, Team Captain, Earbuds, Max Heads etc. This is a feature, not a bug.*
+> [!CAUTION]
+> This applies to any craftable unique hat, which includes more expensive hats such as the Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
 
-Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. This item cannot get automatic price updates.
+Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
 
 ### 3rd Party Inventory Providers
 Avoid Steam's inventory rate-limits by using a third party provider like SteamApis, Steam.Supply or your own.
 
-
 ### 3rd Party Deals
 "Deals" in this context are data which is emitted by third party using a TCP socket. This data will be acted on, such as sending an offer using the included trade URL and price. They are named "deals" as I've been using it for arbitrage purposes.
 
+> [!IMPORTANT]
+> As of tf2-express v3.0.0 deals are currently broken.
 
 ## Testing
 ```bash
 # tf2-express/
-python -m unittest
+pytest
 ```
 
-All of the tests should output OK, except for the version check. They should be equal.
+Every test should succeed except for the version check. The version needs to be incremented to pass this test.
 
 ## License
 MIT License
 
-Copyright (c) 2020-2024 offish ([confern](https://steamcommunity.com/id/confern))
+Copyright (c) 2020-2025 offish ([confern](https://steamcommunity.com/id/confern))
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

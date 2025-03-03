@@ -12,11 +12,6 @@ stream_handler = logging.StreamHandler(sys.stdout)
 LOG_PATH = os.getcwd() + "/logs/"
 LOG_FILE = LOG_PATH + "express.log"
 
-# create folder and empty log file
-if not os.path.isfile(LOG_FILE):
-    os.makedirs(LOG_PATH)
-    open(LOG_FILE, "x")
-
 file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
 
 logging.getLogger("steam").setLevel(logging.WARNING)

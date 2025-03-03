@@ -5,6 +5,8 @@ from pathlib import Path
 import requests
 from tf2_utils import SchemaItemsUtils, sku_to_color
 
+from .exceptions import NoConfigFound
+
 schema_items_utils = SchemaItemsUtils()
 
 
@@ -37,6 +39,10 @@ def read_json_file(filename: str | Path) -> dict:
 
 def get_config() -> dict:
     path = Path(__file__).parent / "config.json"
+
+    if not path.exists():
+        raise NoConfigFound("No config.json file in the express directory!")
+
     return read_json_file(path)
 
 

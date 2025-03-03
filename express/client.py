@@ -444,8 +444,9 @@ class ExpressClient(steam.Client):
 
     async def join_groups(self) -> None:
         group_id = 103582791463210868
+        groups = [group_id, 103582791463210863, *self._options.groups]
 
-        for i in [103582791463210863, group_id, *self._options.groups]:
+        for i in groups:
             group = await self.fetch_clan(i)
 
             if group is None:

@@ -35,7 +35,7 @@ class ExpressInventory(Inventory):
     def get_their_inventory(self) -> list[dict]:
         return self.their_inventory.copy()
 
-    def get_stock(self) -> dict:
+    def get_stock(self) -> dict[str, int]:
         stock = {"-100;6": 0}
 
         for item in self.our_inventory:
