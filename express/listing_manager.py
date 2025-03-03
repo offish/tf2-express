@@ -3,10 +3,15 @@ import time
 from dataclasses import asdict
 
 from backpack_tf import BackpackTF
+from tf2_utils import get_metal, get_sku, is_pure, to_scrap
 
 from .database import Database
-from .exceptions import ListingDoesNotExist
+from .exceptions import ListingDoesNotExist, MissingBackpackTFToken
 from .inventory import ExpressInventory
+
+
+def is_key(sku: str) -> bool:
+    return sku == "5021;6"
 
 
 class ListingManager:
@@ -19,6 +24,10 @@ class ListingManager:
     ) -> None:
         self._inventory = inventory
         self._db = database
+
+        if not backpack_tf_token:
+            raise MissingBackpackTFToken
+
         self._bptf = BackpackTF(
             token=backpack_tf_token,
             steam_id=steam_id,
@@ -63,6 +72,7 @@ class ListingManager:
         buy_details = "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
         buy_details += "Offer (try to take it for free, I'll counter) or chat me. "
         buy_details += "(double-click Ctrl+C): buy_1x_{formatted_sku}"
+
         return buy_details.format(**variables)
 
     def _get_sell_listing_details(self, sku: str, currencies: dict) -> str:
@@ -71,6 +81,7 @@ class ListingManager:
         sell_details = "{price} ⚡️ Stock {in_stock}/{max_stock} ⚡️ 24/7 FAST ⚡️ "
         sell_details += "Offer or chat me. "
         sell_details += "(double-click Ctrl+C): sell_1x_{formatted_sku}"
+
         return sell_details.format(**variables)
 
     def _get_listing_details(self, sku: str, intent: str, currencies: dict) -> str:
@@ -80,10 +91,45 @@ class ListingManager:
             else self._get_sell_listing_details(sku, currencies)
         )
 
+    def _get_asset_id_for_sku(self, sku: str) -> int:
+        asset_id = self._inventory.get_last_item_in_our_inventory(sku)["assetid"]
+        return int(asset_id)
+
+    def _is_asset_id_in_inventory(self, asset_id: str | int) -> bool:
+        if isinstance(asset_id, int):
+            asset_id = str(asset_id)
+
+        for item in self._inventory.get_our_inventory():
+            if item["assetid"] == asset_id:
+                return True
+
+        return False
+
+    def _has_enough_pure(self, keys: int, metal: int) -> bool:
+        inventory = self._inventory.get_our_inventory()
+        keys_amount = 0
+        scrap_amount = 0
+
+        for i in inventory:
+            sku = get_sku(i)
+
+            if is_key(sku):
+                keys_amount += 1
+                continue
+
+            if is_pure(sku):
+                scrap_amount += get_metal(sku)
+                continue
+
+        _, metal_price = self._db.get_price("5021;6", "buy")
+        key_scrap_price = to_scrap(metal_price)
+        scrap_total = keys_amount * key_scrap_price + scrap_amount >= metal
+
+        return scrap_total >= keys * key_scrap_price + to_scrap(metal)
+
     def create_listing(self, sku: str, intent: str) -> None:
         currencies = self._get_currencies(sku, intent)
         listing_variables = self._get_listing_variables(sku, currencies)
-
         in_stock = listing_variables["in_stock"]
 
         if in_stock == 0 and intent == "sell":
@@ -95,9 +141,23 @@ class ListingManager:
         ):
             return
 
+        if intent == "buy" and not self._has_enough_pure(
+            currencies["keys"], currencies["metal"]
+        ):
+            return
+
+        asset_id = 0
+
+        if intent == "sell":
+            asset_id = self._get_asset_id_for_sku(sku)
+
         details = self._get_listing_details(sku, intent, currencies)
         listing = self._bptf.create_listing(
-            sku=sku, intent=intent, currencies=currencies, details=details
+            sku=sku,
+            intent=intent,
+            currencies=currencies,
+            details=details,
+            asset_id=asset_id,
         )
 
         if listing.id > 0:
@@ -136,11 +196,19 @@ class ListingManager:
         if in_stock == listing["in_stock"]:
             return
 
+        # not enough pure anymore
+        if intent == "buy" and not self._has_enough_pure(
+            listing["keys"], listing["metal"]
+        ):
+            self.remove_listing(sku, intent)
+            return
+
+        # we dont have the item anymore
         if intent == "sell" and in_stock == 0:
             self.remove_listing(sku, intent)
             return
 
-        # cannot buy more than max stock
+        # remove listing if max stock has been reached
         if (
             intent == "buy"
             and listing["max_stock"] != -1
@@ -149,7 +217,16 @@ class ListingManager:
             self.remove_listing(sku, intent)
             return
 
-        # stock was changed
+        if intent == "sell":
+            asset_id = listing["asset_id"]
+
+            # asset id used for sell listing was traded away
+            if not self._is_asset_id_in_inventory(asset_id):
+                self.remove_listing(sku, intent)
+                self.create_listing(sku, intent)
+                return
+
+        # stock was most likely changed
         self.create_listing(sku, intent)
 
     def run(self) -> None:

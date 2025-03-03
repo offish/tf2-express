@@ -12,3 +12,7 @@ class ListingDoesNotExist(ExpressException):
 
 class SKUNotFound(ExpressException):
     pass
+
+
+class MissingBackpackTFToken(ExpressException):
+    pass

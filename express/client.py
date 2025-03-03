@@ -244,12 +244,25 @@ class ExpressClient(steam.Client):
         return total, has_unpriced
 
     def _create_listings(self) -> None:
-        items = self._db.get_pricelist()
+        pricelist = self._db.get_pricelist()
 
-        for item in items:
-            sku = item["sku"]
-            intent = item["intent"]
-            self._listing_manager.create_listing(sku, intent)
+        # first list the items we have in our inventory
+        for item in self._inventory.get_our_inventory():
+            sku = get_sku(item)
+
+            # we dont care about metal
+            if is_metal(sku):
+                continue
+
+            # item has to be priced
+            if sku not in pricelist:
+                continue
+
+            self._listing_manager.create_listing(sku, "sell")
+
+        # then list buy orders
+        for item in pricelist:
+            self._listing_manager.create_listing(item, "buy")
 
     async def _create_offer(
         self, partner: steam.PartialUser, sku: str, intent: str, token: str = None
