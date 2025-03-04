@@ -46,36 +46,6 @@ def get_config() -> dict:
     return read_json_file(path)
 
 
-def summarize_items(items: list[dict]) -> dict:
-    summary = {}
-
-    for item in items:
-        item_name = items[item]["market_hash_name"]
-
-        if item_name in summary:
-            summary[item_name]["count"] += 1
-            continue
-
-        summary[item_name] = {
-            "count": 1,
-            "image": items[item]["icon_url"],
-            "color": items[item]["name_color"],
-        }
-
-    return summary
-
-
-def summarize_trades(trades: list[dict]) -> list[dict]:
-    return [
-        {
-            **trade,
-            "our_summary": summarize_items(trade.get("our_items", [])),
-            "their_summary": summarize_items(trade.get("their_items", [])),
-        }
-        for trade in trades
-    ]
-
-
 def get_version(repository: str, folder: str) -> str:
     url = "https://raw.githubusercontent.com/offish/{}/master/{}/__init__.py".format(
         repository, folder

@@ -6,31 +6,29 @@ Home
 
 {% block contents %}
 <h1>Welcome back, {{ name }}</h1>
-
-<h2>Useful information</h2>
 <p>You are running</p>
 <ul>
     <li>tf2-express at v{{ tf2_express_version }} <a href="https://github.com/offish/tf2-express">repository</a></li>
     <li>tf2-utils at v{{ tf2_utils_version }} <a href="https://github.com/offish/tf2-utils">repository</a></li>
     <li>tf2-data at v{{ tf2_data_version }} <a href="https://github.com/offish/tf2-data">repository</a></li>
     <li>tf2-sku at v{{ tf2_sku_version }} <a href="https://github.com/offish/tf2-sku">repository</a></li>
-    <!-- <li>steampy <a href="https://github.com/bukson/steampy">repository</a></li> -->
+    <li>backpack-tf at v{{ backpack_tf_version }} <a href="https://github.com/offish/backpack-tf">repository</a></li>
+    <li>steam.py at v{{ steam_py_version }} <a href="https://github.com/gobot1234/steam.py/">repository</a></li>
 </ul>
 
 <p>Currently viewing data from "{{ db_name }}" database. If you are running multiple bots, you might want to change the
     database you are viewing.</p>
-<p>Other links</p>
+
+<h2>Useful links</h2>
 <ul>
     <li><a href="https://discord.com/invite/t8nHSvA">Discord</a></li>
     <li><a href="https://github.com/offish">GitHub profile</a></li>
     <li><a href="https://steamcommunity.com/id/confern">Steam profile</a></li>
 </ul>
 
-<h2>Support me?</h2>
-<p>These sort of things takes time to make. Donations are not required, but greatly appericated!</p>
+<h2>Support the project</h2>
+<p>These sort of things takes time to make. Donations are not required, but are greatly appericated!</p>
 <ul>
     <li><a href="https://github.com/offish/tf2-express#donate">Donate</a></li>
 </ul>
-
-
 {% endblock %}

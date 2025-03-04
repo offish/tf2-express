@@ -85,9 +85,12 @@ class Express(ExpressClient):
         password: str,
         identity_secret: str,
         shared_secret: str,
+        api_key: str,
         **kwargs,
     ) -> None:
         del kwargs
+
+        self._api_key = api_key
 
         self.run(
             username=username,

@@ -18,43 +18,47 @@ Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ 
 <button class="btn btn-danger" onclick="window.location.href='?db={{ db_name }}&start=0'">Reset</button>
 
 {% for trade in trades %}
-<div>
-    <br><br>
-    <h2>Offer #{{ trade.offer_id }}</h2>
-    {% if trade.message %}
-    <p>Message: {{ trade.message }}</p>
-    {% endif %}
-    <ul>
-        <li><a href="https://steamcommunity.com/profiles/{{ trade.steam_id_other }}">Steam Profile</a></li>
-        <li><a href="https://backpack.tf/profiles/{{ trade.steam_id_other }}">BackpackTF</a></li>
-        <li><a href="https://rep.tf/{{ trade.steam_id_other }}">RepTF</a></li>
-    </ul>
-    <p>Created: {{ trade.time_created }}</p>
-    <p>Accepted: {{ trade.time_updated }}</p>
-
-    {% if trade.our_items %}
-    <h3>Our items ({{ trade.our_items|length }}x)</h3>
-    <p>Our value: <b>{{ trade.our_value }}</b> refined</p>
-    {% for item in trade.our_summary %}
-    <div>
-        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.our_summary[item].image }}"
-            style="width: 75px; margin:10px; background-color: #{{ trade.our_summary[item].color }}">
-        {{ trade.our_summary[item].count }}x {{ item }}
+<hr>
+<div class="trade-container">
+    <div class="left">
+        <h2>Offer #{{ trade.offer_id }}</h2>
+        <p>Accepted: {{ trade.accepted }} ({{ trade.passed_time }} hours ago)</p>
+        <p>Trade partner: {{ trade.partner_name }}</p>
+        <ul>
+            <li><a href="https://steamcommunity.com/profiles/{{ trade.partner_id }}">Steam Profile</a></li>
+            <li><a href="https://backpack.tf/profiles/{{ trade.partner_id }}">BackpackTF</a></li>
+            <li><a href="https://rep.tf/{{ trade.partner_id }}">RepTF</a></li>
+        </ul>
+        {% if trade.message %}
+        <p>Message: {{ trade.message }}</p>
+        {% endif %}
     </div>
-    {% endfor %}
-    {% endif %}
-
-    {% if trade.their_items %}
-    <h3>Their items ({{ trade.their_items|length }}x)</h3>
-    <p>Their value: <b>{{ trade.their_value }}</b> refined</p>
-    {% for item in trade.their_summary %}
-    <div>
-        <img src="https://community.akamai.steamstatic.com/economy/image/{{ trade.their_summary[item].image }}"
-            style="width: 75px; margin:10px; background-color: #{{ trade.their_summary[item].color }}">
-        {{ trade.their_summary[item].count }}x {{ item }}
+    <div class="right">
+        {% if trade.our_items %}
+        <h3>Our items ({{ trade.our_items|length }}x)</h3>
+        <p>Our value: <b>{{ trade.our_value }}</b> refined</p>
+        {% for item in trade.our_summary %}
+        <div>
+            <img src="{{ trade.our_summary[item].image }}"
+                style="width: 75px; margin:10px; background-color: #{{ trade.our_summary[item].color }}">
+            {{ trade.our_summary[item].count }}x {{ item }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        <br>
+        {% if trade.their_items %}
+        <h3>Their items ({{ trade.their_items|length }}x)</h3>
+        <p>Their value: <b>{{ trade.their_value }}</b> refined</p>
+        {% for item in trade.their_summary %}
+        <div>
+            <img src="{{ trade.their_summary[item].image }}"
+                style="width: 75px; margin:10px; background-color: #{{ trade.their_summary[item].color }}">
+            {{ trade.their_summary[item].count }}x {{ item }}
+        </div>
+        {% endfor %}
+        {% endif %}
     </div>
-    {% endfor %}
-    {% endif %}
 </div>
+<hr>
 {% endfor %}
 {% endblock %}

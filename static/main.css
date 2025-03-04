@@ -32,3 +32,17 @@ footer {
     margin-top: 50px;
     margin-bottom: 50px;
 }
+
+.trade-container {
+    display: flex;
+    align-items: flex-start; /* Align items at the top */
+}
+
+.left {
+    width: 55%; 
+    text-align: left;
+}
+
+.right {
+    flex-grow: 1;
+}

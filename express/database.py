@@ -14,6 +14,7 @@ class Database:
         client = MongoClient(host, port)
         db = client[name]
 
+        self.name = name
         self.trades = db["trades"]
         self.items = db["items"]
         self.deals = db["deals"]
@@ -52,12 +53,17 @@ class Database:
     ) -> tuple[list[dict], int, int, int]:
         # sort newest trades first
         all_trades = list(self.trades.find().sort("time_updated", -1))
-        total = len(all_trades)
+        total_trades = len(all_trades)
         intended_end_index = start_index + amount
-        result = all_trades[start_index:intended_end_index]
-        actual_end_index = start_index + len(result)
+        trades = all_trades[start_index:intended_end_index]
+        end_index = start_index + len(trades)
 
-        return (result, total, start_index, actual_end_index)
+        return {
+            "trades": trades,
+            "total_trades": total_trades,
+            "start_index": start_index,
+            "end_index": end_index,
+        }
 
     def get_price(self, sku: str, intent: str) -> tuple[int, float]:
         # metals does not exist in the database

@@ -488,6 +488,9 @@ class ExpressClient(steam.Client):
         logging.info("Ignoring offer as automatic decline is disabled")
 
     async def setup(self) -> None:
+        # set steam api key
+        self.http.api_key = self._api_key
+
         # set inventory
         self._inventory = self._get_inventory_instance()
         self._inventory.fetch_our_inventory()
