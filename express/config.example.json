@@ -1,10 +1,9 @@
 {
-    "name": "nickname",
+    "name": "tf2-express user",
     "check_versions_on_startup": true,
     "listen_to_pricer": true,
     "bots": [
         {
-            "name": "bot1",
             "username": "username",
             "password": "password",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
@@ -32,13 +31,13 @@
             }
         },
         {
-            "name": "bot2",
             "username": "username2",
             "password": "password2",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
             "shared_secret": "Aa11aA1+1aa1aAa1a=",
             "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
+                "use_backpack_tf": false,
                 "accept_donations": true,
                 "allow_craft_hats": true,
                 "save_trades": true,

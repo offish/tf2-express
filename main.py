@@ -28,10 +28,10 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 
 def main() -> None:
-    options = Options()
+    config = get_config()["bots"][0]
+    options = Options(**config["options"])
     express = Express(options)
-    bot_config = get_config()["bots"][0]
-    express.start(**bot_config)
+    express.start(**config)
 
 
 if __name__ == "__main__":

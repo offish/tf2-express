@@ -40,9 +40,7 @@ class Express(ExpressClient):
         await self.process_message(message, msg)
 
     async def on_invite(self, invite: steam.Invite) -> None:
-        # decline group invites etc.
         if not isinstance(invite, steam.UserInvite):
-            await invite.decline()
             return
 
         # accept the friend invite

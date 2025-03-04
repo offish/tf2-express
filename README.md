@@ -59,17 +59,16 @@ pip install --upgrade -r requirements.txt
 
 ## Setup
 > [!NOTE]
-> Make a copy of `config.example.json` and name it `config.json` (it must be in the same folder). Update credentials and set your preferred `options`.
+> Make a copy of `config.example.json` and name it `config.json`. Make sure it is in the same folder as the example file. Update credentials and set your preferred `options`.
 
 Example config:
 ```json
 {
-    "name": "nickname",
+    "name": "tf2-express user",
     "check_versions_on_startup": true,
     "listen_to_pricer": true,
     "bots": [
         {
-            "name": "bot1",
             "username": "username",
             "password": "password",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
@@ -97,13 +96,13 @@ Example config:
             }
         },
         {
-            "name": "bot2",
             "username": "username2",
             "password": "password2",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
             "shared_secret": "Aa11aA1+1aa1aAa1a=",
             "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
+                "use_backpack_tf": false,
                 "accept_donations": true,
                 "allow_craft_hats": true,
                 "save_trades": true,

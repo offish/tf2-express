@@ -1,20 +1,19 @@
-from express.database import Database
-from express.utils import (
-    summarize_trades,
-    get_config,
-    sku_to_item_data,
-)
-
-from datetime import datetime
 import time
+from datetime import datetime
 
-from flask import Flask, render_template, request, redirect
-from tf2_utils import SchemaItemsUtils, refinedify, is_sku
-from tf2_utils import __version__ as tf2_utils_version
+from flask import Flask, redirect, render_template, request
 from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
-from express import __version__ as tf2_express_version
+from tf2_utils import SchemaItemsUtils, is_sku, refinedify
+from tf2_utils import __version__ as tf2_utils_version
 
+from express import __version__ as tf2_express_version
+from express.database import Database
+from express.utils import (
+    get_config,
+    sku_to_item_data,
+    summarize_trades,
+)
 
 app = Flask(__name__)
 name = ""

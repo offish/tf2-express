@@ -34,6 +34,7 @@ class ListingManager:
             user_agent="A tf2-express bot",
         )
         self._listings = {}
+        self._has_updated_listings = False
 
     @staticmethod
     def _get_listing_key(intent: str, sku: str) -> str:
@@ -233,7 +234,7 @@ class ListingManager:
         user_agent = self._bptf.register_user_agent()
 
         if user_agent["status"] == "active":
-            logging.info("Backpack.TF user agent was is active")
+            logging.info("Backpack.TF user agent is now active")
         else:
             logging.error("Could not register Backpack.TF user agent")
             logging.error(user_agent)

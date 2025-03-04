@@ -25,6 +25,7 @@ from .inventory import ExpressInventory, get_first_non_pure_sku
 from .listing_manager import ListingManager
 from .offer import is_only_taking_items, is_two_sided_offer
 from .options import (
+    COUNTER_OFFER_MESSAGE,
     FRIEND_ACCEPT_MESSAGE,
     OFFER_ACCEPTED_MESSAGE,
     SEND_OFFER_MESSAGE,
@@ -56,6 +57,7 @@ class ExpressClient(steam.Client):
         self._send_offer_message = SEND_OFFER_MESSAGE
         self._friend_accept_message = FRIEND_ACCEPT_MESSAGE
         self._offer_accepted_message = OFFER_ACCEPTED_MESSAGE
+        self._counter_offer_message = COUNTER_OFFER_MESSAGE
 
     def _set_pricer(self) -> None:
         self._pricer = PricesTFSocket(self._on_price_update)
@@ -143,6 +145,10 @@ class ExpressClient(steam.Client):
     def _get_key_price(self, intent: str) -> int:
         item = self._db.get_item("5021;6")
         return item[intent]["metal"]
+
+    def _get_key_prices(self) -> dict:
+        data = self._db.get_item("5021;6")
+        return {"buy": data["buy"], "sell": data["sell"]}
 
     def _get_scrap_price(self, sku: str, intent: str) -> int:
         key_price = self._get_key_price(intent)
@@ -262,10 +268,16 @@ class ExpressClient(steam.Client):
 
         # then list buy orders
         for item in pricelist:
+            sku = item["sku"]
             self._listing_manager.create_listing(item, "buy")
 
     async def _create_offer(
-        self, partner: steam.PartialUser, sku: str, intent: str, token: str = None
+        self,
+        partner: steam.PartialUser,
+        sku: str,
+        intent: str,
+        token: str = None,
+        message: str = None,
     ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
         partner_steam_id = partner.id64
         all_skus = self._db.get_skus()
@@ -346,9 +358,12 @@ class ExpressClient(steam.Client):
             item_data_to_item_object(self._state, partner, item) for item in their_items
         ]
 
+        if message is None:
+            message = self._send_offer_message
+
         return (
             steam.TradeOffer(
-                message=self._send_offer_message,
+                message=message,
                 token=token,
                 sending=our_items,
                 receiving=their_items,
@@ -368,7 +383,9 @@ class ExpressClient(steam.Client):
 
         logging.info(f"Counter offering {sku} to {trade.user.name}...")
 
-        data = await self._create_offer(trade.user, sku, "sell")
+        data = await self._create_offer(
+            trade.user, sku, "sell", message=self._counter_offer_message
+        )
 
         if data is None:
             logging.warning("Counter offer could not be created")
@@ -581,19 +598,19 @@ class ExpressClient(steam.Client):
             await trade.user.send(self._offer_accepted_message)
 
         offer_data |= {
-            "offer_id": trade.id,
-            "partner_id": trade.user.id64,
+            "offer_id": str(trade.id),
+            "partner_id": str(trade.user.id64),
             "partner_name": trade.user.name,
             "message": trade.message,
             "their_items": [item_object_to_item_data(i) for i in trade.receiving],
             "our_items": [item_object_to_item_data(i) for i in trade.sending],
-            "key_prices": self._db.get_item("5021;6"),
+            "key_prices": self._get_key_prices(),
             "state": trade.state.name.lower(),
             "timestamp": time.time(),
         }
 
         self._db.insert_trade(offer_data)
-        await self._group.invite(trade.user)
+        # await self._group.invite(trade.user)
 
         receipt = await trade.receipt()
         self._update_inventory_with_receipt(receipt)

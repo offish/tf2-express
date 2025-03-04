@@ -1,5 +1,3 @@
-from typing import Any
-
 from tf2_utils import Inventory, Item, get_sku, is_pure, map_inventory
 
 
@@ -99,39 +97,3 @@ def get_first_non_pure_sku(items: list[dict]) -> str | None:
 
         if not is_pure(sku):
             return sku
-
-
-def receipt_item_to_inventory_item(receipt_item: dict[str, Any]) -> dict[str, Any]:
-    """receipt items are formatted differently than inventory items"""
-    defindex = receipt_item["app_data"]["def_index"]
-    asset_id = receipt_item["id"]
-
-    wiki_link = "http://wiki.teamfortress.com/scripts/itemredirect.php?id={}&lang=en_US"
-
-    tags = [
-        {
-            "color": tag.get("color", ""),
-            "category": tag["category"],
-            "internal_name": tag["internal_name"],
-            "localized_tag_name": tag["name"],
-            "localized_category_name": tag["category_name"],
-        }
-        for tag in receipt_item["tags"]
-    ]
-
-    del receipt_item["tags"]
-    del receipt_item["id"]
-    del receipt_item["app_data"]
-    del receipt_item["pos"]
-
-    return receipt_item | {
-        # add keys which are missing
-        "assetid": asset_id,
-        "actions": [
-            {
-                "link": wiki_link.format(defindex),
-                "name": "Item Wiki Page...",
-            }
-        ],
-        "tags": tags,
-    }
