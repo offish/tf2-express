@@ -18,7 +18,7 @@ def sku_to_item_data(sku: str) -> dict:
 
 
 def encode_data(data: dict) -> bytes:
-    if data.get("_id"):
+    if "_id" in data:
         del data["_id"]
 
     return (json.dumps(data) + "NEW_DATA").encode()

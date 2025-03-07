@@ -80,13 +80,23 @@ class Panel:
 
             self._database.add_item(**item_data)
 
+    def _render(self, page: str, db_name: str, **kwargs) -> str:
+        return render_template(
+            f"{page}.html",
+            db_name=db_name,
+            database_names=self._database_names,
+            current_year=datetime.now().year,
+            **kwargs,
+        )
+
     def get_overview(self, request: Request) -> str:
         database_name = self._get_database(request)
 
-        return self.render(
+        return self._render(
             "home",
             database_name,
             name=self._name,
+            tf2_express_version=__version__,
             tf2_utils_version=tf2_utils_version,
             tf2_data_version=tf2_data_version,
             tf2_sku_version=tf2_sku_version,
@@ -109,7 +119,7 @@ class Panel:
         data = self._database.get_trades(start, amount)
         summarized_trades = summarize_trades(data["trades"])
 
-        return self.render(
+        return self._render(
             "trades",
             database_name,
             trades=summarized_trades,
@@ -128,7 +138,7 @@ class Panel:
         updated = datetime.fromtimestamp(time_updated).strftime("%c")
         passed_time = int((time.time() - time_updated) / 60)
 
-        return self.render(
+        return self._render(
             "item", database_name, item=item, updated=updated, passed_time=passed_time
         )
 
@@ -136,7 +146,7 @@ class Panel:
         database_name = self._get_database(request)
         items = self._database.get_pricelist()
 
-        return self.render("items", database_name, items=items)
+        return self._render("items", database_name, items=items)
 
     def autoprice_item(self, request: Request, sku: str) -> str:
         database_name = self._get_database(request)
@@ -176,16 +186,6 @@ class Panel:
         self._database.delete_price(sku)
 
         return database_name
-
-    def render(self, page: str, db_name: str, **kwargs) -> str:
-        return render_template(
-            f"{page}.html",
-            db_name=db_name,
-            database_names=self._database_names,
-            tf2_express_version=__version__,
-            current_year=datetime.now().year,
-            **kwargs,
-        )
 
 
 def summarize_items(items: list[dict]) -> dict:

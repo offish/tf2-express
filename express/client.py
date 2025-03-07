@@ -20,7 +20,7 @@ from tf2_utils import (
 
 from .command import parse_command
 from .conversion import item_data_to_item_object, item_object_to_item_data
-from .database import Database
+from .database import Database, has_price
 from .inventory import ExpressInventory, get_first_non_pure_sku
 from .listing_manager import ListingManager
 from .offer import is_only_taking_items, is_two_sided_offer
@@ -39,6 +39,7 @@ class ExpressClient(steam.Client):
         self._options = options
         self._db = Database(options.database)
 
+        self._pricelist_count = self._db.get_pricelist_count()
         self._processed_offers = {}
         self._set_defaults()
 
@@ -94,13 +95,21 @@ class ExpressClient(steam.Client):
         # update listing price
         self._listing_manager.set_price_changed(sku)
 
+    def _update_price(self, sku: str) -> None:
+        price = self._prices_tf.get_price(sku)
+        self._db.update_autoprice(price)
+
     def _update_autopriced_items(self) -> None:
         skus = self._autopriced_skus
         self._prices_tf.request_access_token()
 
         for sku in skus:
-            price = self._prices_tf.get_price(sku)
-            self._db.update_autoprice(price)
+            self._update_price(sku)
+
+            if not self._options.use_backpack_tf:
+                continue
+
+            self._listing_manager.set_price_changed(sku)
 
         logging.info(f"Updated prices for {len(skus)} autopriced items")
 
@@ -270,6 +279,34 @@ class ExpressClient(steam.Client):
         for item in pricelist:
             sku = item["sku"]
             self._listing_manager.create_listing(item, "buy")
+
+    def _update_pricelist(self) -> None:
+        # TODO: update prices for new items
+        # create listings/remove listings
+        for item in self._db.get_pricelist():
+            # cannot update price for non autopriced items
+            if not item.get("autoprice"):
+                continue
+
+            sku = item["sku"]
+
+            # no price for item yet
+            if not has_price(item):
+                self._update_price(sku)
+                continue
+
+        self._pricelist_count = self._db.get_pricelist_count()
+
+    def _pricelist_check(self) -> None:
+        while True:
+            time.sleep(3)
+
+            # no change
+            if self._pricelist_count == self._db.get_pricelist_count():
+                continue
+
+            # update listings
+            self._update_pricelist()
 
     async def _create_offer(
         self,
@@ -514,6 +551,9 @@ class ExpressClient(steam.Client):
 
         listing_manager_thread = Thread(target=self._listing_manager.run, daemon=True)
         listing_manager_thread.start()
+
+        pricelist_thread = Thread(target=self._pricelist_check, daemon=True)
+        pricelist_thread.start()
 
         self._create_listings()
 

@@ -128,6 +128,10 @@ class ListingManager:
 
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
 
+    def is_listed(self, sku: str, intent: str) -> bool:
+        key = self._get_listing_key(intent, sku)
+        return key in self._listings
+
     def create_listing(self, sku: str, intent: str) -> None:
         currencies = self._get_currencies(sku, intent)
         listing_variables = self._get_listing_variables(sku, currencies)
