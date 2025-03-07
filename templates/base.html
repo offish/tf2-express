@@ -7,21 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1DB954',
-                        darkbg: '#121212',
-                        secondary: '#181818',
-                        darkcard: '#1E1E1E',
-                        jet: '#363636',
-                    }
-                }
-            }
-        };
-    </script>
+    <script src="{{ url_for('static', filename='config.js') }}"></script>
     <title>{% block title %}{% endblock %} - tf2-express</title>
 </head>
 

@@ -50,9 +50,10 @@ class ListingManager:
         formatted_sku = sku.replace(";", "_")
         _, max_stock = self._db.get_stock(sku)
         in_stock = self._inventory.get_stock().get(sku, 0)
+        max_stock_string = str(max_stock)
 
         if max_stock == -1:
-            max_stock = "∞"
+            max_stock_string = "∞"
 
         price = f"{metal} ref"
 
@@ -64,6 +65,7 @@ class ListingManager:
             "max_stock": max_stock,
             "formatted_sku": formatted_sku,
             "price": price,
+            "max_stock_string": max_stock_string,
         }
 
     def _get_buy_listing_details(self, sku: str, currencies: dict) -> str:
@@ -79,7 +81,7 @@ class ListingManager:
     def _get_sell_listing_details(self, sku: str, currencies: dict) -> str:
         variables = self._get_listing_variables(sku, currencies)
 
-        sell_details = "{price} ⚡️ Stock {in_stock}/{max_stock} ⚡️ 24/7 FAST ⚡️ "
+        sell_details = "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
         sell_details += "Offer or chat me. "
         sell_details += "(double-click Ctrl+C): sell_1x_{formatted_sku}"
 
@@ -168,6 +170,15 @@ class ListingManager:
         if listing.id > 0:
             listing_key = self._get_listing_key(intent, sku)
             self._listings[listing_key] = asdict(listing) | listing_variables
+
+    def delete_inactive_listings(self, current_skus: list[str]) -> None:
+        for i in self._listings:
+            intent, sku = i.split("_")
+
+            if sku in current_skus:
+                continue
+
+            self.remove_listing(sku, intent)
 
     def remove_listing(self, sku: str, intent: str) -> None:
         key = self._get_listing_key(intent, sku)

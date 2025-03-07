@@ -9,7 +9,7 @@ from .exceptions import SKUNotFound
 from .utils import sku_to_item_data
 
 
-def has_price(data: dict) -> bool:
+def has_buy_and_sell_price(data: dict) -> bool:
     return data.get("buy", {}) != {} and data.get("sell", {}) != {}
 
 
@@ -36,7 +36,7 @@ class Database:
         if not data:
             return False
 
-        return has_price(data)
+        return has_buy_and_sell_price(data)
 
     def is_temporarily_priced(self, sku: str) -> bool:
         if is_pure(sku):
@@ -79,7 +79,7 @@ class Database:
         item_price = self.get_item(sku)
 
         # item does not exist in db or does not have a price
-        if not item_price or not has_price(item_price):
+        if not item_price or not has_buy_and_sell_price(item_price):
             return (0, 0.0)
 
         price = item_price[intent]

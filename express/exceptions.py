@@ -16,3 +16,7 @@ class SKUNotFound(ExpressException):
 
 class MissingBackpackTFToken(ExpressException):
     pass
+
+
+class NoKeyPrice(ExpressException):
+    pass

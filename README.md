@@ -11,7 +11,7 @@ Automated TF2 trading bot with GUI support, built with Python. Prices are by def
 
 ## Donate
 Donations are not required, but greatly appericated.
-- BTC: `bc1qntlxs7v76j0zpgkwm62f6z0spsvyezhcmsp0z2`
+- BTC: `bc1q9gmh5x2g9s0pw3282a5ypr6ms8qvuxh3fd7afh`
 - [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
 
 ## Features

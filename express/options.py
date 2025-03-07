@@ -11,7 +11,7 @@ COUNTER_OFFER_MESSAGE = "Your offer contained wrong values, here is a corrected 
 @dataclass
 class Options:
     use_backpack_tf: bool
-    backpack_tf_token: str
+    backpack_tf_token: str = ""
     enable_deals: bool = False
     inventory_provider: str = "steamcommunity"
     inventory_api_key: str = ""
