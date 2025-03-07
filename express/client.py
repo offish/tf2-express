@@ -41,7 +41,7 @@ class ExpressClient(steam.Client):
         self._options = options
         self._db = Database(options.database)
 
-        self._pricelist_count = self._db.get_pricelist_count()
+        self._pricelist_count = 0
         self._processed_offers = {}
 
         self._set_defaults()
@@ -52,15 +52,6 @@ class ExpressClient(steam.Client):
             language=steam.Language.English,
             **options.client_options,
         )
-
-    def _check_if_ready(self, needs_updated_prices: bool) -> bool:
-        return self._is_ready and (not needs_updated_prices or self._prices_are_updated)
-
-    async def _wait_until_ready(self, needs_updated_prices: bool = True) -> None:
-        while not self._check_if_ready(needs_updated_prices):
-            await asyncio.sleep(1)
-
-        print("done waiting!!!!!!!")
 
     def _set_defaults(self) -> None:
         self._send_offer_message = SEND_OFFER_MESSAGE
@@ -76,11 +67,6 @@ class ExpressClient(steam.Client):
         logging.info("Listening to PricesTF")
 
         self._prices_tf = self._pricer.prices_tf
-
-        if not self._options.fetch_prices_on_startup:
-            return
-
-        self._update_autopriced_items()
 
     def _on_price_update(self, data: dict) -> None:
         if data.get("type") != "PRICE_CHANGED":
@@ -173,8 +159,6 @@ class ExpressClient(steam.Client):
         return {"buy": data["buy"], "sell": data["sell"]}
 
     def _get_key_scrap_price(self, intent: str) -> int:
-        print(f"{self._is_ready=} {self._prices_are_updated=}")
-
         price = self._get_key_prices().get(intent)
 
         if "metal" not in price:
@@ -188,16 +172,14 @@ class ExpressClient(steam.Client):
         return key_price * keys + to_scrap(metal)
 
     def _surpasses_max_stock(self, their_items: list[dict]) -> bool:
-        # NOTE: we do not check limits for pure items
-        random_craft_hat_sku = "-100;6"
-        in_offer = {random_craft_hat_sku: 0}
+        in_offer = {"-100;6": 0}
 
         for i in their_items:
-            item = Item(their_items[i])
+            item = Item(i)
             sku = get_sku(item)
 
             if item.is_craft_hat() and self._options.allow_craft_hats:
-                in_offer[random_craft_hat_sku] += 1
+                in_offer["-100;6"] += 1
 
             if sku not in in_offer:
                 in_offer[sku] = 1
@@ -208,6 +190,11 @@ class ExpressClient(steam.Client):
         for sku in in_offer:
             # no max stock for pure items
             if is_pure(sku):
+                continue
+
+            amount = in_offer[sku]
+
+            if amount == 0:
                 continue
 
             # stock is updated every time a trade is completed
@@ -226,22 +213,16 @@ class ExpressClient(steam.Client):
         return partner_steam_id in self._options.owners
 
     def _valuate(
-        self, items: dict, intent: str, all_skus: list[str], key_prices: dict[str, Any]
+        self, items: list[dict], intent: str, all_skus: list[str]
     ) -> tuple[int, bool]:
         has_unpriced = False
-        key_price = 0.0
         total = 0
 
-        if key_prices:
-            key_price = key_prices[intent]["metal"]
-        else:
-            logging.warning("No key price found, will valuate keys at 0 ref")
-
-        key_scrap_price = to_scrap(key_price)
+        key_scrap_price = self._get_key_scrap_price(intent)
 
         # valute one item at a time
         for i in items:
-            item = Item(items[i])
+            item = Item(i)
             sku = get_sku(item)
             keys = 0
             metal = 0.0
@@ -258,7 +239,7 @@ class ExpressClient(steam.Client):
             elif item.is_key():
                 keys = 1
 
-            elif is_metal(sku):  # should be metal
+            elif is_metal(sku):
                 metal = to_refined(get_metal(sku))
 
             # has a specifc price
@@ -304,6 +285,7 @@ class ExpressClient(steam.Client):
             self._listing_manager.create_listing(item, "buy")
 
     def _update_pricelist(self) -> None:
+        self._prices_are_updated = False
         self._update_autopriced_items()
         self._pricelist_count = self._db.get_pricelist_count()
 
@@ -316,6 +298,7 @@ class ExpressClient(steam.Client):
                 continue
 
             # items added/removed, update prices and listings
+            logging.info("Pricelist has changed, updating prices and listings...")
             self._update_pricelist()
 
     async def _create_offer(
@@ -494,13 +477,11 @@ class ExpressClient(steam.Client):
             logging.warning("Trade would surpass our max stock, ignoring offer")
             return
 
-        # get mann co key buy and sell price
-        key_prices = self._db.get_item("5021;6")
         all_skus = self._db.get_skus()
 
         # we dont care about unpriced items on their side
-        their_value, _ = self._valuate(their_items, "buy", all_skus, key_prices)
-        our_value, has_unpriced = self._valuate(our_items, "sell", all_skus, key_prices)
+        their_value, _ = self._valuate(their_items, "buy", all_skus)
+        our_value, has_unpriced = self._valuate(our_items, "sell", all_skus)
         # all prices are in scrap
 
         offer_data["their_value"] = their_value
@@ -559,14 +540,14 @@ class ExpressClient(steam.Client):
             inventory=self._inventory,
         )
 
-        if self._options.fetch_prices_on_startup:
-            self._set_pricer()
+        self._set_pricer()
 
         listing_manager_thread = Thread(target=self._listing_manager.run, daemon=True)
         listing_manager_thread.start()
 
-        pricelist_thread = Thread(target=self._pricelist_check, daemon=True)
-        pricelist_thread.start()
+        if self._options.fetch_prices_on_startup:
+            pricelist_thread = Thread(target=self._pricelist_check, daemon=True)
+            pricelist_thread.start()
 
         self._create_listings()
 
@@ -606,9 +587,8 @@ class ExpressClient(steam.Client):
         await self.send_offer(message.author, intent, sku)
 
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
-        print("process_offer")
-        await self._wait_until_ready()
-        print("done waiting for ready")
+        while not self._is_ready or not self._prices_are_updated:
+            await asyncio.sleep(1)
 
         offer_data = {}
         await self._process_offer(trade, offer_data)
@@ -620,7 +600,8 @@ class ExpressClient(steam.Client):
     ) -> int:
         assert intent in ["buy", "sell"]
 
-        await self._wait_until_ready()
+        while not self._is_ready or not self._prices_are_updated:
+            await asyncio.sleep(1)
 
         data = await self._create_offer(partner, sku, intent, token)
 
@@ -643,7 +624,8 @@ class ExpressClient(steam.Client):
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
     ) -> None:
-        self._wait_until_ready(needs_updated_prices=False)
+        while not self._is_ready:
+            await asyncio.sleep(1)
 
         logging.info(f"Offer #{trade.id} was {trade.state.name}")
 

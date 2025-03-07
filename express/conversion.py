@@ -43,6 +43,7 @@ def item_data_to_item_object(
 
 def item_object_to_item_data(item: Item) -> dict[str, Any]:
     return item.to_dict() | {
+        "appid": int(item._app_id),
         "classid": item.class_id,
         "instanceid": item.instance_id,
         "icon_url": item.icon.url,

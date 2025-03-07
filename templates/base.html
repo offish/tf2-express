@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +9,6 @@
     <script src="{{ url_for('static', filename='config.js') }}"></script>
     <title>{% block title %}{% endblock %} - tf2-express</title>
 </head>
-
 <header>
     <nav class="bg-darkbg text-white p-4 flex items-center shadow-lg">
         <a class="text-primary text-2xl font-bold ml-5 mr-8" href="/">tf2-express</a>
@@ -20,7 +18,7 @@
             <li><a class="hover:text-primary transition-colors" href="/trades?db={{ db_name }}">Trades</a></li>
             <li class="relative group">
                 <a class="hover:text-primary transition-colors cursor-pointer">Database ({{ db_name }})</a>
-                <div class="absolute hidden group-hover:block bg-darkcard text-white mt-2 py-2 w-44 shadow-lg rounded-md border border-jet">
+                <div class="absolute left-0 mt-0.5 w-44 bg-darkcard text-white py-2 shadow-lg rounded-md border border-jet opacity-0 invisible scale-95 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:scale-100">
                     {% for db in database_names %}
                     <a class="block px-4 py-2 hover:bg-primary hover:text-black transition-colors" href="?db={{ db }}">{{ db }}</a>
                     {% endfor %}
@@ -29,19 +27,15 @@
         </ul>
     </nav>
 </header>
-
-
 <body class="bg-darkbg text-white min-h-screen flex flex-col">
     <div class="container mx-auto p-6 flex-grow">
         {% block contents %}
         {% endblock %}
     </div>
 </body>
-
 <footer class="text-center p-4 bg-darkcard text-gray-300 mt-6 border-t border-jet">
     <a class="text-primary" href="https://github.com/offish/tf2-express">tf2-express</a> &copy; 2020-{{ current_year }} by 
     <a class="text-primary" href="https://github.com/offish">offish</a> 
     (<a class="text-primary" href="https://steamcommunity.com/id/confern">confern</a>)
 </footer>
-
 </html>
