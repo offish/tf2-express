@@ -18,11 +18,8 @@ from .utils import get_config, sku_to_item_data
 class Panel:
     def __init__(self) -> None:
         self._config = get_config()
-
-        self._name = self._config.get("name", "express user")
         self._schema = SchemaItemsUtils()
         self._database_names = []
-
         self._set_database_names()
 
         database_name = self._get_first_database_name()
@@ -30,9 +27,7 @@ class Panel:
 
     def _set_database_names(self) -> None:
         for bot in self._config["bots"]:
-            options = bot["options"]
-
-            database_name = options.get("database", "express")
+            database_name = bot["username"]
             self._database_names.append(database_name)
 
     def _get_first_database_name(self) -> str:
@@ -95,7 +90,7 @@ class Panel:
         return self._render(
             "home",
             database_name,
-            name=self._name,
+            name=database_name,
             tf2_express_version=__version__,
             tf2_utils_version=tf2_utils_version,
             tf2_data_version=tf2_data_version,

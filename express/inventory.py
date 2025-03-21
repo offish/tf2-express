@@ -13,7 +13,7 @@ class ExpressInventory(Inventory):
         super().__init__(provider_name, api_key)
 
     def _fetch_inventory(self, steam_id: str) -> list[dict]:
-        return map_inventory(self.fetch(steam_id), True)
+        return map_inventory(self.fetch(steam_id), add_skus=True, skip_untradable=True)
 
     def set_our_inventory(self, inventory: list[dict]) -> list[dict]:
         self.our_inventory = inventory

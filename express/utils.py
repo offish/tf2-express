@@ -10,6 +10,14 @@ from .exceptions import NoConfigFound
 schema_items_utils = SchemaItemsUtils()
 
 
+def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
+    return their_items_amount == 0 and our_items_amount > 0
+
+
+def is_two_sided_offer(their_items_amount: int, our_items_amount: int) -> bool:
+    return their_items_amount > 0 and our_items_amount > 0
+
+
 def sku_to_item_data(sku: str) -> dict:
     name = schema_items_utils.sku_to_name(sku)
     color = sku_to_color(sku)

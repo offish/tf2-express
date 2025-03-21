@@ -15,6 +15,8 @@ LOG_FILE = LOG_PATH + "express.log"
 file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
 
 logging.getLogger("steam").setLevel(logging.WARNING)
+logging.getLogger("pymongo").setLevel(logging.INFO)
+logging.getLogger("websockets").setLevel(logging.INFO)
 logging.basicConfig(level=logging.DEBUG, handlers=[stream_handler, file_handler])
 
 # only want to see info and above in console
@@ -29,7 +31,7 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 def main() -> None:
     config = get_config()["bots"][0]
-    options = Options(**config["options"])
+    options = Options(username=config["username"], **config["options"])
     express = Express(options)
     express.start(**config)
 

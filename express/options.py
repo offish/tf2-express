@@ -10,28 +10,22 @@ COUNTER_OFFER_MESSAGE = "Your offer contained wrong values, here is a corrected 
 
 @dataclass
 class Options:
+    username: str
     use_backpack_tf: bool
     backpack_tf_token: str = ""
     enable_deals: bool = False
     inventory_provider: str = "steamcommunity"
     inventory_api_key: str = ""
     fetch_prices_on_startup: bool = True
-    accept_donations: bool = False
-    decline_bad_offers: bool = False
-    decline_trade_hold: bool = False
-    decline_scam_offers: bool = False
+    accept_donations: bool = True
+    counter_bad_offers: bool = True
+    decline_trade_hold: bool = True
     allow_craft_hats: bool = False
     save_trades: bool = True
     save_receipt: bool = True
-    database: str = "express"
     groups: list[int] = field(default_factory=list)
     owners: list[int] = field(default_factory=list)
     client_options: dict = field(default_factory=dict)
-
-
-@dataclass
-class GlobalOptions:
-    bots: list[dict]
-    name: str = "express user"  # nickname for gui
-    check_versions_on_startup: bool = True
-    listen_to_pricer: bool = True
+    is_express_tf_bot: bool = False
+    express_tf_uri: str = ""
+    express_tf_token: str = ""

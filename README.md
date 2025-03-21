@@ -16,31 +16,34 @@ Donations are not required, but greatly appericated.
 
 ## Features
 * GUI for adding and changing items, prices, `max_stock` + browsing trades
-* Automated item pricing by [Prices.TF](https://prices.tf)
-* Creates, modifies and deletes listings from [Backpack.TF](https://backpack.tf)
+* Supports automated price updates from [Prices.TF](https://prices.tf)
+* Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
+* Accepts incoming friend requests
+* Supports buy/sell message commands (`sell_5021_6`)
+* Sends counter offer when user is trying to take items for free
+* Sends counter offer when values are incorrect
+* Supports Random Craft Hats [[?]](#random-craft-hats)
 * Bank as many items as you want
 * Add items by either name or SKU
 * Uses MongoDB for saving items, prices and trades
 * Limited inventory fetching to mitigate rate-limits
-* Supports SKU item formats for ease of use
-* Supports Random Craft Hats [[?]](#random-craft-hats)
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
 * Supports 3rd party emitted "deals" [[?]](#3rd-party-deals)
-* Utilizes [backpack-tf](https://github.com/offish/backpack-tf)
-* Utilizes [tf2-sku](https://github.com/offish/tf2-sku)
-* Utilizes [tf2-data](https://github.com/offish/tf2-data)
-* Utilizes [tf2-utils](https://github.com/offish/tf2-utils)
 
-Available options can be found [here](express/options.py).
+All available options can be found [here](express/options.py).
+
+**Key dependencies:**
+* [steam.py](https://github.com/gobot1234/steam.py)
+* [backpack-tf](https://github.com/offish/backpack-tf)
+* [tf2-sku](https://github.com/offish/tf2-sku)
+* [tf2-data](https://github.com/offish/tf2-data)
+* [tf2-utils](https://github.com/offish/tf2-utils)
 
 ## Showcase
-![GUI Showcase](https://github.com/offish/tf2-express/assets/30203217/3093be18-412d-4852-a9a1-270f2e16f194)
-![tf2-express](https://github.com/offish/tf2-express/assets/30203217/c32d6c2e-b59d-4923-97e7-8ba7cf5f8640)
+![GUI Showcase](https://github.com/user-attachments/assets/06f61b55-06a2-4bd7-a575-9225d68d2396)
 
 ## Installation
-Full installation guide can be found on the [wiki](https://github.com/offish/tf2-express/wiki).
-
-If MongoDB is already installed, installation should be fairly straight forward.
+You need to have Python 3.10 or above installed.
 
 ```bash
 git clone git@github.com:offish/tf2-express.git
@@ -48,14 +51,8 @@ cd tf2-express
 pip install -r requirements.txt
 ```
 
-## Updating
-```bash
-# tf2-express/
-git pull
-pip install --upgrade -r requirements.txt
-# update packages like bptf, tf2-utils, tf2-data and tf2-sku
-# which the bot is dependant on
-```
+> [!NOTE]
+> You need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify/delete collections  manually.
 
 ## Setup
 > [!NOTE]
@@ -127,6 +124,15 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 
 > [!WARNING]
 > Do NOT share your logs or config files with anyone before removing sensitive information. This might leak your `API_KEY` and more.
+
+## Updating
+```bash
+# tf2-express/
+git pull
+pip install --upgrade -r requirements.txt
+# update packages like bptf, tf2-utils, tf2-data and tf2-sku
+# which the bot is dependant on
+```
 
 ## Explanation
 ### Random Craft Hats

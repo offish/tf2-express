@@ -1,7 +1,6 @@
 import logging
 
 import steam
-from tf2_utils import get_steam_id_from_trade_url, get_token_from_trade_url
 
 from .client import ExpressClient
 from .options import Options
@@ -13,7 +12,6 @@ class Express(ExpressClient):
 
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")
-
         logging.info("Fetched our inventory")
 
         await self.join_groups()
@@ -69,15 +67,6 @@ class Express(ExpressClient):
 
         if offer_id in self._processed_offers:
             del self._processed_offers[offer_id]
-
-    async def send_offer_by_trade_url(
-        self, trade_url: str, intent: str, sku: str
-    ) -> int:
-        steam_id = get_steam_id_from_trade_url(trade_url)
-        token = get_token_from_trade_url(trade_url)
-        partner = self.get_user(int(steam_id))
-
-        return await self.send_offer(partner, intent, sku, token)
 
     def start(
         self,

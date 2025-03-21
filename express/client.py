@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import time
 from threading import Thread
@@ -8,15 +9,20 @@ import steam
 from tf2_utils import (
     CurrencyExchange,
     Item,
-    PricesTFSocket,
+    PricesTFWebsocket,
     get_metal,
     get_sku,
+    get_steam_id_from_trade_url,
+    get_token_from_trade_url,
     is_metal,
     is_pure,
     refinedify,
     to_refined,
     to_scrap,
 )
+from websockets import connect
+from websockets.asyncio.connection import Connection
+from websockets.exceptions import ConnectionClosedError, InvalidStatus
 
 from .command import parse_command
 from .conversion import item_data_to_item_object, item_object_to_item_data
@@ -24,7 +30,6 @@ from .database import Database
 from .exceptions import NoKeyPrice
 from .inventory import ExpressInventory, get_first_non_pure_sku
 from .listing_manager import ListingManager
-from .offer import is_only_taking_items, is_two_sided_offer
 from .options import (
     COUNTER_OFFER_MESSAGE,
     FRIEND_ACCEPT_MESSAGE,
@@ -32,6 +37,7 @@ from .options import (
     SEND_OFFER_MESSAGE,
     Options,
 )
+from .utils import is_only_taking_items, is_two_sided_offer
 
 
 class ExpressClient(steam.Client):
@@ -39,10 +45,15 @@ class ExpressClient(steam.Client):
         self._is_ready = False
         self._prices_are_updated = False
         self._options = options
-        self._db = Database(options.database)
+        self._db = Database(options.username)
+        self._ws: Connection = None
 
         self._pricelist_count = 0
+        self._has_been_autopriced = set()
+        self._pending_offer_users = set()
         self._processed_offers = {}
+        self._users_in_queue = set()
+        self._pending_site_offers = {}
 
         self._set_defaults()
 
@@ -60,13 +71,13 @@ class ExpressClient(steam.Client):
         self._counter_offer_message = COUNTER_OFFER_MESSAGE
 
     def _set_pricer(self) -> None:
-        self._pricer = PricesTFSocket(self._on_price_update)
+        self._pricer = PricesTFWebsocket(self._on_price_update)
         prices_thread = Thread(target=self._pricer.listen, daemon=True)
         prices_thread.start()
 
         logging.info("Listening to PricesTF")
 
-        self._prices_tf = self._pricer.prices_tf
+        self._prices_tf = self._pricer._prices_tf
 
     def _on_price_update(self, data: dict) -> None:
         if data.get("type") != "PRICE_CHANGED":
@@ -82,12 +93,107 @@ class ExpressClient(steam.Client):
 
         # update database price
         self._db.update_autoprice(data)
+        self._has_been_autopriced.add(sku)
 
         if not self._options.use_backpack_tf:
             return
 
         # update listing price
         self._listing_manager.set_price_changed(sku)
+
+    async def _send_ws_message(self, data: dict) -> None:
+        message = json.dumps({"message": data})
+        await self._ws.send(message)
+
+    async def _on_incoming_site_trade(self, data: dict) -> None:
+        logging.info("Got incoming site trade")
+
+        message = data.get("message", {})
+
+        message_type = message.get("message_type")
+        asset_ids = message.get("asset_ids")
+        trade_url = message.get("trade_url")
+        steam_id = message.get("steam_id")
+        intent = message.get("intent")
+        intent = message.get("intent")
+
+        if message_type != "initalize_trade":
+            return
+
+        if steam_id in self._users_in_queue:
+            await self._send_ws_message(
+                {
+                    "success": False,
+                    "steam_id": steam_id,
+                    "message_type": "queue",
+                    "message": "You are already in the queue!",
+                }
+            )
+            return
+
+        self._users_in_queue.add(steam_id)
+
+        await self._send_ws_message(
+            {
+                "success": True,
+                "steam_id": steam_id,
+                "message_type": "queue",
+                "message": "Please wait while we process your offer!",
+            }
+        )
+
+        offer_id = await self.send_offer_by_trade_url(trade_url, intent, asset_ids)
+
+        if not offer_id:
+            self._users_in_queue.remove(steam_id)
+
+            await self._send_ws_message(
+                {
+                    "success": False,
+                    "steam_id": steam_id,
+                    "message_type": "trade",
+                    "message": "Could not send offer",
+                }
+            )
+            return
+
+        await self._send_ws_message(
+            {
+                "success": True,
+                "steam_id": steam_id,
+                "message_type": "trade",
+                "message": "Offer was sent",
+                "offer_id": offer_id,
+            }
+        )
+        self._pending_site_offers[str(offer_id)] = steam_id
+
+    async def _connect_to_site_ws(self, uri: str) -> None:
+        async with connect(uri) as websocket:
+            logging.info("Connected to websocket!")
+
+            self._ws = websocket
+
+            while True:
+                message = await websocket.recv()
+                data = json.loads(message)
+
+                await self._on_incoming_site_trade(data)
+
+    async def _listen_for_incoming_site_trades(self) -> None:
+        token = self._options.express_tf_token
+        uri = self._options.express_tf_uri + token
+
+        while True:
+            try:
+                await self._connect_to_site_ws(uri)
+            except (InvalidStatus, ConnectionClosedError, TimeoutError) as e:
+                logging.error(f"Error connecting to websocket: {e}")
+
+            await asyncio.sleep(5)
+
+    def _run_site_asyncio_in_thread(self) -> None:
+        asyncio.run(self._listen_for_incoming_site_trades())
 
     def _update_price(self, sku: str) -> None:
         price = self._prices_tf.get_price(sku)
@@ -101,11 +207,19 @@ class ExpressClient(steam.Client):
 
         self._prices_tf.request_access_token()
 
+        for sku in self._has_been_autopriced.copy():
+            if sku not in skus:
+                self._has_been_autopriced.remove(sku)
+
         # make this more efficient, fetch x pages and check for missing
         # if missing fetch the missing ones directly
         # should probably request price updates also
         for sku in skus:
+            if sku in self._has_been_autopriced:
+                continue
+
             self._update_price(sku)
+            self._has_been_autopriced.add(sku)
 
             if not self._options.use_backpack_tf:
                 continue
@@ -142,6 +256,8 @@ class ExpressClient(steam.Client):
 
         for item in receipt.received:
             item_data = item_object_to_item_data(item)
+            item_data["sku"] = get_sku(item_data)
+
             updated_inventory.append(item_data)
 
         self._inventory.set_our_inventory(updated_inventory)
@@ -343,7 +459,9 @@ class ExpressClient(steam.Client):
 
         if not currencies.is_possible():
             logging.warning("Currencies does not add up for trade")
-            await partner.send("Sorry, metal currencies did not add up")
+            await partner.send(
+                "Sorry, metal did not add up for this trade. Do you have enough metal?"
+            )
             return
 
         their_items, our_items = currencies.get_currencies()
@@ -409,6 +527,7 @@ class ExpressClient(steam.Client):
 
         if sku is None:
             logging.warning("Found no non-pure items to counter offer")
+            await trade.decline()
             return
 
         logging.info(f"Counter offering {sku} to {trade.user.name}...")
@@ -445,13 +564,13 @@ class ExpressClient(steam.Client):
             return
 
         # nothing on our side
-        if trade.is_gift():
+        if trade.is_gift() and self._options.accept_donations:
             logging.info("User is trying to give items")
             await trade.accept()
             return
 
         # decline trade holds
-        if await partner.escrow() is not None:
+        if await partner.escrow() is not None and self._options.decline_trade_hold:
             logging.info("User has a trade hold")
             await trade.decline()
             return
@@ -462,7 +581,6 @@ class ExpressClient(steam.Client):
         # only items on our side
         if is_only_taking_items(their_items_amount, our_items_amount):
             logging.info("User is trying to take items")
-
             await self._counter_offer(trade, our_items)
             return
 
@@ -508,9 +626,9 @@ class ExpressClient(steam.Client):
             await trade.accept()
             return
 
-        if self._options.decline_bad_offers:
-            logging.info("Declining offer...")
-            await trade.decline()
+        if self._options.counter_bad_offers:
+            logging.info("Counter offering...")
+            await self._counter_offer(trade, our_items)
             return
 
         logging.info("Ignoring offer as automatic decline is disabled")
@@ -549,6 +667,12 @@ class ExpressClient(steam.Client):
             pricelist_thread = Thread(target=self._pricelist_check, daemon=True)
             pricelist_thread.start()
 
+        if self._options.is_express_tf_bot:
+            incoming_trades_thread = Thread(
+                target=self._run_site_asyncio_in_thread, daemon=True
+            )
+            incoming_trades_thread.start()
+
         self._create_listings()
 
     async def join_groups(self) -> None:
@@ -584,7 +708,15 @@ class ExpressClient(steam.Client):
         intent = "buy" if intent == "sell" else "sell"
 
         await message.channel.send(f"Processing your trade for {amount}x {sku}...")
-        await self.send_offer(message.author, intent, sku)
+
+        if message.author.id64 in self._pending_offer_users:
+            await message.channel.send("You appear to have a pending offer already")
+            return
+
+        offer_id = await self.send_offer(message.author, intent, sku)
+
+        if offer_id:
+            self._pending_offer_users.add(message.author.id64)
 
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
         while not self._is_ready or not self._prices_are_updated:
@@ -621,22 +753,53 @@ class ExpressClient(steam.Client):
 
         return offer.id
 
+    async def send_offer_by_trade_url(
+        self, trade_url: str, intent: str, asset_ids: list[str]
+    ) -> int:
+        steam_id = get_steam_id_from_trade_url(trade_url)
+        token = get_token_from_trade_url(trade_url)
+        partner = self.get_user(int(steam_id))
+
+        # TODO: fix asset_ids
+        return await self.send_offer(partner, intent, asset_ids, token)
+
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
     ) -> None:
         while not self._is_ready:
             await asyncio.sleep(1)
 
-        logging.info(f"Offer #{trade.id} was {trade.state.name}")
+        offer_id = str(trade.id)
+        was_accepted = trade.state == steam.TradeOfferState.Accepted
 
-        if trade.state != steam.TradeOfferState.Accepted:
+        logging.info(f"Offer #{offer_id} was {trade.state.name}")
+
+        if offer_id in self._pending_site_offers:
+            steam_id = self._pending_site_offers[offer_id]
+            self._users_in_queue.remove(steam_id)
+
+            await self._send_ws_message(
+                {
+                    "success": was_accepted,
+                    "steam_id": steam_id,
+                    "message_type": "trade_status",
+                    "message": f"Offer was {trade.state.name}!",
+                }
+            )
+
+            del self._pending_site_offers[offer_id]
+
+        if trade.user.id64 in self._pending_offer_users:
+            self._pending_offer_users.remove(trade.user.id64)
+
+        if not was_accepted:
             return
 
         if trade.user.is_friend():
             await trade.user.send(self._offer_accepted_message)
 
         offer_data |= {
-            "offer_id": str(trade.id),
+            "offer_id": offer_id,
             "partner_id": str(trade.user.id64),
             "partner_name": trade.user.name,
             "message": trade.message,

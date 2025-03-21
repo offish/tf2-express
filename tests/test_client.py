@@ -2,10 +2,10 @@ from express.client import ExpressClient
 from express.options import Options
 
 options = Options(
+    username="express",
     owners=[1, 2, 3],
     use_backpack_tf=False,
     fetch_prices_on_startup=False,
-    database="express",
 )
 client = ExpressClient(options)
 
