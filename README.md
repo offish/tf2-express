@@ -61,9 +61,6 @@ pip install -r requirements.txt
 Example config:
 ```json
 {
-    "name": "tf2-express user",
-    "check_versions_on_startup": true,
-    "listen_to_pricer": true,
     "bots": [
         {
             "username": "username",
@@ -75,17 +72,14 @@ Example config:
                 "use_backpack_tf": true,
                 "backpack_tf_token": "token",
                 "enable_deals": false,
-                "inventory_provider": "steamcommunity or steamsupply or steamapis",
-                "inventory_api_key": "inventory api key or empty",
+                "inventory_provider": "steamsupply",
+                "inventory_api_key": "mySteamSupplyApiKey",
                 "fetch_prices_on_startup": true,
                 "accept_donations": true,
-                "decline_bad_offers": false,
                 "decline_trade_hold": true,
-                "decline_scam_offers": true,
                 "allow_craft_hats": false,
                 "save_trades": true,
                 "save_receipt": true,
-                "database": "mydatabasename",
                 "owners": [
                     "76511111111111111",
                     "76522222222222222"
@@ -102,8 +96,6 @@ Example config:
                 "use_backpack_tf": false,
                 "accept_donations": true,
                 "allow_craft_hats": true,
-                "save_trades": true,
-                "database": "bot2database"
             }
         }
     ]

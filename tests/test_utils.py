@@ -6,7 +6,15 @@ from express.utils import (
     is_only_taking_items,
     is_two_sided_offer,
     sku_to_item_data,
+    swap_intent,
 )
+
+
+def test_swap_intent() -> None:
+    assert swap_intent("sell") == "buy"
+    assert swap_intent("buy") == "sell"
+    assert swap_intent("Sell") == "buy"
+    assert swap_intent("Buy") == "sell"
 
 
 def test_is_only_taking_items() -> None:

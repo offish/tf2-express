@@ -33,8 +33,7 @@
             "options": {
                 "use_backpack_tf": false,
                 "accept_donations": true,
-                "allow_craft_hats": true,
-                "save_trades": true
+                "allow_craft_hats": true
             }
         }
     ]

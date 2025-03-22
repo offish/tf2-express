@@ -40,9 +40,6 @@ class ExpressInventory(Inventory):
             item_util = Item(item)
             sku = item["sku"]
 
-            if item["tradable"] is not True:
-                continue
-
             if item_util.is_craft_hat():
                 stock["-100;6"] += 1
 

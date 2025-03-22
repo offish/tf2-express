@@ -1,18 +1,20 @@
 import logging
-import os
 import sys
 
 from express.express import Express
 from express.options import Options
-from express.utils import ExpressFileFormatter, ExpressFormatter, get_config
+from express.utils import (
+    ExpressFileFormatter,
+    ExpressFormatter,
+    create_and_get_log_file,
+    get_config,
+)
 
 formatter = ExpressFormatter()
 stream_handler = logging.StreamHandler(sys.stdout)
 
-LOG_PATH = os.getcwd() + "/logs/"
-LOG_FILE = LOG_PATH + "express.log"
-
-file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+log_file = create_and_get_log_file()
+file_handler = logging.FileHandler(log_file, encoding="utf-8")
 
 logging.getLogger("steam").setLevel(logging.WARNING)
 logging.getLogger("pymongo").setLevel(logging.INFO)

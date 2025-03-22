@@ -37,7 +37,7 @@ from .options import (
     SEND_OFFER_MESSAGE,
     Options,
 )
-from .utils import is_only_taking_items, is_two_sided_offer
+from .utils import is_only_taking_items, is_two_sided_offer, swap_intent
 
 
 class ExpressClient(steam.Client):
@@ -105,6 +105,14 @@ class ExpressClient(steam.Client):
         message = json.dumps({"message": data})
         await self._ws.send(message)
 
+    def _add_user_to_queue(self, steam_id: str) -> None:
+        self._users_in_queue.add(steam_id)
+        logging.debug(f"Added user {steam_id} to queue")
+
+    def _remove_user_from_queue(self, steam_id: str) -> None:
+        self._users_in_queue.remove(steam_id)
+        logging.debug(f"Removed user {steam_id} from queue")
+
     async def _on_incoming_site_trade(self, data: dict) -> None:
         logging.info("Got incoming site trade")
 
@@ -118,9 +126,12 @@ class ExpressClient(steam.Client):
         intent = message.get("intent")
 
         if message_type != "initalize_trade":
+            logging.debug(f"Got {message_type=} for {message=}")
             return
 
         if steam_id in self._users_in_queue:
+            logging.debug(f"User {steam_id} is already in queue")
+
             await self._send_ws_message(
                 {
                     "success": False,
@@ -131,7 +142,7 @@ class ExpressClient(steam.Client):
             )
             return
 
-        self._users_in_queue.add(steam_id)
+        self._add_user_to_queue(steam_id)
 
         await self._send_ws_message(
             {
@@ -145,7 +156,8 @@ class ExpressClient(steam.Client):
         offer_id = await self.send_offer_by_trade_url(trade_url, intent, asset_ids)
 
         if not offer_id:
-            self._users_in_queue.remove(steam_id)
+            logging.warning(f"Could not send offer to {steam_id}")
+            self._remove_user_from_queue(steam_id)
 
             await self._send_ws_message(
                 {
@@ -417,6 +429,67 @@ class ExpressClient(steam.Client):
             logging.info("Pricelist has changed, updating prices and listings...")
             self._update_pricelist()
 
+    async def _create_offer_with_items(
+        self,
+        partner: steam.PartialUser,
+        their_items: list[dict],
+        our_items: list[dict],
+        token: str = None,
+        message: str = None,
+    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
+        offer_data = {}
+        their_value = 0
+        our_value = 0
+
+        logging.debug(f"{len(their_items)=} {len(our_items)=}")
+        logging.debug("Checking if values for offer is equal...")
+
+        for item in their_items:
+            sku = item["sku"]
+            scrap_price = self._get_scrap_price(sku, "buy")
+
+            logging.debug(f"{sku=} has {scrap_price=}")
+
+            their_value += scrap_price
+
+        for item in our_items:
+            sku = item["sku"]
+            scrap_price = self._get_scrap_price(sku, "sell")
+
+            logging.debug(f"{sku=} has {scrap_price=}")
+
+            our_value += scrap_price
+
+        if their_value != our_value:
+            logging.warning("Error, values in offer did not add up!")
+            await partner.send("Sorry, there was an error processing your offer")
+            return
+
+        logging.debug(f"Value for trade was equal {their_value=} {our_value=}")
+
+        offer_data["their_value"] = their_value
+        offer_data["our_value"] = our_value
+
+        our_items = [
+            item_data_to_item_object(self._state, self.user, item) for item in our_items
+        ]
+        their_items = [
+            item_data_to_item_object(self._state, partner, item) for item in their_items
+        ]
+
+        if message is None:
+            message = self._send_offer_message
+
+        return (
+            steam.TradeOffer(
+                message=message,
+                token=token,
+                sending=our_items,
+                receiving=their_items,
+            ),
+            offer_data,
+        )
+
     async def _create_offer(
         self,
         partner: steam.PartialUser,
@@ -427,9 +500,6 @@ class ExpressClient(steam.Client):
     ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
         partner_steam_id = partner.id64
         all_skus = self._db.get_skus()
-        offer_data = {}
-        their_value = 0
-        our_value = 0
 
         if sku not in all_skus:
             logging.warning(f"We are not banking {sku}!")
@@ -443,7 +513,7 @@ class ExpressClient(steam.Client):
             await partner.send(f"Sorry, I do not have a price for {sku}")
             return
 
-        key_price = self._get_key_scrap_price("buy" if intent == "sell" else "sell")
+        key_price = self._get_key_scrap_price(swap_intent(intent))
         keys, metal = self._db.get_price(sku, intent)
         scrap_price = key_price * keys + to_scrap(metal)
 
@@ -457,7 +527,7 @@ class ExpressClient(steam.Client):
         )
         currencies.calculate()
 
-        if not currencies.is_possible():
+        if not currencies.is_possible:
             logging.warning("Currencies does not add up for trade")
             await partner.send(
                 "Sorry, metal did not add up for this trade. Do you have enough metal?"
@@ -485,38 +555,93 @@ class ExpressClient(steam.Client):
             item = inventory.get_last_item_in_our_inventory(sku)
             our_items.append(item)
 
-        for item in their_items:
-            their_value += self._get_scrap_price(item["sku"], "buy")
+        return await self._create_offer_with_items(
+            partner, their_items, our_items, token, message
+        )
 
-        for item in our_items:
-            our_value += self._get_scrap_price(item["sku"], "sell")
+    async def _create_asset_ids_offer(
+        self,
+        partner: steam.PartialUser,
+        asset_ids: list[str],
+        intent: str,
+        token: str = None,
+        message: str = None,
+    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
+        partner_steam_id = str(partner.id64)
+        swapped_intent = swap_intent(intent)
+        all_skus = self._db.get_skus()
+        their_items = []
+        our_items = []
+        scrap_price = 0
 
-        if their_value != our_value:
-            logging.warning("Error, values in offer did not add up!")
-            await partner.send("Sorry, there was an error processing your offer")
+        logging.debug(f"Creating offer {partner_steam_id=} {intent=} {asset_ids=}")
+
+        inventory = self._get_inventory_instance()
+        our_inventory = inventory.set_our_inventory(self._inventory.our_inventory)
+        their_inventory = inventory.fetch_their_inventory(partner_steam_id)
+
+        asset_id_inventory = their_inventory if intent == "buy" else our_inventory
+        key_scrap_price = self._get_key_scrap_price(swapped_intent)
+
+        logging.debug(f"{key_scrap_price=} with {swapped_intent=}")
+
+        for item in asset_id_inventory:
+            asset_id = item["assetid"]
+
+            if asset_id not in asset_ids:
+                continue
+
+            logging.debug(f"Found {asset_id=} in inventory")
+
+            sku = item["sku"]
+
+            if sku not in all_skus:
+                logging.warning(f"We are not banking {sku}!")
+                return
+
+            if not self._db.has_price(sku):
+                logging.warning(f"Item {sku} does not have a price")
+                return
+
+            keys, metal = self._db.get_price(sku, intent)
+            scrap_price += key_scrap_price * keys + to_scrap(metal)
+
+            logging.debug(f"{sku=} has {intent} {scrap_price=}")
+
+            if intent == "buy":
+                their_items.append(item)
+                logging.debug(f"Added {sku} {asset_id=} to their items")
+            else:
+                our_items.append(item)
+                logging.debug(f"Added {sku} {asset_id=} to our items")
+
+        item_length = len(their_items) if intent == "buy" else len(our_items)
+
+        logging.debug(f"{item_length=} {asset_ids=}")
+
+        if item_length != len(asset_ids):
+            logging.warning("Not all items were added")
             return
 
-        offer_data["their_value"] = their_value
-        offer_data["our_value"] = our_value
+        currencies = CurrencyExchange(
+            their_inventory, our_inventory, intent, scrap_price, key_scrap_price
+        )
+        currencies.calculate()
 
-        our_items = [
-            item_data_to_item_object(self._state, self.user, item) for item in our_items
-        ]
-        their_items = [
-            item_data_to_item_object(self._state, partner, item) for item in their_items
-        ]
+        if not currencies.is_possible:
+            logging.warning("Currencies does not add up for trade")
+            return
 
-        if message is None:
-            message = self._send_offer_message
+        their_metal, our_metal = currencies.get_currencies()
+        logging.debug(
+            f"Currencies for trade adds up {len(their_metal)=} {len(our_metal)=}"
+        )
 
-        return (
-            steam.TradeOffer(
-                message=message,
-                token=token,
-                sending=our_items,
-                receiving=their_items,
-            ),
-            offer_data,
+        their_items += their_metal
+        our_items += our_metal
+
+        return await self._create_offer_with_items(
+            partner, their_items, our_items, token, message
         )
 
     async def _counter_offer(
@@ -705,7 +830,7 @@ class ExpressClient(steam.Client):
         logging.info(f"{message.author.name} wants to {intent} {amount}x of {sku}")
 
         # swap intents
-        intent = "buy" if intent == "sell" else "sell"
+        intent = swap_intent(intent)
 
         await message.channel.send(f"Processing your trade for {amount}x {sku}...")
 
@@ -753,6 +878,30 @@ class ExpressClient(steam.Client):
 
         return offer.id
 
+    async def send_asset_ids_offer(
+        self,
+        partner: steam.PartialUser,
+        intent: str,
+        asset_ids: list[str],
+        token: str = None,
+    ) -> int:
+        data = await self._create_asset_ids_offer(partner, asset_ids, intent, token)
+
+        if data is None:
+            return 0
+
+        offer, offer_data = data
+
+        logging.info(f"Sending offer to {partner.name}...")
+
+        await partner.send(trade=offer)
+
+        self._processed_offers[offer.id] = offer_data
+
+        logging.info(f"Sent offer for {asset_ids}")
+
+        return offer.id
+
     async def send_offer_by_trade_url(
         self, trade_url: str, intent: str, asset_ids: list[str]
     ) -> int:
@@ -760,8 +909,7 @@ class ExpressClient(steam.Client):
         token = get_token_from_trade_url(trade_url)
         partner = self.get_user(int(steam_id))
 
-        # TODO: fix asset_ids
-        return await self.send_offer(partner, intent, asset_ids, token)
+        return await self.send_asset_ids_offer(partner, intent, asset_ids, token)
 
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -769,14 +917,14 @@ class ExpressClient(steam.Client):
         while not self._is_ready:
             await asyncio.sleep(1)
 
+        steam_id = str(trade.user.id64)
         offer_id = str(trade.id)
         was_accepted = trade.state == steam.TradeOfferState.Accepted
 
-        logging.info(f"Offer #{offer_id} was {trade.state.name}")
+        logging.info(f"Offer #{offer_id} with {steam_id} was {trade.state.name}")
 
         if offer_id in self._pending_site_offers:
-            steam_id = self._pending_site_offers[offer_id]
-            self._users_in_queue.remove(steam_id)
+            self._remove_user_from_queue(steam_id)
 
             await self._send_ws_message(
                 {
@@ -813,5 +961,9 @@ class ExpressClient(steam.Client):
         self._db.insert_trade(offer_data)
         # await self._group.invite(trade.user)
 
+        logging.debug("Getting receipt...")
+
         receipt = await trade.receipt()
         self._update_inventory_with_receipt(receipt)
+
+        logging.debug("Inventory was updated after receipt")

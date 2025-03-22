@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -8,6 +9,20 @@ from tf2_utils import SchemaItemsUtils, sku_to_color
 from .exceptions import NoConfigFound
 
 schema_items_utils = SchemaItemsUtils()
+
+
+def create_and_get_log_file() -> Path:
+    current_date = datetime.today().strftime("%Y-%m-%d")
+    file_path = Path(__file__).parent / f"logs/express-{current_date}.logs"
+
+    if not file_path.exists():
+        file_path.touch()
+
+    return file_path
+
+
+def swap_intent(intent: str) -> str:
+    return "buy" if intent.lower() == "sell" else "sell"
 
 
 def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
