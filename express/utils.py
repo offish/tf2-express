@@ -13,7 +13,7 @@ schema_items_utils = SchemaItemsUtils()
 
 def create_and_get_log_file() -> Path:
     current_date = datetime.today().strftime("%Y-%m-%d")
-    file_path = Path(__file__).parent / f"logs/express-{current_date}.logs"
+    file_path = Path(__file__).parent.parent / f"logs/express-{current_date}.log"
 
     if not file_path.exists():
         file_path.touch()
