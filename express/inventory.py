@@ -1,4 +1,7 @@
-from tf2_utils import Inventory, Item, get_sku, is_pure, map_inventory
+import logging
+import time
+
+from tf2_utils import InvalidInventory, Inventory, Item, get_sku, is_pure, map_inventory
 
 
 class ExpressInventory(Inventory):
@@ -12,8 +15,15 @@ class ExpressInventory(Inventory):
         self.stock = {"-100;6": 0}
         super().__init__(provider_name, api_key)
 
-    def _fetch_inventory(self, steam_id: str) -> list[dict]:
-        return map_inventory(self.fetch(steam_id), add_skus=True, skip_untradable=True)
+    def _fetch_inventory(self, steam_id: str) -> list[dict] | None:
+        for i in range(3):
+            try:
+                return map_inventory(
+                    self.fetch(steam_id), add_skus=True, skip_untradable=True
+                )
+            except InvalidInventory:
+                logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
+                time.sleep(i * 2)
 
     def set_our_inventory(self, inventory: list[dict]) -> list[dict]:
         self.our_inventory = inventory

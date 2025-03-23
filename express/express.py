@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import steam
@@ -76,7 +77,7 @@ class Express(steam.Client):
             self.pricing_manager.listen_for_pricelist_changes()
 
         if self.options.is_express_tf_bot:
-            self.ws_manager.listen()
+            asyncio.create_task(self.ws_manager.listen())
 
         self.listing_manager.create_listings()
 

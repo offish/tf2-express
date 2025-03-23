@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-from threading import Thread
 from typing import TYPE_CHECKING
 
 from websockets import connect
@@ -16,7 +15,6 @@ class WebSocketManager:
         self.ws = None
         self.client = client
         self.options = client.options
-        self.trade_manager = client.trade_manager
 
         self._users_in_queue = set()
 
@@ -72,7 +70,7 @@ class WebSocketManager:
             }
         )
 
-        offer_id = await self.trade_manager.send_offer_by_trade_url(
+        offer_id = await self.client.trade_manager.send_offer_by_trade_url(
             trade_url, intent, asset_ids
         )
 
@@ -113,7 +111,7 @@ class WebSocketManager:
 
                 await self._on_incoming_site_trade(data)
 
-    async def _listen_for_incoming_site_trades(self) -> None:
+    async def listen(self) -> None:
         token = self.options.express_tf_token
         uri = self.options.express_tf_uri + token
 
@@ -124,12 +122,3 @@ class WebSocketManager:
                 logging.error(f"Error connecting to websocket: {e}")
 
             await asyncio.sleep(5)
-
-    def _run_site_asyncio_in_thread(self) -> None:
-        asyncio.run(self._listen_for_incoming_site_trades())
-
-    def listen(self) -> None:
-        incoming_trades_thread = Thread(
-            target=self._run_site_asyncio_in_thread, daemon=True
-        )
-        incoming_trades_thread.start()

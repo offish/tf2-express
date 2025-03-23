@@ -5,16 +5,12 @@ from threading import Thread
 from typing import TYPE_CHECKING
 
 from backpack_tf import BackpackTF
-from tf2_utils import get_metal, get_sku, is_metal, is_pure, to_scrap
+from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
 from .exceptions import ListingDoesNotExist, MissingBackpackTFToken
 
 if TYPE_CHECKING:
     from .express import Express
-
-
-def is_key(sku: str) -> bool:
-    return sku == "5021;6"
 
 
 class ListingManager:

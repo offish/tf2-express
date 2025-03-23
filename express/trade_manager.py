@@ -31,6 +31,7 @@ class TradeManager:
     def __init__(self, client: "Express") -> None:
         self.client = client
         self.pricing = client.pricing_manager
+        self.inventory_manager = client.inventory_manager
         self.db = client.database
         self.options = client.options
 
@@ -175,10 +176,8 @@ class TradeManager:
         scrap_price = key_price * keys + to_scrap(metal)
 
         # get fresh instance of inventory (stores both our and theirs)
-        inventory = self.client.inventory_manager.get_inventory_instance()
-        our_inventory = inventory.set_our_inventory(
-            self.client.inventory_manager.our_inventory
-        )
+        inventory = self.inventory_manager.get_inventory_instance()
+        our_inventory = self.inventory_manager.our_inventory
         their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
 
         currencies = CurrencyExchange(
@@ -235,10 +234,8 @@ class TradeManager:
 
         logging.debug(f"Creating offer {partner_steam_id=} {intent=} {asset_ids=}")
 
-        inventory = self.client.inventory_manager.get_inventory_instance()
-        our_inventory = inventory.set_our_inventory(
-            self.client.inventory_manager.our_inventory
-        )
+        inventory = self.inventory_manager.get_inventory_instance()
+        our_inventory = self.inventory_manager.our_inventory
         their_inventory = inventory.fetch_their_inventory(partner_steam_id)
 
         asset_id_inventory = their_inventory if intent == "buy" else our_inventory
@@ -470,7 +467,7 @@ class TradeManager:
         return offer_data
 
     async def send_offer(
-        self, partner: steam.PartialUser, intent: str, sku: str, token: str = None
+        self, partner: steam.User, intent: str, sku: str, token: str = None
     ) -> int:
         assert intent in ["buy", "sell"]
 
@@ -497,7 +494,7 @@ class TradeManager:
 
     async def send_asset_ids_offer(
         self,
-        partner: steam.PartialUser,
+        partner: steam.User,
         intent: str,
         asset_ids: list[str],
         token: str = None,
@@ -525,6 +522,8 @@ class TradeManager:
         steam_id = get_steam_id_from_trade_url(trade_url)
         token = get_token_from_trade_url(trade_url)
         partner = self.client.get_user(int(steam_id))
+
+        logging.debug(f"{partner.name} has {steam_id=} {token=}")
 
         return await self.send_asset_ids_offer(partner, intent, asset_ids, token)
 
