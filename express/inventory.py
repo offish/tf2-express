@@ -25,6 +25,8 @@ class ExpressInventory(Inventory):
                 logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
                 time.sleep(i * 2)
 
+        logging.warning(f"Failed to fetch inventory for {steam_id}")
+
     def set_our_inventory(self, inventory: list[dict]) -> list[dict]:
         self.our_inventory = inventory
         return self.our_inventory
@@ -45,6 +47,10 @@ class ExpressInventory(Inventory):
 
     def get_stock(self) -> dict[str, int]:
         stock = {"-100;6": 0}
+
+        if self.our_inventory is None:
+            logging.warning("Inventory was not fetched")
+            return stock
 
         for item in self.our_inventory:
             item_util = Item(item)

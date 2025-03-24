@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 from websockets import connect
 from websockets.exceptions import ConnectionClosedError, InvalidStatus
 
+from .utils import swap_intent
+
 if TYPE_CHECKING:
     from .express import Express
 
@@ -70,8 +72,9 @@ class WebSocketManager:
             }
         )
 
+        swapped_intent = swap_intent(intent)
         offer_id = await self.client.trade_manager.send_offer_by_trade_url(
-            trade_url, intent, asset_ids
+            trade_url, swapped_intent, asset_ids
         )
 
         if not offer_id:

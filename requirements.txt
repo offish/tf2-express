@@ -1,7 +1,7 @@
 tf2-sku~=2.0
-tf2-data~=0.4
-tf2-utils~=2.3
-bptf~=0.1
+tf2-data>=1.0.0
+tf2-utils>=2.3.0
+bptf>=0.1.0
 steamio~=1.1
 requests~=2.32
 pymongo~=4.11

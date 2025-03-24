@@ -38,7 +38,7 @@ class ChatManager:
             return
 
         offer_id = await self.client.trade_manager.send_offer(
-            message.author, intent, sku
+            message.author, intent, [sku], "sku"
         )
 
         if offer_id:

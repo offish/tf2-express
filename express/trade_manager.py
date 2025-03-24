@@ -35,7 +35,48 @@ class TradeManager:
         self.db = client.database
         self.options = client.options
 
-    def _valuate(
+    def _is_owner(self, partner_steam_id: int) -> bool:
+        return partner_steam_id in self.options.owners
+
+    def _surpasses_max_stock(self, their_items: list[dict]) -> bool:
+        in_offer = {"-100;6": 0}
+
+        for i in their_items:
+            item = Item(i)
+            sku = get_sku(item)
+
+            if item.is_craft_hat() and self.options.allow_craft_hats:
+                in_offer["-100;6"] += 1
+
+            if sku not in in_offer:
+                in_offer[sku] = 1
+                continue
+
+            in_offer[sku] += 1
+
+        for sku in in_offer:
+            # no max stock for pure items
+            if is_pure(sku):
+                continue
+
+            amount = in_offer[sku]
+
+            if amount == 0:
+                continue
+
+            # stock is updated every time a trade is completed
+            in_stock, max_stock = self.db.get_stock(sku)
+
+            # item does not have max_stock
+            if max_stock == -1:
+                continue
+
+            if in_stock + in_offer[sku] > max_stock:
+                return True
+
+        return False
+
+    def _valuate_items(
         self, items: list[dict], intent: str, all_skus: list[str]
     ) -> tuple[int, bool]:
         has_unpriced = False
@@ -85,20 +126,13 @@ class TradeManager:
         # total scrap
         return total, has_unpriced
 
-    async def _create_offer_with_items(
-        self,
-        partner: steam.PartialUser,
-        their_items: list[dict],
-        our_items: list[dict],
-        token: str = None,
-        message: str = None,
-    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
-        offer_data = {}
+    def _item_values_adds_up(
+        self, their_items: list[dict], our_items: list[dict]
+    ) -> tuple[bool, int, int]:
+        logging.debug("checking if values for offer is equal...")
+
         their_value = 0
         our_value = 0
-
-        logging.debug(f"{len(their_items)=} {len(our_items)=}")
-        logging.debug("Checking if values for offer is equal...")
 
         for item in their_items:
             sku = item["sku"]
@@ -116,9 +150,169 @@ class TradeManager:
 
             our_value += scrap_price
 
-        if their_value != our_value:
+        return (their_value == our_value, their_value, our_value)
+
+    async def _get_selected_items(
+        self,
+        partner: steam.User,
+        intent: str,
+        items: list[str],
+        item_type: str,
+        selected_inventory: list[dict],
+    ) -> tuple[bool, list[dict], int] | None:
+        is_friend = partner.is_friend()
+        swapped_intent = swap_intent(intent)
+        key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
+        all_skus = self.db.get_skus()
+
+        selected_items = []
+        total_scrap_price = 0
+        message = ""
+
+        logging.debug(f"{key_scrap_price=} with {swapped_intent=}")
+
+        selected_inventory.reverse()
+
+        for item in selected_inventory:
+            sku = item["sku"]
+            asset_id = item["assetid"]
+            item_identifier = sku if item_type == "sku" else asset_id
+
+            if item_identifier not in items:
+                continue
+
+            logging.debug(f"{item_identifier=} {sku=} {asset_id=}")
+
+            if sku not in all_skus:
+                logging.warning(f"We are not banking {sku}!")
+                message = f"Sorry, I'm not banking {sku}"
+                break
+
+            if not self.db.has_price(sku):
+                logging.warning(f"Item {sku} does not have a price")
+                message = f"Sorry, I do not have a price for {sku}"
+                break
+
+            keys, metal = self.db.get_price(sku, intent)
+            scrap_price = key_scrap_price * keys + to_scrap(metal)
+
+            logging.debug(f"{sku=} has {intent} {scrap_price=}")
+
+            total_scrap_price += scrap_price
+            selected_items.append(item)
+
+        logging.debug(f"{len(selected_items)=} {len(items)=}")
+
+        if not message and len(selected_items) != len(items):
+            logging.warning("Not all items were found")
+
+            if intent == "buy":
+                message = "Sorry, one or more items you requested has already been traded away"
+            else:
+                message = "Sorry, one or more items you requested was not found in your inventory"
+
+        logging.debug(f"{is_friend=} {message=}")
+
+        # if a message was set, an error occured
+        if message:
+            if is_friend:
+                await partner.send(message)
+
+            return
+
+        return (selected_items, total_scrap_price)
+
+    async def _get_offer_items(
+        self,
+        partner: steam.User,
+        intent: str,
+        items: list[str],
+        item_type: str,
+        their_inventory: list[dict],
+        our_inventory: list[dict],
+    ) -> tuple[list[dict], list[dict]] | None:
+        swapped_intent = swap_intent(intent)
+        selected_inventory = their_inventory if intent == "sell" else our_inventory
+
+        data = await self._get_selected_items(
+            partner, intent, items, item_type, selected_inventory
+        )
+
+        if data is None:
+            return
+
+        items_selected, total_scrap_price = data
+
+        if intent == "sell":
+            their_items = items_selected
+            our_items = []
+        else:
+            our_items = items_selected
+            their_items = []
+
+        key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
+
+        currencies = CurrencyExchange(
+            their_inventory, our_inventory, intent, total_scrap_price, key_scrap_price
+        )
+        currencies.calculate()
+
+        if not currencies.is_possible:
+            logging.warning("Currencies does not add up for trade")
+
+            if partner.is_friend():
+                await partner.send(
+                    "Sorry, metal did not add up for this trade. Do you have enough metal?"
+                )
+            return
+
+        their_metal, our_metal = currencies.get_currencies()
+
+        logging.debug(f"currencies adds up {len(their_metal)=} {len(our_metal)=}")
+
+        their_items += their_metal
+        our_items += our_metal
+
+        return (their_items, our_items)
+
+    async def _create_offer(
+        self,
+        partner: steam.User,
+        items: list[str],
+        item_type: str,
+        intent: str,
+        token: str = None,
+        message: str = None,
+    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
+        partner_steam_id = partner.id64
+        offer_data = {}
+
+        # get fresh instance of inventory (stores both our and theirs)
+        inventory = self.inventory_manager.get_inventory_instance()
+        our_inventory = self.inventory_manager.our_inventory
+        their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
+
+        data = await self._get_offer_items(
+            partner, intent, items, item_type, their_inventory, our_inventory
+        )
+
+        if data is None:
+            return
+
+        their_items, our_items = data
+
+        logging.debug(f"{len(their_items)=} {len(our_items)=}")
+
+        is_adding_up, their_value, our_value = self._item_values_adds_up(
+            their_items, our_items
+        )
+
+        if not is_adding_up:
             logging.warning("Error, values in offer did not add up!")
-            await partner.send("Sorry, there was an error processing your offer")
+
+            if partner.is_friend():
+                await partner.send("Sorry, there was an error processing your offer")
+
             return
 
         logging.debug(f"Value for trade was equal {their_value=} {our_value=}")
@@ -148,160 +342,6 @@ class TradeManager:
             offer_data,
         )
 
-    async def _create_offer(
-        self,
-        partner: steam.PartialUser,
-        sku: str,
-        intent: str,
-        token: str = None,
-        message: str = None,
-    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
-        partner_steam_id = partner.id64
-        all_skus = self.db.get_skus()
-
-        if sku not in all_skus:
-            logging.warning(f"We are not banking {sku}!")
-            await partner.send(f"Sorry, I'm not banking {sku}")
-            return
-
-        has_price = self.db.has_price(sku)
-
-        if not has_price:
-            logging.warning(f"Item {sku} does not have a price")
-            await partner.send(f"Sorry, I do not have a price for {sku}")
-            return
-
-        key_price = self.pricing.get_key_scrap_price(swap_intent(intent))
-        keys, metal = self.db.get_price(sku, intent)
-        scrap_price = key_price * keys + to_scrap(metal)
-
-        # get fresh instance of inventory (stores both our and theirs)
-        inventory = self.inventory_manager.get_inventory_instance()
-        our_inventory = self.inventory_manager.our_inventory
-        their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
-
-        currencies = CurrencyExchange(
-            their_inventory, our_inventory, intent, scrap_price, key_price
-        )
-        currencies.calculate()
-
-        if not currencies.is_possible:
-            logging.warning("Currencies does not add up for trade")
-            await partner.send(
-                "Sorry, metal did not add up for this trade. Do you have enough metal?"
-            )
-            return
-
-        their_items, our_items = currencies.get_currencies()
-
-        if intent == "buy":
-            if not inventory.has_sku_in_their_inventory(sku):
-                logging.info(f"User {partner.name} does not have {sku}")
-                await partner.send(
-                    f"Sorry, it appears you do not have this item ({sku})"
-                )
-                return
-
-            item = inventory.get_last_item_in_their_inventory(sku)
-            their_items.append(item)
-        else:
-            if not inventory.has_sku_in_our_inventory(sku):
-                logging.info(f"We do not have {sku}")
-                await partner.send(f"Sorry, I do not have this item ({sku})")
-                return
-
-            item = inventory.get_last_item_in_our_inventory(sku)
-            our_items.append(item)
-
-        return await self._create_offer_with_items(
-            partner, their_items, our_items, token, message
-        )
-
-    async def _create_asset_ids_offer(
-        self,
-        partner: steam.PartialUser,
-        asset_ids: list[str],
-        intent: str,
-        token: str = None,
-        message: str = None,
-    ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
-        partner_steam_id = str(partner.id64)
-        swapped_intent = swap_intent(intent)
-        all_skus = self.db.get_skus()
-        their_items = []
-        our_items = []
-        scrap_price = 0
-
-        logging.debug(f"Creating offer {partner_steam_id=} {intent=} {asset_ids=}")
-
-        inventory = self.inventory_manager.get_inventory_instance()
-        our_inventory = self.inventory_manager.our_inventory
-        their_inventory = inventory.fetch_their_inventory(partner_steam_id)
-
-        asset_id_inventory = their_inventory if intent == "buy" else our_inventory
-        key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
-
-        logging.debug(f"{key_scrap_price=} with {swapped_intent=}")
-
-        for item in asset_id_inventory:
-            asset_id = item["assetid"]
-
-            if asset_id not in asset_ids:
-                continue
-
-            logging.debug(f"Found {asset_id=} in inventory")
-
-            sku = item["sku"]
-
-            if sku not in all_skus:
-                logging.warning(f"We are not banking {sku}!")
-                return
-
-            if not self.db.has_price(sku):
-                logging.warning(f"Item {sku} does not have a price")
-                return
-
-            keys, metal = self.db.get_price(sku, intent)
-            scrap_price += key_scrap_price * keys + to_scrap(metal)
-
-            logging.debug(f"{sku=} has {intent} {scrap_price=}")
-
-            if intent == "buy":
-                their_items.append(item)
-                logging.debug(f"Added {sku} {asset_id=} to their items")
-            else:
-                our_items.append(item)
-                logging.debug(f"Added {sku} {asset_id=} to our items")
-
-        item_length = len(their_items) if intent == "buy" else len(our_items)
-
-        logging.debug(f"{item_length=} {asset_ids=}")
-
-        if item_length != len(asset_ids):
-            logging.warning("Not all items were added")
-            return
-
-        currencies = CurrencyExchange(
-            their_inventory, our_inventory, intent, scrap_price, key_scrap_price
-        )
-        currencies.calculate()
-
-        if not currencies.is_possible:
-            logging.warning("Currencies does not add up for trade")
-            return
-
-        their_metal, our_metal = currencies.get_currencies()
-        logging.debug(
-            f"Currencies for trade adds up {len(their_metal)=} {len(our_metal)=}"
-        )
-
-        their_items += their_metal
-        our_items += our_metal
-
-        return await self._create_offer_with_items(
-            partner, their_items, our_items, token, message
-        )
-
     async def _counter_offer(
         self, trade: steam.TradeOffer, our_items: list[dict]
     ) -> None:
@@ -316,7 +356,7 @@ class TradeManager:
         logging.info(f"Counter offering {sku} to {trade.user.name}...")
 
         data = await self._create_offer(
-            trade.user, sku, "sell", message=COUNTER_OFFER_MESSAGE
+            trade.user, [sku], "sku", "sell", message=COUNTER_OFFER_MESSAGE
         )
 
         if data is None:
@@ -328,47 +368,6 @@ class TradeManager:
         await trade.counter(offer)
 
         self.client.processed_offers[offer.id] = offer_data
-
-    def _is_owner(self, partner_steam_id: int) -> bool:
-        return partner_steam_id in self.options.owners
-
-    def _surpasses_max_stock(self, their_items: list[dict]) -> bool:
-        in_offer = {"-100;6": 0}
-
-        for i in their_items:
-            item = Item(i)
-            sku = get_sku(item)
-
-            if item.is_craft_hat() and self.options.allow_craft_hats:
-                in_offer["-100;6"] += 1
-
-            if sku not in in_offer:
-                in_offer[sku] = 1
-                continue
-
-            in_offer[sku] += 1
-
-        for sku in in_offer:
-            # no max stock for pure items
-            if is_pure(sku):
-                continue
-
-            amount = in_offer[sku]
-
-            if amount == 0:
-                continue
-
-            # stock is updated every time a trade is completed
-            in_stock, max_stock = self.db.get_stock(sku)
-
-            # item does not have max_stock
-            if max_stock == -1:
-                continue
-
-            if in_stock + in_offer[sku] > max_stock:
-                return True
-
-        return False
 
     async def _process_offer(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -422,10 +421,10 @@ class TradeManager:
         all_skus = self.db.get_skus()
 
         # we dont care about unpriced items on their side
-        their_value, _ = self._valuate(their_items, "buy", all_skus)
-        our_value, has_unpriced = self._valuate(our_items, "sell", all_skus)
-        # all prices are in scrap
+        their_value, _ = self._valuate_items(their_items, "buy", all_skus)
+        our_value, has_unpriced = self._valuate_items(our_items, "sell", all_skus)
 
+        # all prices are in scrap
         offer_data["their_value"] = their_value
         offer_data["our_value"] = our_value
 
@@ -467,14 +466,20 @@ class TradeManager:
         return offer_data
 
     async def send_offer(
-        self, partner: steam.User, intent: str, sku: str, token: str = None
+        self,
+        partner: steam.User,
+        intent: str,
+        items: list[str],
+        item_type: str,
+        token: str = None,
     ) -> int:
         assert intent in ["buy", "sell"]
+        assert item_type in ["sku", "asset_id"]
 
         while not self.client.bot_is_ready or not self.client.are_prices_updated:
             await asyncio.sleep(1)
 
-        data = await self._create_offer(partner, sku, intent, token)
+        data = await self._create_offer(partner, items, item_type, intent, token)
 
         if data is None:
             return 0
@@ -483,36 +488,14 @@ class TradeManager:
 
         logging.info(f"Sending offer to {partner.name}...")
 
-        await partner.send("Sending offer...")
-        await partner.send(trade=offer)
-
-        self.client.processed_offers[offer.id] = offer_data
-
-        logging.info(f"Sent offer for {sku}")
-
-        return offer.id
-
-    async def send_asset_ids_offer(
-        self,
-        partner: steam.User,
-        intent: str,
-        asset_ids: list[str],
-        token: str = None,
-    ) -> int:
-        data = await self._create_asset_ids_offer(partner, asset_ids, intent, token)
-
-        if data is None:
-            return 0
-
-        offer, offer_data = data
-
-        logging.info(f"Sending offer to {partner.name}...")
+        if partner.is_friend():
+            await partner.send("Sending offer...")
 
         await partner.send(trade=offer)
 
         self.client.processed_offers[offer.id] = offer_data
 
-        logging.info(f"Sent offer for {asset_ids}")
+        logging.info(f"Sent offer for {items} to {partner.name}")
 
         return offer.id
 
@@ -525,7 +508,7 @@ class TradeManager:
 
         logging.debug(f"{partner.name} has {steam_id=} {token=}")
 
-        return await self.send_asset_ids_offer(partner, intent, asset_ids, token)
+        return await self.send_offer(partner, intent, asset_ids, "asset_id", token)
 
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
