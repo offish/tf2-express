@@ -207,9 +207,9 @@ class TradeManager:
             logging.warning("Not all items were found")
 
             if intent == "buy":
-                message = "Sorry, one or more items you requested has already been traded away"
-            else:
                 message = "Sorry, one or more items you requested was not found in your inventory"
+            else:
+                message = "Sorry, one or more items you requested has already been traded away"
 
         logging.debug(f"{is_friend=} {message=}")
 
@@ -232,7 +232,7 @@ class TradeManager:
         our_inventory: list[dict],
     ) -> tuple[list[dict], list[dict]] | None:
         swapped_intent = swap_intent(intent)
-        selected_inventory = their_inventory if intent == "sell" else our_inventory
+        selected_inventory = their_inventory if intent == "buy" else our_inventory
 
         data = await self._get_selected_items(
             partner, intent, items, item_type, selected_inventory
@@ -243,7 +243,7 @@ class TradeManager:
 
         items_selected, total_scrap_price = data
 
-        if intent == "sell":
+        if intent == "buy":
             their_items = items_selected
             our_items = []
         else:
@@ -506,7 +506,7 @@ class TradeManager:
         token = get_token_from_trade_url(trade_url)
         partner = self.client.get_user(int(steam_id))
 
-        logging.debug(f"{partner.name} has {steam_id=} {token=}")
+        logging.debug(f"{partner.name} {intent=} has {steam_id=} {token=}")
 
         return await self.send_offer(partner, intent, asset_ids, "asset_id", token)
 
@@ -552,7 +552,7 @@ class TradeManager:
             "message": trade.message,
             "their_items": [item_object_to_item_data(i) for i in trade.receiving],
             "our_items": [item_object_to_item_data(i) for i in trade.sending],
-            "key_prices": self._get_key_prices(),
+            "key_prices": self.pricing._get_key_prices(),
             "state": trade.state.name.lower(),
             "timestamp": time.time(),
         }
