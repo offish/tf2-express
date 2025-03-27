@@ -545,13 +545,16 @@ class TradeManager:
         if trade.user.is_friend():
             await trade.user.send(OFFER_ACCEPTED_MESSAGE)
 
+        their_items = [item_object_to_item_data(i) for i in trade.receiving]
+        our_items = [item_object_to_item_data(i) for i in trade.sending]
+
         offer_data |= {
             "offer_id": offer_id,
             "partner_id": str(trade.user.id64),
             "partner_name": trade.user.name,
             "message": trade.message,
-            "their_items": [item_object_to_item_data(i) for i in trade.receiving],
-            "our_items": [item_object_to_item_data(i) for i in trade.sending],
+            "their_items": their_items,
+            "our_items": our_items,
             "key_prices": self.pricing._get_key_prices(),
             "state": trade.state.name.lower(),
             "timestamp": time.time(),
@@ -563,6 +566,8 @@ class TradeManager:
         logging.debug("Getting receipt...")
 
         receipt = await trade.receipt()
-        self.client.inventory_manager.update_inventory_with_receipt(receipt)
+        await self.client.inventory_manager.update_inventory_with_receipt(
+            their_items, our_items, receipt
+        )
 
         logging.debug("Inventory was updated after receipt")

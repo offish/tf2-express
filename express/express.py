@@ -66,12 +66,10 @@ class Express(steam.Client):
 
         # we are now ready (other events can now fire)
         self.bot_is_ready = True
-
-        if not self.options.use_backpack_tf:
-            return
-
         self.pricing_manager.listen()
-        self.listing_manager.listen()
+
+        if self.options.use_backpack_tf:
+            self.listing_manager.listen()
 
         if self.options.fetch_prices_on_startup:
             self.pricing_manager.listen_for_pricelist_changes()
@@ -79,7 +77,9 @@ class Express(steam.Client):
         if self.options.is_express_tf_bot:
             asyncio.create_task(self.ws_manager.listen())
 
-        self.listing_manager.create_listings()
+        # after prices are updated we can create listings
+        # if self.options.use_backpack_tf:
+        #     self.listing_manager.create_listings()
 
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")

@@ -21,6 +21,12 @@ def create_and_get_log_file() -> Path:
     return file_path
 
 
+def is_same_item(a: dict, b: dict) -> bool:
+    return int(a["instanceid"]) == int(b["instanceid"]) and int(a["classid"]) == int(
+        b["classid"]
+    )
+
+
 def swap_intent(intent: str) -> str:
     return "buy" if intent.lower() == "sell" else "sell"
 

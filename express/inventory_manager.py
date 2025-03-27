@@ -1,11 +1,11 @@
 import logging
 from typing import TYPE_CHECKING
 
-from steam import TradeOfferReceipt
+from steam import MovedItem, TradeOfferReceipt
 from tf2_utils import get_sku
 
-from .conversion import item_object_to_item_data
 from .inventory import ExpressInventory
+from .utils import is_same_item
 
 if TYPE_CHECKING:
     from .express import Express
@@ -22,6 +22,16 @@ class InventoryManager(ExpressInventory):
             self.options.inventory_api_key,
         )
 
+    @staticmethod
+    def _get_new_asset_id(item: dict, moved_items: list[MovedItem]) -> int:
+        for moved_item in moved_items:
+            if is_same_item(
+                item,
+                {"instanceid": moved_item.instance_id, "classid": moved_item.class_id},
+            ):
+                return moved_item.new_id
+        return -1
+
     def get_inventory_instance(self) -> ExpressInventory:
         return ExpressInventory(
             str(self.client.user.id64),
@@ -29,35 +39,42 @@ class InventoryManager(ExpressInventory):
             self.options.inventory_api_key,
         )
 
-    def update_inventory_with_receipt(self, receipt: TradeOfferReceipt) -> None:
+    async def update_inventory_with_receipt(
+        self, their_items: list[dict], our_items: list[dict], receipt: TradeOfferReceipt
+    ) -> None:
+        logging.debug(f"{receipt=}")
         updated_inventory = self.our_inventory.copy()
 
-        for item in receipt.sent:
-            item_data = item_object_to_item_data(item)
-
-            for i in updated_inventory.copy():
-                if (
-                    i["instanceid"] != item_data["instanceid"]
-                    or i["classid"] != item_data["classid"]
-                    or i["market_hash_name"] != item_data["market_hash_name"]
-                ):
+        for item in our_items:
+            for old_item in updated_inventory.copy():
+                if not is_same_item(item, old_item):
                     continue
 
-                del updated_inventory[i]
+                logging.debug(f"{old_item=}")
+
+                index = updated_inventory.index(old_item)
+                del updated_inventory[index]
+
+                logging.debug(f"removed from inventory {index=}")
                 break
 
-        for item in receipt.received:
-            item_data = item_object_to_item_data(item)
-            item_data["sku"] = get_sku(item_data)
+        for item in their_items:
+            asset_id = self._get_new_asset_id(item, receipt.received)
+            sku = get_sku(item)
 
-            updated_inventory.append(item_data)
+            logging.debug(f"{item=}")
+            logging.debug(f"{sku=}")
+            logging.debug(f"{asset_id=}")
+
+            item["sku"] = get_sku(item)
+            item["assetid"] = str(asset_id)
+
+            updated_inventory.append(item)
 
         self.set_our_inventory(updated_inventory)
 
         logging.info("Our inventory was updated")
 
-        if not self.options.use_backpack_tf:
-            return
-
         # notify listing manager inventory has changed (stock needs to be updated)
-        self.client.listing_manager.set_inventory_changed()
+        if self.options.use_backpack_tf:
+            self.client.listing_manager.set_inventory_changed()
