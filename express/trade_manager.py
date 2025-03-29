@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import steam
@@ -34,6 +35,14 @@ class TradeManager:
         self.inventory_manager = client.inventory_manager
         self.db = client.database
         self.options = client.options
+
+    @staticmethod
+    def _is_offer_active(trade: steam.TradeOffer) -> bool:
+        try:
+            trade._check_active()
+            return True
+        except ValueError:
+            return False
 
     def _is_owner(self, partner_steam_id: int) -> bool:
         return partner_steam_id in self.options.owners
@@ -456,6 +465,32 @@ class TradeManager:
 
         logging.info("Ignoring offer as automatic decline is disabled")
 
+    async def _check_stale_offer(self, trade: steam.TradeOffer) -> None:
+        if not trade.is_our_offer():
+            return
+
+        if not self._is_offer_active(trade):
+            return
+
+        updated = trade.updated_at
+
+        if updated is None:
+            return
+
+        delta = datetime.now(timezone.utc) - updated
+        delta_seconds = delta.total_seconds()
+        expire_time = self.options.expire_sent_offers_after
+
+        logging.debug(f"Offer #{trade.id} was updated {delta_seconds} seconds ago")
+
+        if delta_seconds < expire_time:
+            logging.debug(f"Offer #{trade.id} is not stale")
+            return
+
+        logging.debug(f"Offer #{trade.id} is stale, cancelling...")
+        await trade.cancel()
+        logging.info(f"Cancelled stale offer #{trade.id} to {trade.user.name}")
+
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
         while not self.client.bot_is_ready or not self.client.are_prices_updated:
             await asyncio.sleep(1)
@@ -530,6 +565,7 @@ class TradeManager:
                     "success": was_accepted,
                     "steam_id": steam_id,
                     "message_type": "trade_status",
+                    "offer_state": trade.state.name.lower(),
                     "message": f"Offer was {trade.state.name}!",
                 }
             )
@@ -571,3 +607,13 @@ class TradeManager:
         )
 
         logging.debug("Inventory was updated after receipt")
+
+    async def decline_our_stale_offers(self) -> None:
+        while True:
+            logging.debug("Checking for stale offers...")
+            trades = self.client.trades
+
+            for trade in trades:
+                await self._check_stale_offer(trade)
+
+            await asyncio.sleep(15)

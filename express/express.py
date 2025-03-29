@@ -77,6 +77,9 @@ class Express(steam.Client):
         if self.options.is_express_tf_bot:
             asyncio.create_task(self.ws_manager.listen())
 
+        if self.options.expire_sent_offers:
+            asyncio.create_task(self.trade_manager.decline_our_stale_offers())
+
         # after prices are updated we can create listings
         # if self.options.use_backpack_tf:
         #     self.listing_manager.create_listings()
