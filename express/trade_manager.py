@@ -145,6 +145,14 @@ class TradeManager:
 
         for item in their_items:
             sku = item["sku"]
+
+            if (
+                not self.db.has_price(sku)
+                and Item(item).is_craft_hat()
+                and self.options.allow_craft_hats
+            ):
+                sku = "-100;6"
+
             scrap_price = self.pricing.get_scrap_price(sku, "buy")
 
             logging.debug(f"{sku=} has {scrap_price=}")
@@ -153,6 +161,14 @@ class TradeManager:
 
         for item in our_items:
             sku = item["sku"]
+
+            if (
+                not self.db.has_price(sku)
+                and Item(item).is_craft_hat()
+                and self.options.allow_craft_hats
+            ):
+                sku = "-100;6"
+
             scrap_price = self.pricing.get_scrap_price(sku, "sell")
 
             logging.debug(f"{sku=} has {scrap_price=}")
@@ -190,7 +206,15 @@ class TradeManager:
             if item_identifier not in items:
                 continue
 
-            logging.debug(f"{item_identifier=} {sku=} {asset_id=}")
+            is_craft_hat = Item(item).is_craft_hat()
+            logging.debug(f"{item_identifier=} {sku=} {asset_id=} {is_craft_hat=}")
+
+            if (
+                not self.db.has_price(sku)
+                and is_craft_hat
+                and self.options.allow_craft_hats
+            ):
+                sku = "-100;6"
 
             if sku not in all_skus:
                 logging.warning(f"We are not banking {sku}!")

@@ -103,7 +103,7 @@ class Database:
         item = self.items.find_one({"sku": sku})
 
         if item is None:
-            logging.warning(f"{sku} not found in database, returning empty dict")
+            logging.debug(f"{sku} not found in database")
             return {}
 
         return item
