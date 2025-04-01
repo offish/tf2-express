@@ -1,6 +1,6 @@
 from typing import Any
 
-from steam.protobufs import econ
+from steam.protobufs.econ import Asset, ItemDescription
 from steam.state import ConnectionState
 from steam.trade import Item, MovedItem
 from steam.user import User
@@ -35,8 +35,8 @@ def item_data_to_item_object(
         "marketable": item_data["marketable"],
     }
 
-    asset = econ.Asset(**asset_item_data)
-    description = econ.ItemDescription(**description_item_data)
+    asset = Asset(**asset_item_data)
+    description = ItemDescription(**description_item_data)
 
     return Item(state=state, asset=asset, description=description, owner=owner)
 

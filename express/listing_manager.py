@@ -301,5 +301,7 @@ class ListingManager:
 
     def __del__(self):
         self._bptf.delete_all_listings()
+        logging.info("Deleted all listings")
         self._listings.clear()
         self._bptf.stop_user_agent()
+        logging.info("Stopped Backpack.TF user agent")

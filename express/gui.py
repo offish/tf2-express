@@ -1,18 +1,12 @@
 import time
 from datetime import datetime
 
-from backpack_tf import __version__ as backpack_tf_version
 from flask import Request, render_template
-from steam import __version__ as steam_py_version
 from tf2_data import COLORS
-from tf2_data import __version__ as tf2_data_version
-from tf2_sku import __version__ as tf2_sku_version
 from tf2_utils import Item, SchemaItemsUtils, is_sku, to_refined
-from tf2_utils import __version__ as tf2_utils_version
 
-from . import __version__
 from .database import Database
-from .utils import get_config, sku_to_item_data
+from .utils import get_config, get_versions, sku_to_item_data
 
 
 class Panel:
@@ -91,12 +85,7 @@ class Panel:
             "home",
             database_name,
             name=database_name,
-            tf2_express_version=__version__,
-            tf2_utils_version=tf2_utils_version,
-            tf2_data_version=tf2_data_version,
-            tf2_sku_version=tf2_sku_version,
-            steam_py_version=steam_py_version,
-            backpack_tf_version=backpack_tf_version,
+            **get_versions(),
         )
 
     def get_trades(self, request: Request) -> str:

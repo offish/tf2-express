@@ -44,8 +44,19 @@ class TradeManager:
         except ValueError:
             return False
 
-    def _is_owner(self, partner_steam_id: int) -> bool:
-        return partner_steam_id in self.options.owners
+    def _get_sku(self, item: dict[str, Any]) -> str:
+        sku = item["sku"]
+
+        # if item does not have a price, but is a craft hat
+        # use the craft hat sku instead
+        if (
+            not self.db.has_price(sku)
+            and Item(item).is_craft_hat()
+            and self.options.allow_craft_hats
+        ):
+            sku = "-100;6"
+
+        return sku
 
     def _surpasses_max_stock(self, their_items: list[dict]) -> bool:
         in_offer = {"-100;6": 0}
@@ -144,15 +155,7 @@ class TradeManager:
         our_value = 0
 
         for item in their_items:
-            sku = item["sku"]
-
-            if (
-                not self.db.has_price(sku)
-                and Item(item).is_craft_hat()
-                and self.options.allow_craft_hats
-            ):
-                sku = "-100;6"
-
+            sku = self._get_sku(item)
             scrap_price = self.pricing.get_scrap_price(sku, "buy")
 
             logging.debug(f"{sku=} has {scrap_price=}")
@@ -160,15 +163,7 @@ class TradeManager:
             their_value += scrap_price
 
         for item in our_items:
-            sku = item["sku"]
-
-            if (
-                not self.db.has_price(sku)
-                and Item(item).is_craft_hat()
-                and self.options.allow_craft_hats
-            ):
-                sku = "-100;6"
-
+            sku = self._get_sku(item)
             scrap_price = self.pricing.get_scrap_price(sku, "sell")
 
             logging.debug(f"{sku=} has {scrap_price=}")
@@ -199,22 +194,14 @@ class TradeManager:
         selected_inventory.reverse()
 
         for item in selected_inventory:
-            sku = item["sku"]
             asset_id = item["assetid"]
-            item_identifier = sku if item_type == "sku" else asset_id
+            item_identifier = item["sku"] if item_type == "sku" else asset_id
 
             if item_identifier not in items:
                 continue
 
-            is_craft_hat = Item(item).is_craft_hat()
-            logging.debug(f"{item_identifier=} {sku=} {asset_id=} {is_craft_hat=}")
-
-            if (
-                not self.db.has_price(sku)
-                and is_craft_hat
-                and self.options.allow_craft_hats
-            ):
-                sku = "-100;6"
+            sku = self._get_sku(item)
+            logging.debug(f"{item_identifier=} as {sku=} {asset_id=}")
 
             if sku not in all_skus:
                 logging.warning(f"We are not banking {sku}!")
@@ -247,13 +234,11 @@ class TradeManager:
         logging.debug(f"{is_friend=} {message=}")
 
         # if a message was set, an error occured
-        if message:
-            if is_friend:
-                await partner.send(message)
+        if not message:
+            return (selected_items, total_scrap_price)
 
-            return
-
-        return (selected_items, total_scrap_price)
+        if is_friend:
+            await partner.send(message)
 
     async def _get_offer_items(
         self,
@@ -414,7 +399,7 @@ class TradeManager:
         logging.info(f"Offer contains {items_amount} item(s)")
 
         # is owner
-        if self._is_owner(partner.id64):
+        if partner.id64 in self.options.owners:
             logging.info("Offer is from owner")
             await trade.accept()
             return
@@ -505,15 +490,15 @@ class TradeManager:
         delta_seconds = delta.total_seconds()
         expire_time = self.options.expire_sent_offers_after
 
-        logging.debug(f"Offer #{trade.id} was updated {delta_seconds} seconds ago")
+        logging.debug(f"{trade.id=} updated {delta_seconds=} ago {expire_time=}")
 
         if delta_seconds < expire_time:
-            logging.debug(f"Offer #{trade.id} is not stale")
+            logging.debug(f"{trade.id=} not stale")
             return
 
-        logging.debug(f"Offer #{trade.id} is stale, cancelling...")
+        logging.debug(f"canceling {trade.id=} as it is stale")
         await trade.cancel()
-        logging.info(f"Cancelled stale offer #{trade.id} to {trade.user.name}")
+        logging.info(f"Stale offer #{trade.id} was canceled")
 
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
         while not self.client.bot_is_ready or not self.client.are_prices_updated:
@@ -635,9 +620,8 @@ class TradeManager:
     async def decline_our_stale_offers(self) -> None:
         while True:
             logging.debug("Checking for stale offers...")
-            trades = self.client.trades
 
-            for trade in trades:
+            for trade in self.client.trades:
                 await self._check_stale_offer(trade)
 
             await asyncio.sleep(15)

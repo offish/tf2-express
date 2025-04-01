@@ -102,6 +102,9 @@ Example config:
 }
 ```
 
+> [!NOTE]
+> As of v3.0.0 tf2-express only supports running one bot instance at a time. It will use the first entry in `bots` in the config.
+
 ## Running
 ```bash
 # tf2-express/

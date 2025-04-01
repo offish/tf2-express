@@ -4,8 +4,14 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+from backpack_tf import __version__ as backpack_tf_version
+from steam import __version__ as steam_py_version
+from tf2_data import __version__ as tf2_data_version
+from tf2_sku import __version__ as tf2_sku_version
 from tf2_utils import SchemaItemsUtils, sku_to_color
+from tf2_utils import __version__ as tf2_utils_version
 
+from . import __version__ as tf2_express_version
 from .exceptions import NoConfigFound
 
 schema_items_utils = SchemaItemsUtils()
@@ -75,6 +81,11 @@ def get_config() -> dict:
     return read_json_file(path)
 
 
+def get_bot_config() -> dict:
+    # only one bot is supported for now
+    return get_config().get("bots", [])[0]
+
+
 def get_version(repository: str, folder: str) -> str:
     url = "https://raw.githubusercontent.com/offish/{}/master/{}/__init__.py".format(
         repository, folder
@@ -89,6 +100,54 @@ def get_version(repository: str, folder: str) -> str:
 
     # get rid of first "
     return data[start_quotation_mark:end_quotation_mark]
+
+
+def get_versions() -> dict[str, str]:
+    return {
+        "tf2_express_version": tf2_express_version,
+        "tf2_data_version": tf2_data_version,
+        "tf2_sku_version": tf2_sku_version,
+        "tf2_utils_version": tf2_utils_version,
+        "backpack_tf_version": backpack_tf_version,
+        "steam_py_version": steam_py_version,
+    }
+
+
+def get_newest_versions() -> dict[str, str]:
+    return {
+        "tf2_express_version": get_version("tf2-express", "express"),
+        "tf2_data_version": get_version("tf2-data", "src/tf2_data"),
+        "tf2_sku_version": get_version("tf2-sku", "src/tf2_sku"),
+        "tf2_utils_version": get_version("tf2-utils", "src/tf2_utils"),
+        "backpack_tf_version": get_version("backpack-tf", "src/backpack_tf"),
+    }
+
+
+def check_for_updates() -> None:
+    logging.info("Checking for updates...")
+
+    current_versions = get_versions()
+    newest_versions = get_newest_versions()
+    has_outdated = False
+
+    for key in current_versions:
+        if key not in newest_versions:
+            continue
+
+        current_version = current_versions[key]
+        newest_version = newest_versions[key]
+
+        if current_version != newest_version:
+            has_outdated = True
+            name = key.replace("_version", "").replace("_", "-")
+
+            logging.warning(f"{name} has a new version. You might want to upgrade.")
+            logging.warning(
+                f"Installed version: {current_version}, available: {newest_version}"
+            )
+
+    if not has_outdated:
+        logging.info("All packages are up to date!")
 
 
 class ExpressFormatter(logging.Formatter):

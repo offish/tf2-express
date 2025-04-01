@@ -3,7 +3,7 @@ import time
 from typing import Any
 
 from pymongo import MongoClient
-from tf2_utils import is_pure, refinedify
+from tf2_utils import is_metal, is_pure
 
 from .exceptions import SKUNotFound
 from .utils import sku_to_item_data
@@ -66,7 +66,7 @@ class Database:
         }
 
     def get_price(self, sku: str, intent: str) -> tuple[int, float]:
-        # metals does not exist in the database
+        # metals does not exist in the database, but has value
         if sku == "5002;6":
             return 0, 1.0
 
@@ -80,14 +80,13 @@ class Database:
 
         # item does not exist in db or does not have a price
         if not item_price or not has_buy_and_sell_price(item_price):
-            return (0, 0.0)
+            return 0, 0.0
 
         price = item_price[intent]
-
         keys = price.get("keys", 0)
         metal = price.get("metal", 0.0)
 
-        return (keys, metal)
+        return keys, metal
 
     def get_skus(self) -> list[str]:
         return [item["sku"] for item in self.items.find()]
@@ -121,7 +120,7 @@ class Database:
 
     def replace_item(self, data: dict) -> None:
         sku = data["sku"]
-        # del data["_id"]
+
         logging.debug(f"Updating {sku} with {data=}")
         self.items.replace_one({"sku": sku}, data)
 
@@ -158,55 +157,29 @@ class Database:
         buy: dict = {},
         sell: dict = {},
     ) -> None:
+        if is_metal(sku):
+            logging.warning(f"cannot add metal {sku} to database")
+            return
+
         if sku in self.get_skus():
-            logging.warning(f"{sku} already exists in the database")
+            logging.warning(f"{sku} already exists in database")
             return
 
-        self.items.insert_one(
-            {
-                "sku": sku,
-                "name": name,
-                "buy": buy,
-                "sell": sell,
-                "autoprice": autoprice,
-                "temporary": temporary,  # delete price after we have sold
-                "in_stock": in_stock,
-                "max_stock": max_stock,
-                "color": color,
-                "image": image,
-            }
-        )
+        document = {
+            "sku": sku,
+            "name": name,
+            "buy": buy,
+            "sell": sell,
+            "autoprice": autoprice,
+            "temporary": temporary,  # delete price after we have sold
+            "in_stock": in_stock,
+            "max_stock": max_stock,
+            "color": color,
+            "image": image,
+        }
 
-        if buy or sell:
-            logging.info(f"Added {sku} to the database with {buy=} and {sell=}")
-            return
-
-        logging.info(f"Added {sku} to the database")
-
-    def add_price(
-        self,
-        sku: str,
-        color: str,
-        image: str,
-        name: str,
-        buy: dict,
-        sell: dict,
-        in_stock: int = 0,
-        max_stock: int = 1,
-        temporary: bool = True,
-    ) -> None:
-        self.add_item(
-            sku,
-            color,
-            image,
-            name,
-            buy=buy,
-            sell=sell,
-            autoprice=False,
-            in_stock=in_stock,
-            max_stock=max_stock,
-            temporary=temporary,
-        )
+        self.items.insert_one(document)
+        logging.info(f"Added {sku} to database")
 
     def update_price(
         self,
@@ -216,6 +189,9 @@ class Database:
         autoprice: bool = False,
         max_stock: int = -1,
     ) -> None:
+        assert "keys" in buy and "metal" in buy, "Buy price must have keys and metal"
+        assert "keys" in sell and "metal" in sell, "Sell price must have keys and metal"
+
         data = self.get_item(sku)
 
         if not data:
@@ -234,19 +210,7 @@ class Database:
         logging.info(f"Updated price for {sku}")
 
     def update_autoprice(self, data: dict) -> None:
-        sku = data["sku"]
-        buy_keys = data.get("buyKeys", 0)
-        # will have many decimals e.g. 2.2222223 if we dont refinedify
-        buy_metal = refinedify(data.get("buyHalfScrap", 0.0) / 18)
-        sell_keys = data.get("sellKeys", 0)
-        sell_metal = refinedify(data.get("sellHalfScrap", 0.0) / 18)
-
-        self.update_price(
-            sku,
-            {"metal": buy_metal, "keys": buy_keys},
-            {"metal": sell_metal, "keys": sell_keys},
-            True,
-        )
+        self.update_price(data["sku"], data["buy"], data["sell"], True)
 
     def delete_price(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})

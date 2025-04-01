@@ -6,8 +6,9 @@ from express.options import Options
 from express.utils import (
     ExpressFileFormatter,
     ExpressFormatter,
+    check_for_updates,
     create_and_get_log_file,
-    get_config,
+    get_bot_config,
 )
 
 formatter = ExpressFormatter()
@@ -32,11 +33,13 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 
 def main() -> None:
-    config = get_config()["bots"][0]
+    config = get_bot_config()
     options = Options(username=config["username"], **config["options"])
     express = Express(options)
     express.start(**config)
 
 
 if __name__ == "__main__":
+    logging.info("Starting tf2-express...")
+    check_for_updates()
     main()

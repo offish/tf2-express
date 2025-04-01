@@ -104,7 +104,7 @@ class WebSocketManager:
 
     async def _connect_to_site_ws(self, uri: str) -> None:
         async with connect(uri) as websocket:
-            logging.info("Connected to websocket!")
+            logging.info("Connected to Site WebSocket!")
 
             self._ws = websocket
 
@@ -121,7 +121,12 @@ class WebSocketManager:
         while True:
             try:
                 await self._connect_to_site_ws(uri)
-            except (InvalidStatus, ConnectionClosedError, TimeoutError) as e:
+            except (
+                InvalidStatus,
+                ConnectionRefusedError,
+                ConnectionClosedError,
+                TimeoutError,
+            ) as e:
                 logging.error(f"Error connecting to websocket: {e}")
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(60)

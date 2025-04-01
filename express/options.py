@@ -13,6 +13,7 @@ class Options:
     username: str
     use_backpack_tf: bool
     backpack_tf_token: str = ""
+    pricing_provider: str = "pricestf"  # pricestf or bptfautopricer
     inventory_provider: str = "steamcommunity"  # steamsupply, expressload, etc.
     inventory_api_key: str = ""  # api key for the inventory provider
     fetch_prices_on_startup: bool = True
