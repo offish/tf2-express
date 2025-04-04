@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 class WebSocketManager:
     def __init__(self, client: "Express") -> None:
-        self.ws = None
         self.client = client
         self.options = client.options
 
+        self.ws = None
         self._users_in_queue = set()
 
     def add_user_to_queue(self, steam_id: str) -> None:

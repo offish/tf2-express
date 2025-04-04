@@ -1,11 +1,12 @@
 import asyncio
 import logging
+import time
 from typing import TYPE_CHECKING
 
 from tf2_utils.utils import to_scrap
 
 from .exceptions import NoKeyPrice
-from .pricing.pricing_providers import get_pricing_provider
+from .pricers.pricing_providers import get_pricing_provider
 
 if TYPE_CHECKING:
     from .express import Express
@@ -31,8 +32,7 @@ class PricingManager:
         self._pricelist_count = self.db.get_pricelist_count()
 
     def _get_key_prices(self) -> dict:
-        data = self.db.get_item("5021;6")
-        return {"buy": data["buy"], "sell": data["sell"]}
+        return self.db.get_item("5021;6")
 
     def get_key_scrap_price(self, intent: str) -> int:
         price = self._get_key_prices().get(intent)
@@ -45,7 +45,7 @@ class PricingManager:
     def get_scrap_price(self, sku: str, intent: str) -> int:
         key_price = self.get_key_scrap_price(intent)
         keys, metal = self.db.get_price(sku, intent)
-        return key_price * keys + to_scrap(metal)
+        return keys * key_price + to_scrap(metal)
 
     def _on_price_update(self, data: dict) -> None:
         if data.get("type") != "PRICE_CHANGED":
@@ -56,7 +56,7 @@ class PricingManager:
 
         sku = data["data"]["sku"]
 
-        if sku not in self.db.get_autopriced():
+        if sku not in self.db.get_autopriced_skus():
             return
 
         # update database price
@@ -74,7 +74,13 @@ class PricingManager:
         self.db.update_autoprice(price)
 
     def _update_autopriced_items(self) -> None:
-        skus = self.db.get_autopriced()
+        logging.info("Updating autopriced items...")
+
+        skus = [
+            item["sku"]
+            for item in self.db.get_autopriced()
+            if item.get("updated", 0) + self.options.max_price_age_seconds < time.time()
+        ]
 
         if self.options.use_backpack_tf:
             self.listing_manager.delete_inactive_listings(skus)
@@ -83,14 +89,15 @@ class PricingManager:
             if sku not in skus:
                 self._has_been_autopriced.remove(sku)
 
-        # make this more efficient, fetch x pages and check for missing
-        # if missing fetch the missing ones directly
-        # should probably request price updates also
-        for sku in skus:
+        prices = self.pricing_provider.get_multiple_prices(skus)
+        logging.debug(f"Got prices for {len(prices)} items")
+
+        for sku in prices:
             if sku in self._has_been_autopriced:
                 continue
 
-            self._update_price(sku)
+            price = {"sku": sku} | prices[sku]
+            self.db.update_autoprice(price)
             self._has_been_autopriced.add(sku)
 
             if not self.options.use_backpack_tf:
@@ -102,7 +109,8 @@ class PricingManager:
 
         logging.info(f"Updated prices for {len(skus)} autopriced items")
 
-    async def listen_for_pricelist_changes(self) -> None:
+    async def run(self) -> None:
+        # fetches prices and checks for pricelist changes
         while True:
             await asyncio.sleep(5)
 

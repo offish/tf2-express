@@ -24,7 +24,7 @@ class BPTFAutopricer(PricingProvider):
         self.sio = AsyncClient()
 
         self.sio.on("connect", self.on_connect)
-        self.sio.on("pricesUpdated", self.on_price_update)
+        self.sio.on("price", self.on_price_update)
 
     def get_price(self, sku: str) -> dict:
         response = requests.get(f"{self.url}/items/{sku}")
@@ -34,6 +34,14 @@ class BPTFAutopricer(PricingProvider):
         logging.debug(f"got price for {sku=} {data=}")
 
         return data
+
+    def get_multiple_prices(self, skus: list[str]) -> list[dict]:
+        prices = {}
+
+        for sku in skus:
+            prices[sku] = self.get_price(sku)
+
+        return prices
 
     async def on_connect(self) -> None:
         logging.info(f"Connected to {self.url} Socket.IO Server")

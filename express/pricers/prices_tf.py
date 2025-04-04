@@ -3,7 +3,6 @@ import logging
 from typing import Callable
 
 from tf2_utils import PricesTF as PricesTFUtils
-from tf2_utils import refinedify
 from websockets import connect
 from websockets.asyncio.connection import Connection
 
@@ -16,24 +15,8 @@ class PricesTF(PricesTFUtils, PricingProvider):
 
         self.callback = callback
 
-    @staticmethod
-    def format_data(data: dict) -> dict:
-        buy_keys = data.get("buyKeys", 0)
-        buy_metal = refinedify(data.get("buyHalfScrap", 0.0) / 18)
-        sell_keys = data.get("sellKeys", 0)
-        sell_metal = refinedify(data.get("sellHalfScrap", 0.0) / 18)
-
-        return {
-            "sku": data["sku"],
-            "buy": {
-                "keys": buy_keys,
-                "metal": buy_metal,
-            },
-            "sell": {
-                "keys": sell_keys,
-                "metal": sell_metal,
-            },
-        }
+    def format_data(self, data: dict) -> dict:
+        return self.format_price(data) | {"sku": data["sku"]}
 
     def format_websocket_data(self, message: dict) -> dict | None:
         # {
@@ -64,6 +47,21 @@ class PricesTF(PricesTFUtils, PricingProvider):
         logging.debug(f"got price for {sku=} {data=}")
 
         return self.format_data(data)
+
+    def get_multiple_prices(self, skus: list[str]) -> dict:
+        # fetch 10 pages (500 prices), hopefully every sku is there
+        prices = self.get_prices_till_page(10)
+
+        for sku in prices.copy():
+            if sku not in skus:
+                del prices[sku]
+
+        # fetch missing prices one by one
+        for sku in skus:
+            if sku not in prices:
+                prices[sku] = self.get_price(sku)
+
+        return prices
 
     async def process_message(self, ws: Connection, message: dict) -> None:
         if message.get("type") != "AUTH_REQUIRED":

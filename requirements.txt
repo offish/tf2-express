@@ -1,8 +1,10 @@
 tf2-sku~=2.0
 tf2-data>=1.0.0
-tf2-utils>=2.3.1
+tf2-utils>=2.3.2
 bptf>=0.1.0
 steamio~=1.1
+python-socketio~=5.12
+websockets~=14.1
 requests~=2.32
 pymongo~=4.11
 flask~=3.1

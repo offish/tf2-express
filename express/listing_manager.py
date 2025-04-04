@@ -1,7 +1,6 @@
+import asyncio
 import logging
-import time
 from dataclasses import asdict
-from threading import Thread
 from typing import TYPE_CHECKING
 
 from backpack_tf import BackpackTF
@@ -19,6 +18,7 @@ class ListingManager:
     ) -> None:
         self.client = client
         self.db = client.database
+        self.pricing = client.pricing_manager
         self.inventory = client.inventory_manager
 
         self._listings = {}
@@ -36,10 +36,6 @@ class ListingManager:
     @staticmethod
     def _get_listing_key(intent: str, sku: str) -> str:
         return f"{intent}_{sku}"
-
-    def _get_currencies(self, sku: str, intent: str) -> dict:
-        keys, metal = self.db.get_price(sku, intent)
-        return {"keys": keys, "metal": metal}
 
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         keys = currencies["keys"]
@@ -121,8 +117,7 @@ class ListingManager:
                 scrap_amount += get_metal(sku)
                 continue
 
-        _, metal_price = self.db.get_price("5021;6", "buy")
-        key_scrap_price = to_scrap(metal_price)
+        key_scrap_price = self.pricing.get_key_scrap_price("buy")
         scrap_total = keys_amount * key_scrap_price + scrap_amount >= metal
 
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
@@ -174,7 +169,7 @@ class ListingManager:
         return key in self._listings
 
     def create_listing(self, sku: str, intent: str) -> None:
-        currencies = self._get_currencies(sku, intent)
+        currencies = self.db.get_item(sku)[intent]
         listing_variables = self._get_listing_variables(sku, currencies)
         in_stock = listing_variables["in_stock"]
 
@@ -264,7 +259,7 @@ class ListingManager:
             sku = item["sku"]
             self.create_listing(item, "buy")
 
-    def run(self) -> None:
+    async def run(self) -> None:
         user_agent = self._bptf.register_user_agent()
 
         if user_agent["status"] == "active":
@@ -282,7 +277,7 @@ class ListingManager:
             # TODO: create flow for creating multiple listings at once
 
             if self._has_updated_listings:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
 
             logging.info("Updating our listings...")
@@ -294,10 +289,6 @@ class ListingManager:
             logging.info("All listings were updated!")
 
             self._has_updated_listings = True
-
-    def listen(self) -> None:
-        listing_manager_thread = Thread(target=self.run, daemon=True)
-        listing_manager_thread.start()
 
     def __del__(self):
         self._bptf.delete_all_listings()

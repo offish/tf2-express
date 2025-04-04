@@ -44,6 +44,7 @@ All available options can be found [here](express/options.py).
 
 ## Installation
 You need to have Python 3.10 or above installed.
+If you want to run the bot using Docker see [Using Docker](#using-docker).
 
 ```bash
 git clone git@github.com:offish/tf2-express.git
@@ -74,28 +75,14 @@ Example config:
                 "enable_deals": false,
                 "inventory_provider": "steamsupply",
                 "inventory_api_key": "mySteamSupplyApiKey",
-                "fetch_prices_on_startup": true,
                 "accept_donations": true,
                 "decline_trade_hold": true,
-                "allow_craft_hats": false,
-                "save_trades": true,
-                "save_receipt": true,
+                "allow_craft_hats": true,
+                "save_trade_offers": true,
                 "owners": [
                     "76511111111111111",
                     "76522222222222222"
                 ]
-            }
-        },
-        {
-            "username": "username2",
-            "password": "password2",
-            "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
-            "shared_secret": "Aa11aA1+1aa1aAa1a=",
-            "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
-            "options": {
-                "use_backpack_tf": false,
-                "accept_donations": true,
-                "allow_craft_hats": true,
             }
         }
     ]
@@ -128,6 +115,23 @@ pip install --upgrade -r requirements.txt
 # update packages like bptf, tf2-utils, tf2-data and tf2-sku
 # which the bot is dependant on
 ```
+
+## Using Docker
+First configure the bot like shown in [Setup](#setup).
+Then change the timezone in the `Dockerfile`, it is set to use Oslo time by default.
+
+```bash
+make build # will build the tf2-express docker image and install dependencies
+make run # will start mongodb and tf2-express
+```
+
+The GUI does not start automatically. To start the GUI run this:
+
+```bash
+make gui
+```
+
+The GUI will then be available at `http://127.0.0.1:5000`.
 
 ## Explanation
 ### Random Craft Hats

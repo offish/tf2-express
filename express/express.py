@@ -66,19 +66,18 @@ class Express(steam.Client):
 
         # we are now ready (other events can now fire)
         self.bot_is_ready = True
+
         asyncio.create_task(self.pricing_manager.pricing_provider.listen())
+        asyncio.create_task(self.pricing_manager.run())
 
         if self.options.use_backpack_tf:
-            self.listing_manager.listen()
-
-        if self.options.fetch_prices_on_startup:
-            asyncio.create_task(self.pricing_manager.listen_for_pricelist_changes())
+            asyncio.create_task(self.listing_manager.run())
 
         if self.options.is_express_tf_bot:
             asyncio.create_task(self.ws_manager.listen())
 
-        if self.options.expire_sent_offers:
-            asyncio.create_task(self.trade_manager.decline_our_stale_offers())
+        if self.options.auto_cancel_sent_offers:
+            asyncio.create_task(self.trade_manager.run())
 
         # after prices are updated we can create listings
         # if self.options.use_backpack_tf:

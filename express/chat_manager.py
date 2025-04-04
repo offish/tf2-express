@@ -26,12 +26,12 @@ class ChatManager:
         amount = 1  # amounts other than 1 are not supported yet
         sku = data["sku"]
 
-        logging.info(f"{message.author.name} wants to {intent} {amount}x of {sku}")
+        logging.info(f"{message.author.name} wants to {intent} {amount} of {sku}")
 
         # swap intents
         intent = swap_intent(intent)
 
-        await message.channel.send(f"Processing your trade for {amount}x {sku}...")
+        await message.channel.send(f"Processing your trade for {amount} of {sku}...")
 
         if message.author.id64 in self.client.pending_offer_users:
             await message.channel.send("You appear to have a pending offer already")

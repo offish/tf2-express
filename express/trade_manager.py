@@ -467,7 +467,7 @@ class TradeManager:
             await trade.accept()
             return
 
-        if self.options.counter_bad_offers:
+        if self.options.auto_counter_bad_offers:
             logging.info("Counter offering...")
             await self._counter_offer(trade, our_items)
             return
@@ -488,7 +488,7 @@ class TradeManager:
 
         delta = datetime.now(timezone.utc) - updated
         delta_seconds = delta.total_seconds()
-        expire_time = self.options.expire_sent_offers_after
+        expire_time = self.options.cancel_sent_offers_after_seconds
 
         logging.debug(f"{trade.id=} updated {delta_seconds=} ago {expire_time=}")
 
@@ -617,7 +617,8 @@ class TradeManager:
 
         logging.debug("Inventory was updated after receipt")
 
-    async def decline_our_stale_offers(self) -> None:
+    async def run(self) -> None:
+        # checks for stale offers
         while True:
             logging.debug("Checking for stale offers...")
 

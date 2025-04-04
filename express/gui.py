@@ -156,6 +156,19 @@ class Panel:
         sell_metal = data.get("sell_metal", 0.0)
         max_stock = data.get("max_stock", -1)
 
+        # they can still be empty strings
+        if not buy_keys:
+            buy_keys = 0
+
+        if not buy_metal:
+            buy_metal = 0.0
+
+        if not sell_keys:
+            sell_keys = 0
+
+        if not sell_metal:
+            sell_metal = 0.0
+
         self._database.update_price(
             data["sku"],
             buy={"keys": int(buy_keys), "metal": float(buy_metal)},

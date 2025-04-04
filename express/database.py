@@ -1,5 +1,6 @@
 import logging
 import time
+from os import getenv
 from typing import Any
 
 from pymongo import MongoClient
@@ -14,11 +15,12 @@ def has_buy_and_sell_price(data: dict) -> bool:
 
 
 class Database:
-    def __init__(self, name: str, host: str = "localhost", port: int = 27017) -> None:
-        client = MongoClient(host, port)
-        db = client[name]
+    def __init__(self, database: str) -> None:
+        host = getenv("MONGO_HOST", "localhost")
+        client = MongoClient(host, 27017)
+        db = client[database]
 
-        self.name = name
+        self.name = database
         self.trades = db["trades"]
         self.items = db["items"]
         self.deals = db["deals"]
@@ -91,12 +93,15 @@ class Database:
     def get_skus(self) -> list[str]:
         return [item["sku"] for item in self.items.find()]
 
-    def get_autopriced(self) -> list[str]:
+    def get_autopriced(self) -> list[dict]:
         return [
-            item["sku"]
+            item
             for item in self.items.find({"autoprice": True})
             if item["sku"] != "-100;6"
         ]
+
+    def get_autopriced_skus(self) -> list[str]:
+        return [item["sku"] for item in self.get_autopriced()]
 
     def get_item(self, sku: str) -> dict[str, Any]:
         item = self.items.find_one({"sku": sku})
@@ -105,6 +110,7 @@ class Database:
             logging.debug(f"{sku} not found in database")
             return {}
 
+        del item["_id"]
         return item
 
     def get_pricelist(self) -> list[dict]:
@@ -203,10 +209,7 @@ class Database:
         data["max_stock"] = max_stock
         data["updated"] = time.time()
 
-        self.items.replace_one(
-            {"sku": sku},
-            data,
-        )
+        self.items.replace_one({"sku": sku}, data)
         logging.info(f"Updated price for {sku}")
 
     def update_autoprice(self, data: dict) -> None:
@@ -217,8 +220,10 @@ class Database:
         logging.info(f"Removed {sku} from the database")
 
     def add_deal(self, deal: dict) -> None:
-        if self.deals.find_one({"sku": deal["sku"]}):
-            logging.warning(f"Deal {deal['sku']} already exists in the database")
+        sku = deal["sku"]
+
+        if self.deals.find_one({"sku": sku}):
+            logging.warning(f"Deal {sku} already exists in the database")
             return
 
         self.deals.insert_one(deal)
