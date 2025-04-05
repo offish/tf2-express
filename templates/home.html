@@ -5,32 +5,31 @@ Home
 {% endblock %}
 
 {% block contents %}
-<h1>Welcome back, {{ name }}</h1>
+<div class="max-w-8xl mx-auto p-6 bg-darkcard rounded-lg shadow-md border border-jet">
+    <h1 class="text-3xl font-bold text-primary mb-4">Welcome back, {{ name }}</h1>
+    <p class="text-gray-300">You are running:</p>
+    <ul class="mt-2 pl-6 space-y-1">
+        <li class="text-gray-300">tf2-express at v{{ tf2_express_version }} <a class="text-primary hover:underline" href="https://github.com/offish/tf2-express">repository</a></li>
+        <li class="text-gray-300">tf2-utils at v{{ tf2_utils_version }} <a class="text-primary hover:underline" href="https://github.com/offish/tf2-utils">repository</a></li>
+        <li class="text-gray-300">tf2-data at v{{ tf2_data_version }} <a class="text-primary hover:underline" href="https://github.com/offish/tf2-data">repository</a></li>
+        <li class="text-gray-300">tf2-sku at v{{ tf2_sku_version }} <a class="text-primary hover:underline" href="https://github.com/offish/tf2-sku">repository</a></li>
+        <li class="text-gray-300">backpack-tf at v{{ backpack_tf_version }} <a class="text-primary hover:underline" href="https://github.com/offish/backpack-tf">repository</a></li>
+        <li class="text-gray-300">steam.py at v{{ steam_py_version }} <a class="text-primary hover:underline" href="https://github.com/gobot1234/steam.py/">repository</a></li>
+    </ul>
 
-<h2>Useful information</h2>
-<p>You are running</p>
-<ul>
-    <li>tf2-express at v{{ tf2_express_version }} <a href="https://github.com/offish/tf2-express">repository</a></li>
-    <li>tf2-utils at v{{ tf2_utils_version }} <a href="https://github.com/offish/tf2-utils">repository</a></li>
-    <li>tf2-data at v{{ tf2_data_version }} <a href="https://github.com/offish/tf2-data">repository</a></li>
-    <li>tf2-sku at v{{ tf2_sku_version }} <a href="https://github.com/offish/tf2-sku">repository</a></li>
-    <!-- <li>steampy <a href="https://github.com/bukson/steampy">repository</a></li> -->
-</ul>
+    <p class="text-gray-300 mt-4">Currently viewing data from "{{ db_name }}" database. If you are running multiple bots, you might want to change the database you are viewing.</p>
 
-<p>Currently viewing data from "{{ db_name }}" database. If you are running multiple bots, you might want to change the
-    database you are viewing.</p>
-<p>Other links</p>
-<ul>
-    <li><a href="https://discord.com/invite/t8nHSvA">Discord</a></li>
-    <li><a href="https://github.com/offish">GitHub profile</a></li>
-    <li><a href="https://steamcommunity.com/id/confern">Steam profile</a></li>
-</ul>
+    <h2 class="text-2xl font-semibold text-primary mt-6">Useful links</h2>
+    <ul class="mt-2 pl-6 space-y-1">
+        <li><a class="text-primary hover:underline" href="https://discord.com/invite/t8nHSvA">Discord</a></li>
+        <li><a class="text-primary hover:underline" href="https://github.com/offish/tf2-express">Project page</a></li>
+        <li><a class="text-primary hover:underline" href="https://steamcommunity.com/id/confern">Steam profile</a></li>
+    </ul>
 
-<h2>Support me?</h2>
-<p>These sort of things takes time to make. Donations are not required, but greatly appericated!</p>
-<ul>
-    <li><a href="https://github.com/offish/tf2-express#donate">Donate</a></li>
-</ul>
-
-
+    <h2 class="text-2xl font-semibold text-primary mt-6">Support the project</h2>
+    <p class="text-gray-300">These sorts of things take time to make. Donations are not required, but are greatly appreciated!</p>
+    <ul class="mt-2 pl-6">
+        <li><a class="text-primary hover:underline" href="https://github.com/offish/tf2-express#donate">Donate</a></li>
+    </ul>
+</div>
 {% endblock %}

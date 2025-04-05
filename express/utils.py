@@ -1,11 +1,48 @@
-import logging
 import json
+import logging
+from datetime import datetime
+from pathlib import Path
 
-from tf2_utils import SchemaItemsUtils, sku_to_color
 import requests
+from backpack_tf import __version__ as backpack_tf_version
+from steam import __version__ as steam_py_version
+from tf2_data import __version__ as tf2_data_version
+from tf2_sku import __version__ as tf2_sku_version
+from tf2_utils import SchemaItemsUtils, sku_to_color
+from tf2_utils import __version__ as tf2_utils_version
 
+from . import __version__ as tf2_express_version
+from .exceptions import NoConfigFound
 
 schema_items_utils = SchemaItemsUtils()
+
+
+def create_and_get_log_file() -> Path:
+    current_date = datetime.today().strftime("%Y-%m-%d")
+    file_path = Path(__file__).parent.parent / f"logs/express-{current_date}.log"
+
+    if not file_path.exists():
+        file_path.touch()
+
+    return file_path
+
+
+def is_same_item(a: dict, b: dict) -> bool:
+    return int(a["instanceid"]) == int(b["instanceid"]) and int(a["classid"]) == int(
+        b["classid"]
+    )
+
+
+def swap_intent(intent: str) -> str:
+    return "buy" if intent.lower() == "sell" else "sell"
+
+
+def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
+    return their_items_amount == 0 and our_items_amount > 0
+
+
+def is_two_sided_offer(their_items_amount: int, our_items_amount: int) -> bool:
+    return their_items_amount > 0 and our_items_amount > 0
 
 
 def sku_to_item_data(sku: str) -> dict:
@@ -16,7 +53,7 @@ def sku_to_item_data(sku: str) -> dict:
 
 
 def encode_data(data: dict) -> bytes:
-    if data.get("_id"):
+    if "_id" in data:
         del data["_id"]
 
     return (json.dumps(data) + "NEW_DATA").encode()
@@ -26,7 +63,7 @@ def decode_data(data: bytes) -> list[dict]:
     return [json.loads(doc) for doc in data.decode().split("NEW_DATA") if doc]
 
 
-def read_json_file(filename: str) -> dict:
+def read_json_file(filename: str | Path) -> dict:
     content = {}
 
     with open(filename, "r") as f:
@@ -36,44 +73,17 @@ def read_json_file(filename: str) -> dict:
 
 
 def get_config() -> dict:
-    return read_json_file("./express/config.json")
+    path = Path(__file__).parent / "config.json"
+
+    if not path.exists():
+        raise NoConfigFound("No config.json file in the express directory!")
+
+    return read_json_file(path)
 
 
-def summarize_items(items: list[dict]) -> dict:
-    summary = {}
-
-    for item in items:
-        item_name = items[item]["market_hash_name"]
-
-        if item_name not in summary:
-            summary[item_name] = {
-                "count": 1,
-                "image": items[item]["icon_url"],
-                "color": items[item]["name_color"],
-            }
-        else:
-            summary[item_name]["count"] += 1
-
-    return summary
-
-
-def summarize_trades(trades: list[dict]) -> list[dict]:
-    summary = []
-
-    for trade in trades:
-        their_items_summary = summarize_items(trade.get("their_items", []))
-        our_items_summary = summarize_items(trade.get("our_items", []))
-
-        # add this to the db so it does not need to be done again?
-        summary.append(
-            {
-                **trade,
-                "our_summary": our_items_summary,
-                "their_summary": their_items_summary,
-            }
-        )
-
-    return summary
+def get_bot_config() -> dict:
+    # only one bot is supported for now
+    return get_config().get("bots", [])[0]
 
 
 def get_version(repository: str, folder: str) -> str:
@@ -90,6 +100,54 @@ def get_version(repository: str, folder: str) -> str:
 
     # get rid of first "
     return data[start_quotation_mark:end_quotation_mark]
+
+
+def get_versions() -> dict[str, str]:
+    return {
+        "tf2_express_version": tf2_express_version,
+        "tf2_data_version": tf2_data_version,
+        "tf2_sku_version": tf2_sku_version,
+        "tf2_utils_version": tf2_utils_version,
+        "backpack_tf_version": backpack_tf_version,
+        "steam_py_version": steam_py_version,
+    }
+
+
+def get_newest_versions() -> dict[str, str]:
+    return {
+        "tf2_express_version": get_version("tf2-express", "express"),
+        "tf2_data_version": get_version("tf2-data", "src/tf2_data"),
+        "tf2_sku_version": get_version("tf2-sku", "src/tf2_sku"),
+        "tf2_utils_version": get_version("tf2-utils", "src/tf2_utils"),
+        "backpack_tf_version": get_version("backpack-tf", "src/backpack_tf"),
+    }
+
+
+def check_for_updates() -> None:
+    logging.info("Checking for updates...")
+
+    current_versions = get_versions()
+    newest_versions = get_newest_versions()
+    has_outdated = False
+
+    for key in current_versions:
+        if key not in newest_versions:
+            continue
+
+        current_version = current_versions[key]
+        newest_version = newest_versions[key]
+
+        if current_version != newest_version:
+            has_outdated = True
+            name = key.replace("_version", "").replace("_", "-")
+
+            logging.warning(f"{name} has a new version. You might want to upgrade.")
+            logging.warning(
+                f"Installed version: {current_version}, available: {newest_version}"
+            )
+
+    if not has_outdated:
+        logging.info("All packages are up to date!")
 
 
 class ExpressFormatter(logging.Formatter):

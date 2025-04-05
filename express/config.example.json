@@ -1,54 +1,21 @@
 {
-    "name": "nickname",
-    "check_versions_on_startup": true,
-    "listen_to_pricer": true,
     "bots": [
         {
-            "name": "bot1",
             "username": "username",
             "password": "password",
             "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
-            "secrets": {
-                "steamid": "76511111111111111",
-                "shared_secret": "Aa11aA1+1aa1aAa1a=",
-                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
-            },
+            "shared_secret": "Aa11aA1+1aa1aAa1a=",
+            "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
-                "enable_deals": false,
-                "inventory_provider": "steamcommunity or steamsupply or steamapis",
-                "inventory_api_key": "inventory api key or empty",
-                "fetch_prices_on_startup": true,
+                "use_backpack_tf": true,
+                "backpack_tf_token": "token",
                 "accept_donations": true,
-                "decline_bad_offers": false,
                 "decline_trade_hold": true,
-                "decline_scam_offers": true,
-                "allow_craft_hats": false,
-                "save_trades": true,
-                "save_receipt": true,
-                "poll_interval": 30,
-                "database": "mydatabasename",
+                "save_trade_offers": true,
                 "owners": [
                     "76511111111111111",
                     "76522222222222222"
                 ]
-            }
-        },
-        {
-            "name": "bot2",
-            "username": "username2",
-            "password": "password2",
-            "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
-            "secrets": {
-                "steamid": "76511111111111111",
-                "shared_secret": "Aa11aA1+1aa1aAa1a=",
-                "identity_secret": "aA11aaaa/aa11a/aAAa1a1="
-            },
-            "options": {
-                "accept_donations": true,
-                "allow_craft_hats": true,
-                "save_trades": true,
-                "poll_interval": 60,
-                "database": "bot2database"
             }
         }
     ]

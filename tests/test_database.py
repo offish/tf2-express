@@ -1,44 +1,113 @@
-from unittest import TestCase
+import pytest
 
-from express.express import Express
-from express.options import Options
-from express.utils import sku_to_item_data, get_config
+from express.database import Database, has_buy_and_sell_price
+from express.exceptions import SKUNotFound
+
+database = Database("express")
+database.items.delete_many({})
 
 
-class TestDatabase(TestCase):
-    def test_database(self):
-        config = get_config()
-        options = config["bots"][0]["options"]
+def test_get_price() -> None:
+    assert database.get_pricelist_count() == 0
+    assert database.get_price("5000;6", "buy") == (0, 0.11)
+    assert database.get_price("5001;6", "buy") == (0, 0.33)
+    assert database.get_price("5002;6", "buy") == (0, 1.0)
+    assert database.get_price("5000;6", "sell") == (0, 0.11)
+    assert database.get_price("5001;6", "sell") == (0, 0.33)
+    assert database.get_price("5002;6", "sell") == (0, 1.0)
+    assert database.get_price("not;in;db", "buy") == (0, 0.0)
+    assert database.get_price("not;in;db", "sell") == (0, 0.0)
 
-        options["database"] = "express_test"
-        options["enable_deals"] = False
 
-        options = Options(**options)
-        bot = Express(config["bots"][0], options)
+def test_has_buy_and_sell_price() -> None:
+    ptr = has_buy_and_sell_price
 
-        db = bot.db
+    assert ptr({"buy": {}, "sell": {}}) is False
+    assert ptr({"buy": {"keys": 0, "metal": 0}, "sell": {}}) is False
+    assert (
+        ptr({"buy": {"keys": 0, "metal": 0}, "sell": {"keys": 0, "metal": 0}}) is True
+    )
 
-        self.assertNotEqual(db.get_item("5021;6"), {})
 
-        db.add_price(
-            **sku_to_item_data("30469;1"),
-            buy={"keys": 0, "metal": 0.11},
-            sell={"keys": 0, "metal": 0.22},
+def test_add_key_for_first_time() -> None:
+    assert database.get_skus() == []
+    assert database.get_item("5021;6") == {}
+
+    database._add_key_for_first_time()
+
+    assert database.get_pricelist_count() == 1
+    assert database.get_skus() == ["5021;6"]
+    assert database.has_price("5021;6") is False
+    assert database.is_temporarily_priced("5021;6") is False
+    assert database.get_price("5021;6", "buy") == (0, 0.0)
+    assert database.get_price("5021;6", "sell") == (0, 0.0)
+    assert database.get_item("5021;6") == {
+        "autoprice": True,
+        "buy": {},
+        "color": "7D6D00",
+        "image": "http://media.steampowered.com/apps/440/icons/key.be0a5e2cda3a039132c35b67319829d785e50352.png",
+        "in_stock": 0,
+        "max_stock": -1,
+        "name": "Mann Co. Supply Crate Key",
+        "sell": {},
+        "sku": "5021;6",
+        "temporary": False,
+    }
+
+
+def test_update_price() -> None:
+    database.update_price(
+        "5021;6", {"keys": 0, "metal": 60.11}, {"keys": 0, "metal": 60.22}
+    )
+
+    assert database.has_price("5021;6") is True
+    assert database.is_temporarily_priced("5021;6") is False
+    assert database.get_price("5021;6", "buy") == (0, 60.11)
+    assert database.get_price("5021;6", "sell") == (0, 60.22)
+    assert database.get_item("5021;6")["autoprice"] is False
+
+    with pytest.raises(SKUNotFound):
+        database.update_price(
+            "not;in;db", {"keys": 0, "metal": 60.11}, {"keys": 0, "metal": 60.22}
         )
 
-        db.add_price(
-            **sku_to_item_data("5020;6"),
-            buy={"keys": 0, "metal": 0.11},
-            sell={"keys": 0, "metal": 0.22},
+    with pytest.raises(AssertionError):
+        database.update_price(
+            "5021;6",
+            {"metal": 60.11},
+            {"keys": 0, "metal": 60.22},
+            autoprice=True,
+            max_stock=10,
         )
 
-        self.assertEqual(db.get_price("30469;1", "buy"), (0, 0.11))
+    with pytest.raises(AssertionError):
+        database.update_price(
+            "5021;6",
+            {"keys": 0},
+            {"metal": 60.22},
+            autoprice=True,
+            max_stock=10,
+        )
 
-        db.update_stocks({"30469;1": 1, "5020;6": 5})
 
-        for sku in db.get_skus():
-            db.delete_price(sku)
+def test_update_stock() -> None:
+    assert database.get_stock("5021;6") == (0, -1)
 
-        self.assertEqual(db.get_price("30469;1", "sell"), (0, 0.0))
-        self.assertEqual(db.get_price("5002;6", "buy"), (0, 1.0))
-        self.assertEqual(db.get_price("5002;6", "sell"), (0, 1.0))
+    stock = {"5021;6": 10, "not;a;sku": 20}
+    database.update_stock(stock)
+
+    assert database.get_stock("5021;6") == (10, -1)
+
+
+def test_update_autoprice() -> None:
+    database.update_autoprice(
+        {
+            "sku": "5021;6",
+            "buy": {"keys": 0, "metal": 60.22},
+            "sell": {"keys": 0, "metal": 60.33},
+        }
+    )
+
+    assert database.get_price("5021;6", "buy") == (0, 60.22)
+    assert database.get_price("5021;6", "sell") == (0, 60.33)
+    assert database.get_item("5021;6")["autoprice"] is True

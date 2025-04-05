@@ -1,30 +1,45 @@
-from .database import Database
+import logging
+import time
 
-from tf2_utils import Item, Inventory, map_inventory
+from tf2_utils import InvalidInventory, Inventory, Item, get_sku, is_pure, map_inventory
 
 
 class ExpressInventory(Inventory):
     def __init__(
         self,
-        db: Database,
-        steam_id: str,
+        our_steam_id: str,
         provider_name: str = "steamcommunity",
         api_key: str = "",
     ) -> None:
-        self.db = db
-        self.steam_id = steam_id
+        self.steam_id = our_steam_id
         self.stock = {"-100;6": 0}
         super().__init__(provider_name, api_key)
 
-    def __fetch_inventory(self, steam_id: str) -> list[dict]:
-        return map_inventory(self.fetch(steam_id), True)
+    def _fetch_inventory(self, steam_id: str) -> list[dict] | None:
+        for i in range(5):
+            try:
+                inventory = self.fetch(steam_id)
+                return map_inventory(inventory, add_skus=True, skip_untradable=True)
+            except InvalidInventory:
+                logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
+                time.sleep(i * 2)
+
+        logging.warning(f"Failed to fetch inventory for {steam_id}")
+
+    def set_our_inventory(self, inventory: list[dict]) -> list[dict]:
+        self.our_inventory = inventory
+        return self.our_inventory
 
     def fetch_our_inventory(self) -> list[dict]:
-        self.our_inventory = self.__fetch_inventory(self.steam_id)
+        inventory = self._fetch_inventory(self.steam_id)
+
+        assert inventory is not None, "Inventory could not be loaded"
+        self.our_inventory = inventory
+
         return self.our_inventory
 
     def fetch_their_inventory(self, steam_id: str) -> list[dict]:
-        self.their_inventory = self.__fetch_inventory(steam_id)
+        self.their_inventory = self._fetch_inventory(steam_id)
         return self.their_inventory
 
     def get_our_inventory(self) -> list[dict]:
@@ -33,28 +48,26 @@ class ExpressInventory(Inventory):
     def get_their_inventory(self) -> list[dict]:
         return self.their_inventory.copy()
 
-    def get_stock(self) -> dict:
-        return self.stock.copy()
+    def get_stock(self) -> dict[str, int]:
+        stock = {"-100;6": 0}
 
-    def update_stock(self) -> None:
-        self.stock = {"-100;6": 0}
+        if self.our_inventory is None:
+            logging.warning("Inventory was not fetched")
+            return stock
 
         for item in self.our_inventory:
             item_util = Item(item)
             sku = item["sku"]
 
-            if item["tradable"] is not True:
-                continue
-
             if item_util.is_craft_hat():
-                self.stock["-100;6"] += 1
+                stock["-100;6"] += 1
 
             if sku not in self.stock:
-                self.stock[sku] = 1
+                stock[sku] = 1
             else:
-                self.stock[sku] += 1
+                stock[sku] += 1
 
-        self.db.update_stocks(self.stock)
+        return stock
 
     def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
         inventory = self.our_inventory if who == "us" else self.their_inventory
@@ -94,47 +107,9 @@ class ExpressInventory(Inventory):
         self.our_inventory.append(item)
 
 
-def format_items_list_to_dict(items: list[dict]) -> dict:
-    return {item["assetid"]: item for item in items}
+def get_first_non_pure_sku(items: list[dict]) -> str | None:
+    for i in items:
+        sku = get_sku(i)
 
-
-def receipt_item_to_inventory_item(receipt_item: dict) -> dict:
-    """receipt items are formatted differently than inventory items"""
-    defindex = receipt_item["app_data"]["def_index"]
-    asset_id = receipt_item["id"]
-    context_id = str(receipt_item["contextid"])
-
-    wiki_link = "http://wiki.teamfortress.com/scripts/itemredirect.php?id={}&lang=en_US"
-
-    tags = []
-
-    for tag in receipt_item["tags"]:
-        color = tag.get("color", "")
-        tag_data = {
-            "color": color,
-            "category": tag["category"],
-            "internal_name": tag["internal_name"],
-            "localized_tag_name": tag["name"],
-            "localized_category_name": tag["category_name"],
-        }
-        tags.append(tag_data)
-
-    del receipt_item["tags"]
-    del receipt_item["id"]
-    del receipt_item["app_data"]
-    del receipt_item["pos"]
-    del receipt_item["contextid"]
-
-    return {
-        **receipt_item,
-        # add keys which are missing
-        "assetid": asset_id,
-        "actions": [
-            {
-                "link": wiki_link.format(defindex),
-                "name": "Item Wiki Page...",
-            }
-        ],
-        "tags": tags,
-        "contextid": context_id,
-    }
+        if not is_pure(sku):
+            return sku

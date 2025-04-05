@@ -1,43 +1,58 @@
-from express.utils import (
-    get_version,
-    sku_to_item_data,
-    encode_data,
-    decode_data,
-)
 from express import __version__
+from express.utils import (
+    decode_data,
+    encode_data,
+    get_version,
+    is_only_taking_items,
+    is_two_sided_offer,
+    sku_to_item_data,
+    swap_intent,
+)
 
-from unittest import TestCase
+
+def test_swap_intent() -> None:
+    assert swap_intent("sell") == "buy"
+    assert swap_intent("buy") == "sell"
+    assert swap_intent("Sell") == "buy"
+    assert swap_intent("Buy") == "sell"
 
 
-class TestUtils(TestCase):
-    def test_sku_to_item_data(self):
-        self.assertEqual(
-            sku_to_item_data("30469;1"),
-            {
-                "color": "4D7455",
-                "image": "http://media.steampowered.com/apps/440/icons/horace.1fa7eb3b1b04da8888d5ee3979916d96d851a53e.png",  # noqa
-                "name": "Horace",
-                "sku": "30469;1",
-            },
-        )
-        self.assertEqual(
-            sku_to_item_data("233;6"),
-            {
-                "color": "7D6D00",
-                "image": "http://media.steampowered.com/apps/440/icons/gift_single.efd5979a6b289dbab280920a9a123d1db3f4780b.png",  # noqa
-                "name": "Secret Saxton",
-                "sku": "233;6",
-            },
-        )
+def test_is_only_taking_items() -> None:
+    assert is_only_taking_items(0, 1) is True
+    assert is_only_taking_items(1, 0) is False
 
-    def test_data(self):
-        data = {"test": "data"}
-        encoded = encode_data(data)
-        decoded = decode_data(encoded)
 
-        self.assertEqual(encoded, b'{"test": "data"}NEW_DATA')
-        self.assertEqual(decoded, [data])
+def test_is_two_sided_offer() -> None:
+    assert is_two_sided_offer(1, 1) is True
+    assert is_two_sided_offer(0, 1) is False
+    assert is_two_sided_offer(1, 0) is False
 
-    def test_version(self):
-        version = get_version("tf2-express", "express")
-        self.assertNotEqual(version, __version__)
+
+def test_sku_to_item_data():
+    assert sku_to_item_data("30469;1") == {
+        "color": "4D7455",
+        "image": "http://media.steampowered.com/apps/440/icons/horace.1fa7eb3b1b04da8888d5ee3979916d96d851a53e.png",
+        "name": "Genuine Horace",
+        "sku": "30469;1",
+    }
+
+    assert sku_to_item_data("233;6") == {
+        "color": "7D6D00",
+        "image": "http://media.steampowered.com/apps/440/icons/gift_single.efd5979a6b289dbab280920a9a123d1db3f4780b.png",
+        "name": "Secret Saxton",
+        "sku": "233;6",
+    }
+
+
+def test_data() -> None:
+    data = {"test": "data"}
+    encoded = encode_data(data)
+    decoded = decode_data(encoded)
+
+    assert encoded == b'{"test": "data"}NEW_DATA'
+    assert decoded == [data]
+
+
+def test_version() -> None:
+    version = get_version("tf2-express", "express")
+    assert version != __version__

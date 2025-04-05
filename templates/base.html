@@ -1,61 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
-    <title>{% block title %}{% endblock %} | tf2-express</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', filename='config.js') }}"></script>
+    <title>{% block title %}{% endblock %} - tf2-express</title>
 </head>
-
 <header>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="/" style="color:var(--green); margin-left: 5%;">tf2-express</a>
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item active">
-                <a class="nav-link" href="/?db={{ db_name }}">Home</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/items?db={{ db_name }}">Items</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/trades?db={{ db_name }}">Trades</a>
-            </li>
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false">
-                    Database ({{ db_name }})
-                </a>
-                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+    <nav class="bg-darkbg text-white p-4 flex items-center shadow-lg">
+        <a class="text-primary text-2xl font-bold ml-5 mr-8" href="/">tf2-express</a>
+        <ul class="flex space-x-6 text-lg">
+            <li><a class="hover:text-primary transition-colors" href="/?db={{ db_name }}">Home</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/items?db={{ db_name }}">Items</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/trades?db={{ db_name }}">Trades</a></li>
+            <li class="relative group">
+                <a class="hover:text-primary transition-colors cursor-pointer">Database ({{ db_name }})</a>
+                <div class="absolute left-0 mt-0.5 w-44 bg-darkcard text-white py-2 shadow-lg rounded-md border border-jet opacity-0 invisible scale-95 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:scale-100">
                     {% for db in database_names %}
-                    <a class="dropdown-item" href="?db={{ db }}">{{ db }}</a>
+                    <a class="block px-4 py-2 hover:bg-primary hover:text-black transition-colors" href="?db={{ db }}">{{ db }}</a>
                     {% endfor %}
                 </div>
             </li>
         </ul>
     </nav>
 </header>
-
-<body>
-    <div class="container">
+<body class="bg-darkbg text-white min-h-screen flex flex-col">
+    <div class="container mx-auto p-6 flex-grow">
         {% block contents %}
         {% endblock %}
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
-        integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
-        crossorigin="anonymous"></script>
 </body>
-
-<footer>
-    &copy; 2020-2024 <a href="https://github.com/offish/tf2-express">tf2-express</a> (v{{ tf2_express_version }}) made by <a href="https://github.com/offish">offish</a>
-    (<a href="https://steamcommunity.com/id/confern">confern</a>).
+<footer class="text-center p-4 bg-darkcard text-gray-300 mt-6 border-t border-jet">
+    <a class="text-primary" href="https://github.com/offish/tf2-express">tf2-express</a> &copy; 2020-{{ current_year }} by 
+    <a class="text-primary" href="https://github.com/offish">offish</a> 
+    (<a class="text-primary" href="https://steamcommunity.com/id/confern">confern</a>)
 </footer>
-
 </html>
