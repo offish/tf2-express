@@ -79,10 +79,6 @@ class Express(steam.Client):
         if self.options.auto_cancel_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
-        # after prices are updated we can create listings
-        # if self.options.use_backpack_tf:
-        #     self.listing_manager.create_listings()
-
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")
         logging.info("Fetched our inventory")

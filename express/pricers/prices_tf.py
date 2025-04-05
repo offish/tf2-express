@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Callable
@@ -84,7 +85,7 @@ class PricesTF(PricesTFUtils, PricingProvider):
 
         await ws.send(json.dumps(payload))
 
-    async def listen(self) -> None:
+    async def _try_connect(self) -> None:
         # get and set headers
         self.request_access_token()
 
@@ -96,3 +97,11 @@ class PricesTF(PricesTFUtils, PricingProvider):
             while True:
                 message = await websocket.recv()
                 await self.process_message(websocket, json.loads(message))
+
+    async def listen(self) -> None:
+        while True:
+            try:
+                await self._try_connect()
+            except TimeoutError:
+                logging.warning("WebSocket connectiont timed out, retrying...")
+                await asyncio.sleep(3)

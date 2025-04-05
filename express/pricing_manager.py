@@ -110,6 +110,12 @@ class PricingManager:
         logging.info(f"Updated prices for {len(skus)} autopriced items")
 
     async def run(self) -> None:
+        if self.options.use_backpack_tf:
+            await self.listing_manager.wait_until_ready()
+
+        self._update_pricelist()
+        self.listing_manager.create_listings()
+
         # fetches prices and checks for pricelist changes
         while True:
             await asyncio.sleep(5)

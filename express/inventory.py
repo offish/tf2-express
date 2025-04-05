@@ -16,11 +16,10 @@ class ExpressInventory(Inventory):
         super().__init__(provider_name, api_key)
 
     def _fetch_inventory(self, steam_id: str) -> list[dict] | None:
-        for i in range(3):
+        for i in range(5):
             try:
-                return map_inventory(
-                    self.fetch(steam_id), add_skus=True, skip_untradable=True
-                )
+                inventory = self.fetch(steam_id)
+                return map_inventory(inventory, add_skus=True, skip_untradable=True)
             except InvalidInventory:
                 logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
                 time.sleep(i * 2)
@@ -32,7 +31,11 @@ class ExpressInventory(Inventory):
         return self.our_inventory
 
     def fetch_our_inventory(self) -> list[dict]:
-        self.our_inventory = self._fetch_inventory(self.steam_id)
+        inventory = self._fetch_inventory(self.steam_id)
+
+        assert inventory is not None, "Inventory could not be loaded"
+        self.our_inventory = inventory
+
         return self.our_inventory
 
     def fetch_their_inventory(self, steam_id: str) -> list[dict]:

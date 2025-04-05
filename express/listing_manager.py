@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from backpack_tf import BackpackTF
 from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
+from .database import has_buy_and_sell_price
 from .exceptions import ListingDoesNotExist, MissingBackpackTFToken
 
 if TYPE_CHECKING:
@@ -22,7 +23,8 @@ class ListingManager:
         self.inventory = client.inventory_manager
 
         self._listings = {}
-        self._has_updated_listings = False
+        self._has_updated_listings = True
+        self._is_ready = False
 
         if not backpack_tf_token:
             raise MissingBackpackTFToken
@@ -30,7 +32,7 @@ class ListingManager:
         self._bptf = BackpackTF(
             token=backpack_tf_token,
             steam_id=steam_id,
-            user_agent="A tf2-express bot",
+            user_agent="tf2-express",
         )
 
     @staticmethod
@@ -169,28 +171,33 @@ class ListingManager:
         return key in self._listings
 
     def create_listing(self, sku: str, intent: str) -> None:
+        logging.debug(f"Creating {intent} listing for {sku}")
         currencies = self.db.get_item(sku)[intent]
         listing_variables = self._get_listing_variables(sku, currencies)
         in_stock = listing_variables["in_stock"]
 
         if in_stock == 0 and intent == "sell":
+            logging.debug(f"Not enough stock for {sku} to create a sell listing")
             return
 
         if (
             listing_variables["max_stock"] != -1
             and in_stock >= listing_variables["max_stock"]
         ):
+            logging.debug(f"Max stock reached for {sku} to create a buy listing")
             return
 
         if intent == "buy" and not self._has_enough_pure(
             currencies["keys"], currencies["metal"]
         ):
+            logging.debug(f"Not enough pure for {sku} to create a buy listing")
             return
 
         asset_id = 0
 
         if intent == "sell":
             asset_id = self._get_asset_id_for_sku(sku)
+            logging.debug(f"Asset id for {sku} is {asset_id}")
 
         details = self._get_listing_details(sku, intent, currencies)
         listing = self._bptf.create_listing(
@@ -201,20 +208,27 @@ class ListingManager:
             asset_id=asset_id,
         )
 
-        if listing.id > 0:
+        logging.debug(f"Listing created: {asdict(listing)}")
+
+        if listing.id:
             listing_key = self._get_listing_key(intent, sku)
             self._listings[listing_key] = asdict(listing) | listing_variables
+            logging.info(f"Listing for {intent}ing {sku} was created")
 
     def delete_inactive_listings(self, current_skus: list[str]) -> None:
+        logging.debug("Deleting inactive listings...")
+
         for i in self._listings:
             intent, sku = i.split("_")
 
             if sku in current_skus:
                 continue
 
+            logging.debug(f"Deleting inactive {intent} listing for {sku}")
             self.remove_listing(sku, intent)
 
     def remove_listing(self, sku: str, intent: str) -> None:
+        logging.debug(f"Removing {intent} listing for {sku}")
         key = self._get_listing_key(intent, sku)
 
         if key not in self._listings:
@@ -231,14 +245,22 @@ class ListingManager:
         logging.info(f"Deleted {intent} listing for {sku}")
 
     def set_inventory_changed(self) -> None:
+        logging.debug("Inventory changed")
         self._has_updated_listings = False
 
     def set_price_changed(self, sku: str) -> None:
+        logging.debug(f"Updating listing for {sku}...")
         self.create_listing(sku, "buy")
         self.create_listing(sku, "sell")
 
     def create_listings(self) -> None:
+        logging.info("Creating listings...")
+        logging.debug("Creating sell listings...")
+
         pricelist = self.db.get_pricelist()
+        pricelist_skus = [
+            item["sku"] for item in pricelist if has_buy_and_sell_price(item)
+        ]
 
         # first list the items we have in our inventory
         for item in self.inventory.get_our_inventory():
@@ -249,15 +271,24 @@ class ListingManager:
                 continue
 
             # item has to be priced
-            if sku not in pricelist:
+            if sku not in pricelist_skus:
+                logging.debug(f"{sku} is not priced")
                 continue
 
             self.create_listing(sku, "sell")
 
+        logging.debug("Created sell listings")
+        logging.debug("Creating buy listings...")
+
         # then list buy orders
         for item in pricelist:
-            sku = item["sku"]
-            self.create_listing(item, "buy")
+            self.create_listing(item["sku"], "buy")
+
+        logging.info("Listings was created!")
+
+    async def wait_until_ready(self) -> None:
+        while not self._is_ready:
+            await asyncio.sleep(0.1)
 
     async def run(self) -> None:
         user_agent = self._bptf.register_user_agent()
@@ -270,14 +301,12 @@ class ListingManager:
             return
 
         self._bptf.delete_all_listings()
+        self._is_ready = True
         logging.info("Deleted all listings")
 
         while True:
-            # TODO: bump listings
-            # TODO: create flow for creating multiple listings at once
-
-            if self._has_updated_listings:
-                await asyncio.sleep(0.1)
+            if self._has_updated_listings or not self._listings:
+                await asyncio.sleep(1)
                 continue
 
             logging.info("Updating our listings...")

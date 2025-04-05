@@ -42,7 +42,7 @@ soupsieve==2.6
 steamio==1.1.1
 tf2-data==1.0.0
 tf2-sku==2.0.1
-tf2-utils==2.3.2
+tf2-utils==2.3.3
 typing_extensions==4.13.1
 urllib3==2.3.0
 vdf==3.4
