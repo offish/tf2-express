@@ -76,16 +76,7 @@ def test_update_price() -> None:
             "5021;6",
             {"metal": 60.11},
             {"keys": 0, "metal": 60.22},
-            autoprice=True,
-            max_stock=10,
-        )
-
-    with pytest.raises(AssertionError):
-        database.update_price(
-            "5021;6",
-            {"keys": 0},
-            {"metal": 60.22},
-            autoprice=True,
+            autoprice=False,
             max_stock=10,
         )
 

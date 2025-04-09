@@ -19,7 +19,8 @@ from .pricing_provider import PricingProvider
 
 class BPTFAutopricer(PricingProvider):
     def __init__(self, callback: Callable[[dict], None]):
-        self.callback = callback
+        super().__init__(callback)
+
         self.url = "http://127.0.0.1:3456"
         self.sio = AsyncClient()
 

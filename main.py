@@ -11,10 +11,8 @@ from express.utils import (
     get_bot_config,
 )
 
-formatter = ExpressFormatter()
-stream_handler = logging.StreamHandler(sys.stdout)
-
 log_file = create_and_get_log_file()
+stream_handler = logging.StreamHandler(sys.stdout)
 file_handler = logging.FileHandler(log_file, encoding="utf-8")
 
 logging.getLogger("steam").setLevel(logging.WARNING)
@@ -24,7 +22,6 @@ logging.basicConfig(level=logging.DEBUG, handlers=[stream_handler, file_handler]
 
 # only want to see info and above in console
 stream_handler.setLevel(logging.INFO)
-# stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(ExpressFormatter())
 
 # want to have everything in the log file

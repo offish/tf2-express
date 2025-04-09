@@ -405,9 +405,14 @@ class TradeManager:
             return
 
         # nothing on our side
-        if trade.is_gift() and self.options.accept_donations:
+        if trade.is_gift():
             logging.info("User is trying to give items")
-            await trade.accept()
+
+            if self.options.accept_gift:
+                await trade.accept()
+            else:
+                logging.info("Ignoring gift offer")
+
             return
 
         # decline trade holds

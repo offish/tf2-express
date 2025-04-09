@@ -195,8 +195,13 @@ class Database:
         autoprice: bool = False,
         max_stock: int = -1,
     ) -> None:
-        assert "keys" in buy and "metal" in buy, "Buy price must have keys and metal"
-        assert "keys" in sell and "metal" in sell, "Sell price must have keys and metal"
+        if not autoprice:
+            assert "keys" in buy and "metal" in buy, (
+                "Buy price must have keys and metal"
+            )
+            assert "keys" in sell and "metal" in sell, (
+                "Sell price must have keys and metal"
+            )
 
         data = self.get_item(sku)
 

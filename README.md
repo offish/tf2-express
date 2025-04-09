@@ -43,7 +43,7 @@ All available options can be found [here](express/options.py).
 ![GUI Showcase](https://github.com/user-attachments/assets/06f61b55-06a2-4bd7-a575-9225d68d2396)
 
 ## Installation
-You need to have Python 3.10 or above installed.
+You need to have Python 3.11 or above installed.
 If you want to run the bot using Docker see [Using Docker](#using-docker).
 
 ```bash

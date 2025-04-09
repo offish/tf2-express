@@ -284,7 +284,7 @@ class ListingManager:
         for item in pricelist:
             self.create_listing(item["sku"], "buy")
 
-        logging.info("Listings was created!")
+        logging.info("Listings were created!")
 
     async def wait_until_ready(self) -> None:
         while not self._is_ready:

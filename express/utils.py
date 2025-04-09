@@ -73,10 +73,10 @@ def read_json_file(filename: str | Path) -> dict:
 
 
 def get_config() -> dict:
-    path = Path(__file__).parent / "config.json"
+    path = Path(__file__).parent.parent / "config.json"
 
     if not path.exists():
-        raise NoConfigFound("No config.json file in the express directory!")
+        raise NoConfigFound("No config.json file found!")
 
     return read_json_file(path)
 
