@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 
 from tf2_utils.utils import to_scrap
 
-from .exceptions import NoKeyPrice
-from .pricers.pricing_providers import get_pricing_provider
+from ..exceptions import NoKeyPrice
+from ..pricers.pricing_providers import get_pricing_provider
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class PricingManager:
@@ -26,9 +26,9 @@ class PricingManager:
             self.options.pricing_provider, self._on_price_update
         )
 
-    def _update_pricelist(self) -> None:
+    def _update_pricelist(self, first_time: bool = False) -> None:
         self.client.are_prices_updated = False
-        self._update_autopriced_items()
+        self._update_autopriced_items(first_time)
         self._pricelist_count = self.db.get_pricelist_count()
 
     def _get_key_prices(self) -> dict:
@@ -73,7 +73,7 @@ class PricingManager:
         price = self.pricing_provider.get_price(sku)
         self.db.update_autoprice(price)
 
-    def _update_autopriced_items(self) -> None:
+    def _update_autopriced_items(self, first_time: bool = False) -> None:
         logging.info("Updating autopriced items...")
 
         skus = [
@@ -100,6 +100,11 @@ class PricingManager:
             self.db.update_autoprice(price)
             self._has_been_autopriced.add(sku)
 
+            # we will crash if we try to set price changed for a listing
+            # when prices are not updated yet
+            if first_time:
+                continue
+
             if not self.options.use_backpack_tf:
                 continue
 
@@ -113,7 +118,7 @@ class PricingManager:
         if self.options.use_backpack_tf:
             await self.listing_manager.wait_until_ready()
 
-        self._update_pricelist()
+        self._update_pricelist(first_time=True)
         self.listing_manager.create_listings()
 
         # fetches prices and checks for pricelist changes

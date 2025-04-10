@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 from backpack_tf import BackpackTF
 from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
-from .database import has_buy_and_sell_price
-from .exceptions import ListingDoesNotExist, MissingBackpackTFToken
+from ..database import has_buy_and_sell_price
+from ..exceptions import ListingDoesNotExist, MissingBackpackTFToken
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class ListingManager:
@@ -21,6 +21,7 @@ class ListingManager:
         self.db = client.database
         self.pricing = client.pricing_manager
         self.inventory = client.inventory_manager
+        self.can_list = False
 
         self._listings = {}
         self._has_updated_listings = True
@@ -56,6 +57,7 @@ class ListingManager:
             price = f"{keys} keys {metal} ref"
 
         return {
+            "sku": sku,
             "in_stock": in_stock,
             "max_stock": max_stock,
             "formatted_sku": formatted_sku,
@@ -125,6 +127,8 @@ class ListingManager:
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
 
     def _update_listing(self, listing: dict) -> None:
+        logging.debug(f"Updating listing {listing=}")
+
         sku = listing["sku"]
         intent = listing["intent"]
         in_stock = self.inventory.get_stock().get(sku, 0)

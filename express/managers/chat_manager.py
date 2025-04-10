@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING
 
 from steam import Message
 
-from .command import parse_command
-from .utils import swap_intent
+from ..command import parse_command
+from ..utils import swap_intent
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class ChatManager:

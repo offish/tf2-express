@@ -35,6 +35,7 @@ class ExpressInventory(Inventory):
 
         assert inventory is not None, "Inventory could not be loaded"
         self.our_inventory = inventory
+        logging.info("Fetched our inventory")
 
         return self.our_inventory
 

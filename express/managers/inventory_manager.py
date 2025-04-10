@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 from steam import MovedItem, TradeOfferReceipt
 from tf2_utils import get_sku
 
-from .inventory import ExpressInventory
-from .utils import is_same_item
+from ..inventory import ExpressInventory
+from ..utils import is_same_item
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class InventoryManager(ExpressInventory):

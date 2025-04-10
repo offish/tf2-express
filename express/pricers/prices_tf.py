@@ -10,10 +10,10 @@ from websockets.asyncio.connection import Connection
 from .pricing_provider import PricingProvider
 
 
-class PricesTF(PricingProvider, PricesTFUtils):
+class PricesTF(PricesTFUtils, PricingProvider):
     def __init__(self, callback: Callable[[dict], None]) -> None:
-        super().__init__(callback)
-        PricesTFUtils.__init__(self)
+        super().__init__()
+        PricingProvider.__init__(self, callback)
 
     def format_data(self, data: dict) -> dict:
         return self.format_price(data) | {"sku": data["sku"]}
