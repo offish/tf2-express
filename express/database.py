@@ -7,11 +7,7 @@ from pymongo import MongoClient
 from tf2_utils import is_metal, is_pure
 
 from .exceptions import SKUNotFound
-from .utils import sku_to_item_data
-
-
-def has_buy_and_sell_price(data: dict) -> bool:
-    return data.get("buy", {}) != {} and data.get("sell", {}) != {}
+from .utils import has_buy_and_sell_price, sku_to_item_data
 
 
 class Database:
@@ -23,7 +19,6 @@ class Database:
         self.name = database
         self.trades = db["trades"]
         self.items = db["items"]
-        self.deals = db["deals"]
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
@@ -50,9 +45,7 @@ class Database:
         self.trades.insert_one(data)
         logging.info("Offer was added to the database")
 
-    def get_trades(
-        self, start_index: int, amount: int
-    ) -> tuple[list[dict], int, int, int]:
+    def get_trades(self, start_index: int, amount: int) -> dict[str, Any]:
         # sort newest trades first
         all_trades = list(self.trades.find().sort("time_updated", -1))
         total_trades = len(all_trades)
@@ -116,9 +109,6 @@ class Database:
     def get_pricelist(self) -> list[dict]:
         return self.items.find()
 
-    def get_pricelist_count(self) -> int:
-        return self.items.count_documents({})
-
     def get_stock(self, sku: str) -> tuple[int, int]:
         """returns in_stock, max_stock"""
         data = self.get_item(sku)
@@ -164,7 +154,7 @@ class Database:
         sell: dict = {},
     ) -> None:
         if is_metal(sku):
-            logging.warning(f"cannot add metal {sku} to database")
+            logging.warning(f"Cannot add metal {sku} to database")
             return
 
         if sku in self.get_skus():
@@ -195,8 +185,13 @@ class Database:
         autoprice: bool = False,
         max_stock: int = -1,
     ) -> None:
-        assert "keys" in buy and "metal" in buy, "Buy price must have keys and metal"
-        assert "keys" in sell and "metal" in sell, "Sell price must have keys and metal"
+        if not autoprice:
+            assert "keys" in buy and "metal" in buy, (
+                "Buy price must have keys and metal"
+            )
+            assert "keys" in sell and "metal" in sell, (
+                "Sell price must have keys and metal"
+            )
 
         data = self.get_item(sku)
 
@@ -215,29 +210,6 @@ class Database:
     def update_autoprice(self, data: dict) -> None:
         self.update_price(data["sku"], data["buy"], data["sell"], True)
 
-    def delete_price(self, sku: str) -> None:
+    def delete_item(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})
         logging.info(f"Removed {sku} from the database")
-
-    def add_deal(self, deal: dict) -> None:
-        sku = deal["sku"]
-
-        if self.deals.find_one({"sku": sku}):
-            logging.warning(f"Deal {sku} already exists in the database")
-            return
-
-        self.deals.insert_one(deal)
-        logging.info("Deal was added to the database")
-
-    def get_deals(self) -> list[dict]:
-        return list(self.deals.find())
-
-    def get_deal(self, sku: str) -> dict:
-        return self.deals.find_one({"sku": sku})
-
-    def update_deal(self, deal: dict) -> None:
-        self.deals.replace_one({"sku": deal["sku"]}, deal)
-
-    def delete_deal(self, sku: str) -> None:
-        self.deals.delete_one({"sku": sku})
-        logging.info("Deal was removed from the database")

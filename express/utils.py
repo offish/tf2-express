@@ -17,14 +17,8 @@ from .exceptions import NoConfigFound
 schema_items_utils = SchemaItemsUtils()
 
 
-def create_and_get_log_file() -> Path:
-    current_date = datetime.today().strftime("%Y-%m-%d")
-    file_path = Path(__file__).parent.parent / f"logs/express-{current_date}.log"
-
-    if not file_path.exists():
-        file_path.touch()
-
-    return file_path
+def has_buy_and_sell_price(data: dict) -> bool:
+    return data.get("buy", {}) != {} and data.get("sell", {}) != {}
 
 
 def is_same_item(a: dict, b: dict) -> bool:
@@ -52,17 +46,6 @@ def sku_to_item_data(sku: str) -> dict:
     return {"sku": sku, "name": name, "image": image, "color": color}
 
 
-def encode_data(data: dict) -> bytes:
-    if "_id" in data:
-        del data["_id"]
-
-    return (json.dumps(data) + "NEW_DATA").encode()
-
-
-def decode_data(data: bytes) -> list[dict]:
-    return [json.loads(doc) for doc in data.decode().split("NEW_DATA") if doc]
-
-
 def read_json_file(filename: str | Path) -> dict:
     content = {}
 
@@ -73,10 +56,10 @@ def read_json_file(filename: str | Path) -> dict:
 
 
 def get_config() -> dict:
-    path = Path(__file__).parent / "config.json"
+    path = Path(__file__).parent.parent / "config.json"
 
     if not path.exists():
-        raise NoConfigFound("No config.json file in the express directory!")
+        raise NoConfigFound("No config.json file found!")
 
     return read_json_file(path)
 
@@ -148,6 +131,16 @@ def check_for_updates() -> None:
 
     if not has_outdated:
         logging.info("All packages are up to date!")
+
+
+def create_and_get_log_file() -> Path:
+    current_date = datetime.today().strftime("%Y-%m-%d")
+    file_path = Path(__file__).parent.parent / f"logs/express-{current_date}.log"
+
+    if not file_path.exists():
+        file_path.touch()
+
+    return file_path
 
 
 class ExpressFormatter(logging.Formatter):

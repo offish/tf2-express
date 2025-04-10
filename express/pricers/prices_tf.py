@@ -13,8 +13,7 @@ from .pricing_provider import PricingProvider
 class PricesTF(PricesTFUtils, PricingProvider):
     def __init__(self, callback: Callable[[dict], None]) -> None:
         super().__init__()
-
-        self.callback = callback
+        PricingProvider.__init__(self, callback)
 
     def format_data(self, data: dict) -> dict:
         return self.format_price(data) | {"sku": data["sku"]}

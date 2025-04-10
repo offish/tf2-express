@@ -1,6 +1,6 @@
 import pytest
 
-from express.database import Database, has_buy_and_sell_price
+from express.database import Database
 from express.exceptions import SKUNotFound
 
 database = Database("express")
@@ -8,7 +8,6 @@ database.items.delete_many({})
 
 
 def test_get_price() -> None:
-    assert database.get_pricelist_count() == 0
     assert database.get_price("5000;6", "buy") == (0, 0.11)
     assert database.get_price("5001;6", "buy") == (0, 0.33)
     assert database.get_price("5002;6", "buy") == (0, 1.0)
@@ -19,23 +18,12 @@ def test_get_price() -> None:
     assert database.get_price("not;in;db", "sell") == (0, 0.0)
 
 
-def test_has_buy_and_sell_price() -> None:
-    ptr = has_buy_and_sell_price
-
-    assert ptr({"buy": {}, "sell": {}}) is False
-    assert ptr({"buy": {"keys": 0, "metal": 0}, "sell": {}}) is False
-    assert (
-        ptr({"buy": {"keys": 0, "metal": 0}, "sell": {"keys": 0, "metal": 0}}) is True
-    )
-
-
 def test_add_key_for_first_time() -> None:
     assert database.get_skus() == []
     assert database.get_item("5021;6") == {}
 
     database._add_key_for_first_time()
 
-    assert database.get_pricelist_count() == 1
     assert database.get_skus() == ["5021;6"]
     assert database.has_price("5021;6") is False
     assert database.is_temporarily_priced("5021;6") is False
@@ -76,16 +64,7 @@ def test_update_price() -> None:
             "5021;6",
             {"metal": 60.11},
             {"keys": 0, "metal": 60.22},
-            autoprice=True,
-            max_stock=10,
-        )
-
-    with pytest.raises(AssertionError):
-        database.update_price(
-            "5021;6",
-            {"keys": 0},
-            {"metal": 60.22},
-            autoprice=True,
+            autoprice=False,
             max_stock=10,
         )
 

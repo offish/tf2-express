@@ -3,28 +3,25 @@ import logging
 
 import steam
 
-from .chat_manager import ChatManager
 from .database import Database
-from .inventory_manager import InventoryManager
-from .listing_manager import ListingManager
-from .options import (
-    FRIEND_ACCEPT_MESSAGE,
-    Options,
-)
-from .pricing_manager import PricingManager
-from .trade_manager import TradeManager
-from .websocket_manager import WebSocketManager
+from .managers.chat_manager import ChatManager
+from .managers.inventory_manager import InventoryManager
+from .managers.listing_manager import ListingManager
+from .managers.pricing_manager import PricingManager
+from .managers.trade_manager import TradeManager
+from .managers.websocket_manager import WebSocketManager
+from .options import FRIEND_ACCEPT_MESSAGE, Options
 
 
 class Express(steam.Client):
     def __init__(self, options: Options) -> None:
         self.group = None
         self.options = options
-        self.bot_is_ready = False
         self.are_prices_updated = False
         self.pending_offer_users = set()
         self.pending_site_offers = {}
         self.processed_offers = {}
+        self._bot_is_ready = False
 
         self.inventory_manager = None
         self.listing_manager = None
@@ -65,9 +62,9 @@ class Express(steam.Client):
         self.database.update_stock(stock)
 
         # we are now ready (other events can now fire)
-        self.bot_is_ready = True
+        self._bot_is_ready = True
 
-        asyncio.create_task(self.pricing_manager.pricing_provider.listen())
+        asyncio.create_task(self.pricing_manager.pricer.listen())
         asyncio.create_task(self.pricing_manager.run())
 
         if self.options.use_backpack_tf:
@@ -79,9 +76,24 @@ class Express(steam.Client):
         if self.options.auto_cancel_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
+    async def bot_is_ready(self) -> None:
+        while not self._bot_is_ready:
+            await asyncio.sleep(1)
+
+    async def bot_is_ready_and_prices_updated(self) -> None:
+        await self.bot_is_ready()
+
+        while not self.are_prices_updated:
+            await asyncio.sleep(1)
+
+    def add_offer_data(self, offer_id: int | str, offer_data: dict) -> None:
+        if isinstance(offer_id, int):
+            offer_id = str(offer_id)
+
+        self.processed_offers[offer_id] = offer_data
+
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")
-        logging.info("Fetched our inventory")
 
         await self.join_groups()
         await self.setup()
@@ -95,14 +107,9 @@ class Express(steam.Client):
         if "tradeoffer" in message.content:
             return
 
+        await self.bot_is_ready_and_prices_updated()
         msg = message.content.lower()
-
         logging.info(f"{message.author.name} sent: {msg}")
-
-        # only care about buy and sell messages
-        if not msg.startswith("buy") and not msg.startswith("sell"):
-            await message.channel.send("Invalid command")
-            return
 
         await self.chat_manager.process_message(message, msg)
 
@@ -121,14 +128,17 @@ class Express(steam.Client):
         if trade.is_our_offer():
             return
 
+        await self.bot_is_ready_and_prices_updated()
         offer_data = await self.trade_manager.process_offer(trade)
 
         if not offer_data:
             return
 
-        self.processed_offers[trade.id] = offer_data
+        self.add_offer_data(trade.id, offer_data)
 
     async def on_trade_update(self, _, trade: steam.TradeOffer) -> None:
+        await self.bot_is_ready()
+
         offer_id = str(trade.id)
         offer_data = self.processed_offers.get(offer_id, {})
 

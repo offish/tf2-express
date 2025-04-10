@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 from websockets import connect
 from websockets.exceptions import ConnectionClosedError, InvalidStatus
 
-from .utils import swap_intent
+from ..utils import swap_intent
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class WebSocketManager:

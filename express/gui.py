@@ -134,7 +134,11 @@ class Panel:
 
     def autoprice_item(self, request: Request, sku: str) -> str:
         database_name = self._get_database(request)
-        self._database.update_price(sku, {}, {}, True)
+
+        if sku == ["-50;6", "-100;6"]:
+            print(f"Autopricing {sku} is not possible!")
+        else:
+            self._database.update_price(sku, {}, {}, True)
 
         return database_name
 
@@ -180,7 +184,7 @@ class Panel:
 
     def delete_item(self, request: Request, sku: str) -> str:
         database_name = self._get_database(request)
-        self._database.delete_price(sku)
+        self._database.delete_item(sku)
 
         return database_name
 

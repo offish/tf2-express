@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import steam
 from tf2_utils import (
@@ -19,13 +19,13 @@ from tf2_utils import (
     to_scrap,
 )
 
-from .conversion import item_data_to_item_object, item_object_to_item_data
-from .inventory import get_first_non_pure_sku
-from .options import COUNTER_OFFER_MESSAGE, OFFER_ACCEPTED_MESSAGE, SEND_OFFER_MESSAGE
-from .utils import is_only_taking_items, is_two_sided_offer, swap_intent
+from ..conversion import item_data_to_item_object, item_object_to_item_data
+from ..inventory import get_first_non_pure_sku
+from ..options import COUNTER_OFFER_MESSAGE, SEND_OFFER_MESSAGE
+from ..utils import is_only_taking_items, is_two_sided_offer, swap_intent
 
 if TYPE_CHECKING:
-    from .express import Express
+    from ..express import Express
 
 
 class TradeManager:
@@ -43,6 +43,32 @@ class TradeManager:
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    async def _retry_action(
+        trade: steam.TradeOffer, action_name: str, action_func: Callable
+    ) -> None:
+        logging.info(f"{action_name.capitalize()} offer #{trade.id}...")
+
+        for i in range(3):
+            try:
+                return await action_func()
+            except steam.errors.HTTPException as e:
+                logging.debug(f"Error {action_name.lower()}: {e}")
+                await asyncio.sleep(2**i)
+
+        logging.warning(
+            f"Failed when {action_name.lower()} offer #{trade.id} after 3 attempts"
+        )
+
+    async def accept(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "accepting", trade.accept)
+
+    async def cancel(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "cancelling", trade.cancel)
+
+    async def decline(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "declining", trade.decline)
 
     def _get_sku(self, item: dict[str, Any]) -> str:
         sku = item["sku"]
@@ -101,7 +127,6 @@ class TradeManager:
     ) -> tuple[int, bool]:
         has_unpriced = False
         total = 0
-
         key_scrap_price = self.pricing.get_key_scrap_price(intent)
 
         # valute one item at a time
@@ -150,25 +175,22 @@ class TradeManager:
         self, their_items: list[dict], our_items: list[dict]
     ) -> tuple[bool, int, int]:
         logging.debug("checking if values for offer is equal...")
-
         their_value = 0
         our_value = 0
 
         for item in their_items:
             sku = self._get_sku(item)
             scrap_price = self.pricing.get_scrap_price(sku, "buy")
+            their_value += scrap_price
 
             logging.debug(f"{sku=} has {scrap_price=}")
-
-            their_value += scrap_price
 
         for item in our_items:
             sku = self._get_sku(item)
             scrap_price = self.pricing.get_scrap_price(sku, "sell")
+            our_value += scrap_price
 
             logging.debug(f"{sku=} has {scrap_price=}")
-
-            our_value += scrap_price
 
         return (their_value == our_value, their_value, our_value)
 
@@ -269,7 +291,6 @@ class TradeManager:
             their_items = []
 
         key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
-
         currencies = CurrencyExchange(
             their_inventory, our_inventory, intent, total_scrap_price, key_scrap_price
         )
@@ -285,9 +306,7 @@ class TradeManager:
             return
 
         their_metal, our_metal = currencies.get_currencies()
-
         logging.debug(f"currencies adds up {len(their_metal)=} {len(our_metal)=}")
-
         their_items += their_metal
         our_items += our_metal
 
@@ -309,7 +328,6 @@ class TradeManager:
         inventory = self.inventory_manager.get_inventory_instance()
         our_inventory = self.inventory_manager.our_inventory
         their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
-
         data = await self._get_offer_items(
             partner, intent, items, item_type, their_inventory, our_inventory
         )
@@ -318,9 +336,7 @@ class TradeManager:
             return
 
         their_items, our_items = data
-
         logging.debug(f"{len(their_items)=} {len(our_items)=}")
-
         is_adding_up, their_value, our_value = self._item_values_adds_up(
             their_items, our_items
         )
@@ -368,11 +384,10 @@ class TradeManager:
 
         if sku is None:
             logging.warning("Found no non-pure items to counter offer")
-            await trade.decline()
+            await self.decline(trade)
             return
 
         logging.info(f"Counter offering {sku} to {trade.user.name}...")
-
         data = await self._create_offer(
             trade.user, [sku], "sku", "sell", message=COUNTER_OFFER_MESSAGE
         )
@@ -382,10 +397,8 @@ class TradeManager:
             return
 
         offer, offer_data = data
-
         await trade.counter(offer)
-
-        self.client.processed_offers[offer.id] = offer_data
+        self.client.add_offer_data(offer.id, offer_data)
 
     async def _process_offer(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -401,19 +414,23 @@ class TradeManager:
         # is owner
         if partner.id64 in self.options.owners:
             logging.info("Offer is from owner")
-            await trade.accept()
+            await self.accept(trade)
             return
 
         # nothing on our side
-        if trade.is_gift() and self.options.accept_donations:
+        if trade.is_gift():
             logging.info("User is trying to give items")
-            await trade.accept()
+
+            if self.options.accept_gift:
+                await self.accept(trade)
+            else:
+                logging.info("Ignoring gift offer")
             return
 
         # decline trade holds
         if await partner.escrow() is not None and self.options.decline_trade_hold:
             logging.info("User has a trade hold")
-            await trade.decline()
+            await self.decline(trade)
             return
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
@@ -463,8 +480,7 @@ class TradeManager:
             return
 
         if their_value >= our_value:
-            logging.info("Accepting offer...")
-            await trade.accept()
+            await self.accept(trade)
             return
 
         if self.options.auto_counter_bad_offers:
@@ -487,23 +503,20 @@ class TradeManager:
             return
 
         delta = datetime.now(timezone.utc) - updated
-        delta_seconds = delta.total_seconds()
+        delta_seconds = round(delta.total_seconds(), 1)
         expire_time = self.options.cancel_sent_offers_after_seconds
-
         logging.debug(f"{trade.id=} updated {delta_seconds=} ago {expire_time=}")
 
         if delta_seconds < expire_time:
             logging.debug(f"{trade.id=} not stale")
             return
 
-        logging.debug(f"canceling {trade.id=} as it is stale")
-        await trade.cancel()
-        logging.info(f"Stale offer #{trade.id} was canceled")
+        logging.info(
+            f"Offer #{trade.id} is stale, no action past {delta_seconds} seconds"
+        )
+        await self.cancel(trade)
 
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
-        while not self.client.bot_is_ready or not self.client.are_prices_updated:
-            await asyncio.sleep(1)
-
         offer_data = {}
         await self._process_offer(trade, offer_data)
 
@@ -520,16 +533,13 @@ class TradeManager:
         assert intent in ["buy", "sell"]
         assert item_type in ["sku", "asset_id"]
 
-        while not self.client.bot_is_ready or not self.client.are_prices_updated:
-            await asyncio.sleep(1)
-
+        await self.client.bot_is_ready_and_prices_updated()
         data = await self._create_offer(partner, items, item_type, intent, token)
 
         if data is None:
             return 0
 
         offer, offer_data = data
-
         logging.info(f"Sending offer to {partner.name}...")
 
         if partner.is_friend():
@@ -537,8 +547,7 @@ class TradeManager:
 
         await partner.send(trade=offer)
 
-        self.client.processed_offers[offer.id] = offer_data
-
+        self.client.add_offer_data(offer.id, offer_data)
         logging.info(f"Sent offer for {items} to {partner.name}")
 
         return offer.id
@@ -549,7 +558,6 @@ class TradeManager:
         steam_id = get_steam_id_from_trade_url(trade_url)
         token = get_token_from_trade_url(trade_url)
         partner = self.client.get_user(int(steam_id))
-
         logging.debug(f"{partner.name} {intent=} has {steam_id=} {token=}")
 
         return await self.send_offer(partner, intent, asset_ids, "asset_id", token)
@@ -557,14 +565,16 @@ class TradeManager:
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
     ) -> None:
-        while not self.client.bot_is_ready:
-            await asyncio.sleep(1)
-
         steam_id = str(trade.user.id64)
         offer_id = str(trade.id)
+        is_friend = trade.user.is_friend()
+        state_name = trade.state.name.lower()
         was_accepted = trade.state == steam.TradeOfferState.Accepted
 
-        logging.info(f"Offer #{offer_id} with {steam_id} was {trade.state.name}")
+        logging.info(f"Offer #{offer_id} with {trade.user.name} was {state_name}")
+
+        if is_friend and trade.state != steam.TradeOfferState.Countered:
+            await trade.user.send(f"Your offer was {state_name}")
 
         if offer_id in self.client.pending_site_offers:
             self.client.ws_manager.remove_user_from_queue(steam_id)
@@ -574,8 +584,8 @@ class TradeManager:
                     "success": was_accepted,
                     "steam_id": steam_id,
                     "message_type": "trade_status",
-                    "offer_state": trade.state.name.lower(),
-                    "message": f"Offer was {trade.state.name}!",
+                    "offer_state": state_name,
+                    "message": f"Offer was {state_name}!",
                 }
             )
 
@@ -587,8 +597,8 @@ class TradeManager:
         if not was_accepted:
             return
 
-        if trade.user.is_friend():
-            await trade.user.send(OFFER_ACCEPTED_MESSAGE)
+        if is_friend:
+            await trade.user.send("Thank you for the trade!")
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
         our_items = [item_object_to_item_data(i) for i in trade.sending]
@@ -607,7 +617,6 @@ class TradeManager:
 
         self.db.insert_trade(offer_data)
         # await self._group.invite(trade.user)
-
         logging.debug("Getting receipt...")
 
         receipt = await trade.receipt()
