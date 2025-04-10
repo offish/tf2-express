@@ -1,13 +1,23 @@
 from express import __version__
 from express.utils import (
-    decode_data,
-    encode_data,
     get_version,
+    has_buy_and_sell_price,
     is_only_taking_items,
     is_two_sided_offer,
     sku_to_item_data,
     swap_intent,
 )
+
+
+def test_has_buy_and_sell_price() -> None:
+    assert has_buy_and_sell_price({"buy": {}, "sell": {}}) is False
+    assert has_buy_and_sell_price({"buy": {"keys": 0, "metal": 0}, "sell": {}}) is False
+    assert (
+        has_buy_and_sell_price(
+            {"buy": {"keys": 0, "metal": 0}, "sell": {"keys": 0, "metal": 0}}
+        )
+        is True
+    )
 
 
 def test_swap_intent() -> None:
@@ -42,15 +52,6 @@ def test_sku_to_item_data():
         "name": "Secret Saxton",
         "sku": "233;6",
     }
-
-
-def test_data() -> None:
-    data = {"test": "data"}
-    encoded = encode_data(data)
-    decoded = decode_data(encoded)
-
-    assert encoded == b'{"test": "data"}NEW_DATA'
-    assert decoded == [data]
 
 
 def test_version() -> None:

@@ -22,7 +22,7 @@ class ExpressInventory(Inventory):
                 return map_inventory(inventory, add_skus=True, skip_untradable=True)
             except InvalidInventory:
                 logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
-                time.sleep(i * 2)
+                time.sleep(2**i)
 
         logging.warning(f"Failed to fetch inventory for {steam_id}")
 

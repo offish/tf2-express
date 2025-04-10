@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import steam
 from tf2_utils import (
@@ -43,6 +43,32 @@ class TradeManager:
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    async def _retry_action(
+        trade: steam.TradeOffer, action_name: str, action_func: Callable
+    ) -> None:
+        logging.info(f"{action_name.capitalize()} offer #{trade.id}...")
+
+        for i in range(3):
+            try:
+                return await action_func()
+            except steam.errors.HTTPException as e:
+                logging.debug(f"Error {action_name.lower()}: {e}")
+                await asyncio.sleep(2**i)
+
+        logging.warning(
+            f"Failed when {action_name.lower()} offer #{trade.id} after 3 attempts"
+        )
+
+    async def accept(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "accepting", trade.accept)
+
+    async def cancel(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "cancelling", trade.cancel)
+
+    async def decline(self, trade: steam.TradeOffer) -> None:
+        await self._retry_action(trade, "declining", trade.decline)
 
     def _get_sku(self, item: dict[str, Any]) -> str:
         sku = item["sku"]
@@ -358,7 +384,7 @@ class TradeManager:
 
         if sku is None:
             logging.warning("Found no non-pure items to counter offer")
-            await trade.decline()
+            await self.decline(trade)
             return
 
         logging.info(f"Counter offering {sku} to {trade.user.name}...")
@@ -372,7 +398,7 @@ class TradeManager:
 
         offer, offer_data = data
         await trade.counter(offer)
-        self.client.processed_offers[offer.id] = offer_data
+        self.client.add_offer_data(offer.id, offer_data)
 
     async def _process_offer(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -388,7 +414,7 @@ class TradeManager:
         # is owner
         if partner.id64 in self.options.owners:
             logging.info("Offer is from owner")
-            await trade.accept()
+            await self.accept(trade)
             return
 
         # nothing on our side
@@ -396,7 +422,7 @@ class TradeManager:
             logging.info("User is trying to give items")
 
             if self.options.accept_gift:
-                await trade.accept()
+                await self.accept(trade)
             else:
                 logging.info("Ignoring gift offer")
             return
@@ -404,7 +430,7 @@ class TradeManager:
         # decline trade holds
         if await partner.escrow() is not None and self.options.decline_trade_hold:
             logging.info("User has a trade hold")
-            await trade.decline()
+            await self.decline(trade)
             return
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
@@ -454,8 +480,7 @@ class TradeManager:
             return
 
         if their_value >= our_value:
-            logging.info("Accepting offer...")
-            await trade.accept()
+            await self.accept(trade)
             return
 
         if self.options.auto_counter_bad_offers:
@@ -478,7 +503,7 @@ class TradeManager:
             return
 
         delta = datetime.now(timezone.utc) - updated
-        delta_seconds = delta.total_seconds()
+        delta_seconds = round(delta.total_seconds(), 1)
         expire_time = self.options.cancel_sent_offers_after_seconds
         logging.debug(f"{trade.id=} updated {delta_seconds=} ago {expire_time=}")
 
@@ -486,8 +511,10 @@ class TradeManager:
             logging.debug(f"{trade.id=} not stale")
             return
 
-        logging.info(f"Cancelling #{trade.id} as it is stale...")
-        await trade.cancel()
+        logging.info(
+            f"Offer #{trade.id} is stale, no action past {delta_seconds} seconds"
+        )
+        await self.cancel(trade)
 
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
         offer_data = {}
@@ -519,7 +546,8 @@ class TradeManager:
             await partner.send("Sending offer...")
 
         await partner.send(trade=offer)
-        self.client.processed_offers[offer.id] = offer_data
+
+        self.client.add_offer_data(offer.id, offer_data)
         logging.info(f"Sent offer for {items} to {partner.name}")
 
         return offer.id

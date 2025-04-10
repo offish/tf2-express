@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from backpack_tf import BackpackTF
 from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
-from ..database import has_buy_and_sell_price
 from ..exceptions import ListingDoesNotExist, MissingBackpackTFToken
+from ..utils import has_buy_and_sell_price
 
 if TYPE_CHECKING:
     from ..express import Express
@@ -19,7 +19,6 @@ class ListingManager:
     ) -> None:
         self.client = client
         self.db = client.database
-        self.pricing = client.pricing_manager
         self.inventory = client.inventory_manager
         self.can_list = False
 
@@ -121,7 +120,7 @@ class ListingManager:
                 scrap_amount += get_metal(sku)
                 continue
 
-        key_scrap_price = self.pricing.get_key_scrap_price("buy")
+        key_scrap_price = self.client.pricing_manager.get_key_scrap_price("buy")
         scrap_total = keys_amount * key_scrap_price + scrap_amount >= metal
 
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
