@@ -40,9 +40,6 @@ class Express(steam.Client):
         self.database = Database(options.username)
 
     async def setup(self) -> None:
-        # set steam api key
-        self.http.api_key = self._api_key
-
         # set inventory
         self.inventory_manager = InventoryManager(self)
         self.inventory_manager.get_inventory_instance()
@@ -168,12 +165,9 @@ class Express(steam.Client):
         password: str,
         identity_secret: str,
         shared_secret: str,
-        api_key: str,
         **kwargs,
     ) -> None:
         del kwargs
-
-        self._api_key = api_key
 
         self.run(
             username=username,

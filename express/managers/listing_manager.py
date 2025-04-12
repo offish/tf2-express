@@ -43,8 +43,8 @@ class ListingManager:
         keys = currencies["keys"]
         metal = currencies["metal"]
         formatted_sku = sku.replace(";", "_")
-        _, max_stock = self.db.get_stock(sku)
-        in_stock = self.inventory.get_stock().get(sku, 0)
+        max_stock = self.db.get_max_stock(sku)
+        in_stock = self.inventory.get_in_stock(sku)
         max_stock_string = str(max_stock)
 
         if max_stock == -1:
@@ -86,7 +86,7 @@ class ListingManager:
     def _get_listing_details(self, sku: str, intent: str, currencies: dict) -> str:
         return (
             self._get_buy_listing_details(sku, currencies)
-            if intent == "buy"
+            if intent == "sell"
             else self._get_sell_listing_details(sku, currencies)
         )
 
@@ -295,8 +295,9 @@ class ListingManager:
 
     async def run(self) -> None:
         user_agent = self._bptf.register_user_agent()
+        logging.debug(f"User agent: {user_agent}")
 
-        if user_agent["status"] == "active":
+        if user_agent.get("status") == "active":
             logging.info("Backpack.TF user agent is now active")
         else:
             logging.error("Could not register Backpack.TF user agent")

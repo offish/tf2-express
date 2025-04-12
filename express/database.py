@@ -114,6 +114,9 @@ class Database:
         data = self.get_item(sku)
         return (data.get("in_stock", 0), data.get("max_stock", -1))
 
+    def get_max_stock(self, sku: str) -> int:
+        return self.get_item(sku).get("max_stock", -1)
+
     def replace_item(self, data: dict) -> None:
         sku = data["sku"]
 

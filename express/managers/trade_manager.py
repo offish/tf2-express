@@ -36,6 +36,8 @@ class TradeManager:
         self.db = client.database
         self.options = client.options
 
+        self._owners = [int(steam_id) for steam_id in self.options.owners]
+
     @staticmethod
     def _is_offer_active(trade: steam.TradeOffer) -> bool:
         try:
@@ -78,7 +80,7 @@ class TradeManager:
         if (
             not self.db.has_price(sku)
             and Item(item).is_craft_hat()
-            and self.options.allow_craft_hats
+            and self.options.enable_craft_hats
         ):
             sku = "-100;6"
 
@@ -91,7 +93,7 @@ class TradeManager:
             item = Item(i)
             sku = get_sku(item)
 
-            if item.is_craft_hat() and self.options.allow_craft_hats:
+            if item.is_craft_hat() and self.options.enable_craft_hats:
                 in_offer["-100;6"] += 1
 
             if sku not in in_offer:
@@ -155,7 +157,7 @@ class TradeManager:
             elif sku in all_skus:
                 keys, metal = self.db.get_price(sku, intent)
 
-            elif item.is_craft_hat() and self.options.allow_craft_hats:
+            elif item.is_craft_hat() and self.options.enable_craft_hats:
                 keys, metal = self.db.get_price("-100;6", intent)
 
             value = keys * key_scrap_price + to_scrap(metal)
@@ -412,7 +414,7 @@ class TradeManager:
         logging.info(f"Offer contains {items_amount} item(s)")
 
         # is owner
-        if partner.id64 in self.options.owners:
+        if partner.id64 in self._owners:
             logging.info("Offer is from owner")
             await self.accept(trade)
             return
