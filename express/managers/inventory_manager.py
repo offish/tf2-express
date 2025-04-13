@@ -32,6 +32,10 @@ class InventoryManager(ExpressInventory):
                 return moved_item.new_id
         return -1
 
+    def get_in_stock(self, sku: str) -> int:
+        stock = self.get_stock()
+        return stock.get(sku, 0)
+
     def get_inventory_instance(self) -> ExpressInventory:
         return ExpressInventory(
             str(self.client.user.id64),

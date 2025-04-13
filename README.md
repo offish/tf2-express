@@ -27,8 +27,8 @@ Donations are not required, but greatly appericated.
 * Add items by either name or SKU
 * Uses MongoDB for saving items, prices and trades
 * Limited inventory fetching to mitigate rate-limits
+* Supports arbitraging items from different trading sites [[?]](#arbitrage)
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
-* Supports 3rd party emitted "deals" [[?]](#3rd-party-deals)
 
 All available options can be found [here](express/options.py).
 
@@ -66,18 +66,17 @@ Example config:
         {
             "username": "username",
             "password": "password",
-            "api_key": "111AA1111AAAA11A1A11AA1AA1AAA111",
             "shared_secret": "Aa11aA1+1aa1aAa1a=",
             "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
             "options": {
                 "use_backpack_tf": true,
                 "backpack_tf_token": "token",
-                "enable_deals": false,
+                "enable_arbitrage": false,
                 "inventory_provider": "steamsupply",
                 "inventory_api_key": "mySteamSupplyApiKey",
                 "accept_donations": true,
                 "decline_trade_hold": true,
-                "allow_craft_hats": true,
+                "enable_craft_hats": true,
                 "save_trade_offers": true,
                 "owners": [
                     "76511111111111111",
@@ -91,6 +90,25 @@ Example config:
 
 > [!NOTE]
 > As of v3.0.0 tf2-express only supports running one bot instance at a time. It will use the first entry in `bots` in the config.
+
+### Options
+- `username` is the username for the Steam account you want to use the bot with
+- `use_backpack_tf` whether to list items on Backpack.TF or not
+- `backpack_tf_token` can be found on [here](https://next.backpack.tf/account/api-access) (Access Token, not API key)
+- `pricing_provider` is the provider for pricing. Prices.tf is the default.
+- `inventory_provider` is the provider for inventory. The default is Steam Community, but you can use a third party provider like Steam.Supply or Express-Load [[?]](#3rd-party-inventory-providers)
+- `inventory_api_key` is the API key for the inventory provider. You don't need to set this if you are using the default inventory provider.
+- `accept_donations` whether to accept donations or not
+- `auto_counter_bad_offers` whether to counter offers with wrong values or not
+- `decline_trade_hold` whether to decline trade hold or not
+- `auto_cancel_sent_offers` whether to auto cancel our sent offers or not after some time
+- `cancel_sent_offers_after_seconds` how long to wait before auto cancelling sent offers
+- `max_price_age_seconds` how old a price can be before it is fetched again
+- `enable_arbitrage` whether to enable arbitrage or not [[?]](#arbitrage)
+- `enable_craft_hats` whether to enable random craft hats or not [[?]](#random-craft-hats)
+- `save_trade_offers` whether to save trade offers in the MongoDB database or not
+- `groups` is a list of group IDs to join
+- `owners` is a list of owner Steam ID64s. The bot will accept offers from owners no matter what.
 
 ## Running
 ```bash
@@ -131,25 +149,28 @@ The GUI does not start automatically. To start the GUI run this:
 make gui
 ```
 
-The GUI will then be available at `http://127.0.0.1:5000`.
+The GUI will then be available at http://127.0.0.1:5000/
 
 ## Explanation
 ### Random Craft Hats
 If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
 
 > [!CAUTION]
-> This applies to any craftable unique hat, which includes hats such as The Team Captain, Earbuds, Max Heads etc. If these to not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled.
+> This applies to any craftable unique hat, which includes hats such as The Team Captain, Earbuds, Max Heads etc. If these do not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled. Be careful when using this option, as it can lead to unwanted trades.
 
-Simply open the GUI and add "Random Craft Hat" to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
+Simply open the GUI and add "Random Craft Hat" or `-100;6` to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
 
-### 3rd Party Inventory Providers
-Avoid Steam's inventory rate-limits by using a third party provider like SteamApis, Steam.Supply or your own.
-
-### 3rd Party Deals
-"Deals" in this context are data which is emitted by third party using a TCP socket. This data will be acted on, such as sending an offer using the included trade URL and price. They are named "deals" as I've been using it for arbitrage purposes.
+### Arbitrage
+"Arbitraging is the process of taking advantage of a price difference between two or more markets". In this case, it is used to buy items from one trade site and sell to another for profit. `tf2-express` can act on deals from [`tf2-arbitrage`](https://github.com/offish/tf2-arbitrage) and send or receive offers.
 
 > [!IMPORTANT]
 > As of tf2-express v3.0.0 deals are currently broken.
+
+### 3rd Party Inventory Providers
+Steam can rate-limit inventory fetch requests if they are called too often. This can be avoided using a third party provider like SteamApis, Steam.Supply, Express-Load or your own. This is especially useful if you are running multiple bots.
+
+> [!NOTE]
+> If you want to use [Express-Load](https://express-load.com/) you can use the promo code `offish` to receive free credits and try out their API.
 
 ## Testing
 ```bash
