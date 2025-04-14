@@ -12,7 +12,7 @@ class ExpressInventory(Inventory):
         api_key: str = "",
     ) -> None:
         self.steam_id = our_steam_id
-        self.stock = {"-100;6": 0}
+
         super().__init__(provider_name, api_key)
 
     def _fetch_inventory(self, steam_id: str) -> list[dict] | None:
@@ -63,10 +63,12 @@ class ExpressInventory(Inventory):
             if item_util.is_craft_hat():
                 stock["-100;6"] += 1
 
-            if sku not in self.stock:
+            if sku not in stock:
                 stock[sku] = 1
             else:
                 stock[sku] += 1
+
+        logging.debug(f"Stock: {stock}")
 
         return stock
 

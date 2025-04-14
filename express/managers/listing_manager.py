@@ -55,7 +55,7 @@ class ListingManager:
         if keys > 0:
             price = f"{keys} keys {metal} ref"
 
-        return {
+        variables = {
             "sku": sku,
             "in_stock": in_stock,
             "max_stock": max_stock,
@@ -64,29 +64,29 @@ class ListingManager:
             "max_stock_string": max_stock_string,
         }
 
-    def _get_buy_listing_details(self, sku: str, currencies: dict) -> str:
-        variables = self._get_listing_variables(sku, currencies)
-        del variables["max_stock"]
-
-        buy_details = "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
-        buy_details += "Offer (try to take it for free, I'll counter) or chat me. "
-        buy_details += "(double-click Ctrl+C): buy_1x_{formatted_sku}"
-
-        return buy_details.format(**variables)
+        logging.debug(f"Listing variables: {variables}")
+        return variables
 
     def _get_sell_listing_details(self, sku: str, currencies: dict) -> str:
         variables = self._get_listing_variables(sku, currencies)
-
-        sell_details = "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
-        sell_details += "Offer or chat me. "
-        sell_details += "(double-click Ctrl+C): sell_1x_{formatted_sku}"
+        sell_details = "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
+        sell_details += "Offer (try to take it for free, I'll counter) or chat me. "
+        sell_details += "(double-click Ctrl+C): buy_1x_{formatted_sku}"
 
         return sell_details.format(**variables)
+
+    def _get_buy_listing_details(self, sku: str, currencies: dict) -> str:
+        variables = self._get_listing_variables(sku, currencies)
+        buy_details = "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
+        buy_details += "Offer or chat me. "
+        buy_details += "(double-click Ctrl+C): sell_1x_{formatted_sku}"
+
+        return buy_details.format(**variables)
 
     def _get_listing_details(self, sku: str, intent: str, currencies: dict) -> str:
         return (
             self._get_buy_listing_details(sku, currencies)
-            if intent == "sell"
+            if intent == "buy"
             else self._get_sell_listing_details(sku, currencies)
         )
 
