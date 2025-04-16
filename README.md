@@ -98,6 +98,7 @@ Example config:
 - `pricing_provider` is the provider for pricing. Prices.tf is the default.
 - `inventory_provider` is the provider for inventory. The default is Steam Community, but you can use a third party provider like Steam.Supply or Express-Load [[?]](#3rd-party-inventory-providers)
 - `inventory_api_key` is the API key for the inventory provider. You don't need to set this if you are using the default inventory provider.
+- `backpack_tf_user_agent` user agent to show on next.backpack.tf.
 - `accept_donations` whether to accept donations or not.
 - `auto_counter_bad_offers` whether to counter offers with wrong values or not.
 - `decline_trade_hold` whether to decline trade hold or not.

@@ -15,6 +15,7 @@ class Options:
     pricing_provider: str = "pricestf"  # pricestf or bptfautopricer
     inventory_provider: str = "steamcommunity"  # steamsupply, expressload, etc.
     inventory_api_key: str = ""  # api key for the inventory provider
+    backpack_tf_user_agent: str = "Listing goin' up!"
     accept_donations: bool = True
     auto_counter_bad_offers: bool = True  # counter offers with wrong values
     decline_trade_hold: bool = True

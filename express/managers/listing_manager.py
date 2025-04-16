@@ -19,6 +19,7 @@ class ListingManager:
     ) -> None:
         self.client = client
         self.db = client.database
+        self.options = client.options
         self.inventory = client.inventory_manager
         self.can_list = False
 
@@ -32,8 +33,9 @@ class ListingManager:
         self._bptf = BackpackTF(
             token=backpack_tf_token,
             steam_id=steam_id,
-            user_agent="tf2-express",
+            user_agent=self.options.backpack_tf_user_agent,
         )
+        self._bptf._library = "tf2-express"
 
     @staticmethod
     def _get_listing_key(intent: str, sku: str) -> str:
