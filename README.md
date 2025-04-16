@@ -92,22 +92,23 @@ Example config:
 > As of v3.0.0 tf2-express only supports running one bot instance at a time. It will use the first entry in `bots` in the config.
 
 ### Options
-- `username` is the username for the Steam account you want to use the bot with
-- `use_backpack_tf` whether to list items on Backpack.TF or not
-- `backpack_tf_token` can be found on [here](https://next.backpack.tf/account/api-access) (Access Token, not API key)
+- `username` is the username for the Steam account you want to use the bot with. This will also be the of the MongoDB database.
+- `use_backpack_tf` whether to list items on Backpack.TF or not.
+- `backpack_tf_token` can be found on [here](https://next.backpack.tf/account/api-access) (copy Access Token, not API key)
 - `pricing_provider` is the provider for pricing. Prices.tf is the default.
 - `inventory_provider` is the provider for inventory. The default is Steam Community, but you can use a third party provider like Steam.Supply or Express-Load [[?]](#3rd-party-inventory-providers)
 - `inventory_api_key` is the API key for the inventory provider. You don't need to set this if you are using the default inventory provider.
-- `accept_donations` whether to accept donations or not
-- `auto_counter_bad_offers` whether to counter offers with wrong values or not
-- `decline_trade_hold` whether to decline trade hold or not
-- `auto_cancel_sent_offers` whether to auto cancel our sent offers or not after some time
-- `cancel_sent_offers_after_seconds` how long to wait before auto cancelling sent offers
-- `max_price_age_seconds` how old a price can be before it is fetched again
+- `backpack_tf_user_agent` user agent to show on next.backpack.tf.
+- `accept_donations` whether to accept donations or not.
+- `auto_counter_bad_offers` whether to counter offers with wrong values or not.
+- `decline_trade_hold` whether to decline trade hold or not.
+- `auto_cancel_sent_offers` whether to auto cancel our sent offers or not after some time.
+- `cancel_sent_offers_after_seconds` how long to wait before auto cancelling sent offers.
+- `max_price_age_seconds` how old a price can be before it is fetched again.
 - `enable_arbitrage` whether to enable arbitrage or not [[?]](#arbitrage)
 - `enable_craft_hats` whether to enable random craft hats or not [[?]](#random-craft-hats)
-- `save_trade_offers` whether to save trade offers in the MongoDB database or not
-- `groups` is a list of group IDs to join
+- `save_trade_offers` whether to save trade offers in the MongoDB database or not.
+- `groups` is a list of group IDs to join.
 - `owners` is a list of owner Steam ID64s. The bot will accept offers from owners no matter what.
 
 ## Running
@@ -164,13 +165,13 @@ Simply open the GUI and add "Random Craft Hat" or `-100;6` to the pricelist. Set
 "Arbitraging is the process of taking advantage of a price difference between two or more markets". In this case, it is used to buy items from one trade site and sell to another for profit. `tf2-express` can act on deals from [`tf2-arbitrage`](https://github.com/offish/tf2-arbitrage) and send or receive offers.
 
 > [!IMPORTANT]
-> As of tf2-express v3.0.0 deals are currently broken.
+> As of tf2-express v3.0.0 arbitrage is currently broken.
 
 ### 3rd Party Inventory Providers
 Steam can rate-limit inventory fetch requests if they are called too often. This can be avoided using a third party provider like SteamApis, Steam.Supply, Express-Load or your own. This is especially useful if you are running multiple bots.
 
 > [!NOTE]
-> If you want to use [Express-Load](https://express-load.com/) you can use the promo code `offish` to receive free credits and try out their API.
+> If you want to use [Express-Load](https://express-load.com/) you can use the promo code `offish` to receive free credits and try out their API for free.
 
 ## Testing
 ```bash

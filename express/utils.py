@@ -124,7 +124,7 @@ def check_for_updates() -> None:
             has_outdated = True
             name = key.replace("_version", "").replace("_", "-")
 
-            logging.warning(f"{name} has a new version. You might want to upgrade.")
+            logging.warning(f"{name} has a new version. You should probably upgrade.")
             logging.warning(
                 f"Installed version: {current_version}, available: {newest_version}"
             )
