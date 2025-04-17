@@ -1,66 +1,29 @@
-from .utils import decode_data, encode_data, sku_to_item_data
-
-from threading import Thread
+import asyncio
+import json
 import logging
-import socket
+from typing import TYPE_CHECKING
+
+from websockets import connect
+from websockets.exceptions import ConnectionClosedError, InvalidStatus
+
+from ..utils import sku_to_item_data
+
+if TYPE_CHECKING:
+    from ..express import Express
 
 
-class Deals:
-    def __init__(self, express, enabled: bool = False) -> None:
-        self.enabled = enabled
+class ArbitrageManager:
+    def __init__(self, client: "Express") -> None:
+        self.client = client
+        self.options = client.options
+        self.db = client.database
 
-        if not enabled:
-            return
-
-        self.express = express
-        self.inventory = self.express.inventory
-        self.db = self.express.db
-
-    def begin(self) -> None:
-        if not self.enabled:
-            return
-
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Connect to the server
-        server_address = ("localhost", 12345)
-
-        try:
-            self.socket.connect(server_address)
-            logging.info("Connected to socket server")
-        except ConnectionRefusedError:
-            raise SystemExit("Server socket is not running")
-
-        self.socket_thread = Thread(target=self.listen, daemon=True)
-        self.socket_thread.start()
-
-    def listen(self) -> None:
-        logging.info("Listening for deals...")
-
-        while True:
-            data = self.socket.recv(1024)
-            deals = decode_data(data)
-
-            for deal in deals:
-                # can be other types of messages
-                if not deal.get("is_deal"):
-                    continue
-
-                sku = deal["sku"]
-                logging.info(f"Got a deal for {sku=}")
-
-                self.db.add_price(
-                    **sku_to_item_data(sku),
-                    buy=deal["buy_price"],
-                    sell=deal["sell_price"],
-                )
-
-                self.add_deal(deal)
+        self.ws = None
 
     def add_deal(self, deal: dict) -> None:
         self.db.add_deal(deal)
 
     def update_deal(self, deal: dict) -> None:
-
         self.db.update_deal(deal)
 
     def delete_deal(self, sku: str) -> None:
@@ -162,11 +125,51 @@ class Deals:
                 # response =
                 # if response.get("success") set true to is_sold
 
-    def send(self, data: dict) -> None:
-        if not self.socket:
-            logging.warning("Socket empty, could not send data")
-            return
+    async def _send_ws_message(self, data: dict) -> None:
+        message = json.dumps({"message": data})
+        await self._ws.send(message)
 
-        logging.info(f"Sending data {data=}")
+    async def _on_incoming_site_trade(self, data: dict) -> None:
+        for deal in data:
+            # can be other types of messages
+            if not deal.get("is_deal"):
+                continue
 
-        self.socket.sendall(encode_data(data))
+            sku = deal["sku"]
+            logging.info(f"Got a deal for {sku=}")
+
+            self.db.add_price(
+                **sku_to_item_data(sku),
+                buy=deal["buy_price"],
+                sell=deal["sell_price"],
+            )
+
+            self.add_deal(deal)
+
+    async def _connect_to_site_ws(self, uri: str) -> None:
+        async with connect(uri) as websocket:
+            logging.info("Connected to tf2-arbitrage")
+
+            self._ws = websocket
+
+            while True:
+                message = await websocket.recv()
+                data = json.loads(message)
+
+                await self._on_incoming_site_trade(data)
+
+    async def listen(self) -> None:
+        uri = self.options.arbitrage_url
+
+        while True:
+            try:
+                await self._connect_to_site_ws(uri)
+            except (
+                InvalidStatus,
+                ConnectionRefusedError,
+                ConnectionClosedError,
+                TimeoutError,
+            ) as e:
+                logging.error(f"Error connecting to websocket: {e}")
+
+            await asyncio.sleep(60)

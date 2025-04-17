@@ -106,7 +106,7 @@ Example config:
 - `cancel_sent_offers_after_seconds` how long to wait before auto cancelling sent offers.
 - `max_price_age_seconds` how old a price can be before it is fetched again.
 - `enable_arbitrage` whether to enable arbitrage or not [[?]](#arbitrage)
-- `enable_craft_hats` whether to enable random craft hats or not [[?]](#random-craft-hats)
+- `enable_craft_hats` whether to enable Random Craft Hats or not [[?]](#random-craft-hats)
 - `save_trade_offers` whether to save trade offers in the MongoDB database or not.
 - `groups` is a list of group IDs to join.
 - `owners` is a list of owner Steam ID64s. The bot will accept offers from owners no matter what.

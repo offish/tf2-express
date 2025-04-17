@@ -28,6 +28,7 @@ class Options:
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
     client_options: dict = field(default_factory=dict)  # client options for steam.py
+    arbitrage_url: str = ""  # url to websocket hosted by tf2-arbitrage
     is_express_tf_bot: bool = False  # is this bot an express.tf bot
     express_tf_uri: str = ""
     express_tf_token: str = ""

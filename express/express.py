@@ -4,6 +4,7 @@ import logging
 import steam
 
 from .database import Database
+from .managers.arbitrage_manager import ArbitrageManager
 from .managers.chat_manager import ChatManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
@@ -23,6 +24,7 @@ class Express(steam.Client):
         self.processed_offers = {}
         self._bot_is_ready = False
 
+        self.arbitrage_manager = None
         self.inventory_manager = None
         self.listing_manager = None
         self.pricing_manager = None
@@ -46,6 +48,7 @@ class Express(steam.Client):
         self.inventory_manager.fetch_our_inventory()
 
         # set managers
+        self.arbitrage_manager = ArbitrageManager(self)
         self.listing_manager = ListingManager(
             self, self.options.backpack_tf_token, str(self.user.id64)
         )
@@ -72,6 +75,9 @@ class Express(steam.Client):
 
         if self.options.auto_cancel_sent_offers:
             asyncio.create_task(self.trade_manager.run())
+
+        if self.options.enable_arbitrage:
+            asyncio.create_task(self.arbitrage_manager.listen())
 
     async def bot_is_ready(self) -> None:
         while not self._bot_is_ready:
