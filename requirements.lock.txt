@@ -44,7 +44,7 @@ tf2-data==1.0.0
 tf2-sku==2.0.1
 tf2-utils==2.3.4
 typing_extensions==4.13.2
-urllib3==2.4.0
+urllib3==2.5.0
 vdf==3.4
 websocket-client==1.8.0
 websockets==14.2
