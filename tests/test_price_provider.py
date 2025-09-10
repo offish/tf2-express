@@ -1,6 +1,6 @@
 import pytest
 
-from express.pricers.bptf_autopricer import BPTFAutopricer
+from express.pricers.bliss_autopricer import BlissAutopricer
 from express.pricers.prices_tf import PricesTF
 from express.pricers.pricing_providers import get_pricing_provider
 
@@ -13,7 +13,7 @@ def test_pricing_provider() -> None:
     assert isinstance(get_pricing_provider("pricestf", dummy_callback), PricesTF)
     assert isinstance(get_pricing_provider("PricesTF", dummy_callback), PricesTF)
     assert isinstance(
-        get_pricing_provider("bptfautopricer", dummy_callback), BPTFAutopricer
+        get_pricing_provider("blissautopricer", dummy_callback), BlissAutopricer
     )
 
     with pytest.raises(ValueError):

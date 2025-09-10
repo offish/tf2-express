@@ -1,28 +1,20 @@
 import asyncio
 import logging
 from dataclasses import asdict
-from typing import TYPE_CHECKING
 
 from backpack_tf import BackpackTF
 from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
 from ..exceptions import ListingDoesNotExist, MissingBackpackTFToken
 from ..utils import has_buy_and_sell_price
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class ListingManager:
-    def __init__(
-        self, client: "Express", backpack_tf_token: str, steam_id: str
-    ) -> None:
-        self.client = client
-        self.db = client.database
-        self.options = client.options
-        self.inventory = client.inventory_manager
+class ListingManager(BaseManager):
+    def setup(self) -> None:
+        backpack_tf_token = self.options.backpack_tf_token
+
         self.can_list = False
-
         self._listings = {}
         self._has_updated_listings = True
         self._is_ready = False
@@ -32,7 +24,7 @@ class ListingManager:
 
         self._bptf = BackpackTF(
             token=backpack_tf_token,
-            steam_id=steam_id,
+            steam_id=self.client.steam_id,
             user_agent=self.options.backpack_tf_user_agent,
         )
         self._bptf._library = "tf2-express"

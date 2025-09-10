@@ -1,23 +1,16 @@
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING
 
 from websockets import connect
 from websockets.exceptions import ConnectionClosedError, InvalidStatus
 
 from ..utils import sku_to_item_data
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class ArbitrageManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.options = client.options
-        self.db = client.database
-
+class ArbitrageManager(BaseManager):
+    def setup(self) -> None:
         self.ws = None
 
     def add_deal(self, deal: dict) -> None:
@@ -51,9 +44,6 @@ class ArbitrageManager:
             self.db.delete_price(sku)
 
     def process_deals(self) -> None:
-        if not self.enabled:
-            return
-
         for deal in self.get_deals():
             sell_requested = (
                 deal.get("sell_requested", False) and "pricestf" != deal["sell_site"]
@@ -102,7 +92,7 @@ class ArbitrageManager:
                 logging.info(f"Sending offer to buy {sku}")
                 buy_data = deal["buy_data"]
                 trade_url = buy_data["trade_url"]
-                response = self.express.send_offer(trade_url, "buy", sku)
+                response = self.client.trade_manager.send_offer(trade_url, "buy", sku)
 
                 if response.get("success"):
                     deal["buy_offer_sent"] = True
@@ -116,7 +106,7 @@ class ArbitrageManager:
                 logging.info(f"Sending offer to sell {sku}")
                 sell_data = deal["sell_data"]
                 trade_url = sell_data["trade_url"]
-                response = self.express.send_offer(trade_url, "sell", sku)
+                response = self.client.trade_manager.send_offer(trade_url, "sell", sku)
 
                 if response.get("success"):
                     deal["sell_offer_sent"] = True

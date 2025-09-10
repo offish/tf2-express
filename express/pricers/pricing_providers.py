@@ -1,10 +1,10 @@
 from typing import Callable
 
-from .bptf_autopricer import BPTFAutopricer
+from .pricedb import PriceDB
 from .prices_tf import PricesTF
 from .pricing_provider import PricingProvider
 
-PROVIDERS = [BPTFAutopricer, PricesTF]
+PROVIDERS = [PriceDB, PricesTF]
 
 
 def get_pricing_provider(

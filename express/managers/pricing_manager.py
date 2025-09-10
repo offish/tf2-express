@@ -1,27 +1,20 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from tf2_utils.utils import to_scrap
 
 from ..exceptions import NoKeyPrice
 from ..pricers.pricing_providers import get_pricing_provider
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class PricingManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.db = client.database
-        self.options = client.options
-        self.listing_manager = client.listing_manager
-
+class PricingManager(BaseManager):
+    def setup(self) -> None:
         self._last_autopriced_items = []
 
-        self.pricer = get_pricing_provider(
+        self.provider = get_pricing_provider(
             self.options.pricing_provider, self._on_price_update
         )
 
@@ -83,7 +76,7 @@ class PricingManager:
             or item["sell"] == {}
         ]
 
-        prices = self.pricer.get_multiple_prices(skus)
+        prices = self.provider.get_multiple_prices(skus)
         logging.debug(f"Got prices for {len(prices)} items")
 
         for sku in prices:
@@ -93,7 +86,7 @@ class PricingManager:
         logging.info(f"Updated prices for {len(skus)} autopriced items")
 
     def _get_and_update_price(self, sku: str) -> None:
-        price = self.pricer.get_price(sku)
+        price = self.provider.get_price(sku)
         self._update_price(sku, price)
 
     def _update_entire_pricelist(self) -> None:

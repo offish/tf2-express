@@ -1,23 +1,18 @@
 import logging
-from typing import TYPE_CHECKING
 
 from steam import MovedItem, TradeOfferReceipt
 from tf2_utils import get_sku
 
 from ..inventory import ExpressInventory
 from ..utils import is_same_item
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class InventoryManager(ExpressInventory):
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.options = client.options
-
-        super().__init__(
-            str(client.user.id64),
+class InventoryManager(BaseManager, ExpressInventory):
+    def setup(self):
+        ExpressInventory.__init__(
+            self,
+            self.client.steam_id,
             self.options.inventory_provider,
             self.options.inventory_api_key,
         )

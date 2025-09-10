@@ -12,7 +12,7 @@ class Options:
     username: str
     use_backpack_tf: bool
     backpack_tf_token: str = ""
-    pricing_provider: str = "pricestf"  # pricestf or bptfautopricer
+    pricing_provider: str = "pricedb"  # pricedb
     inventory_provider: str = "steamcommunity"  # steamsupply, expressload, etc.
     inventory_api_key: str = ""  # api key for the inventory provider
     backpack_tf_user_agent: str = "Listing goin' up!"

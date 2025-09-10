@@ -1,19 +1,13 @@
 import logging
-from typing import TYPE_CHECKING
 
 from steam import Message
 
 from ..command import parse_command
 from ..utils import swap_intent
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class ChatManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-
+class ChatManager(BaseManager):
     async def process_message(self, message: Message, msg: str) -> None:
         if msg.startswith("buy") or msg.startswith("sell"):
             await self.handle_buy_sell_command(message, msg)
