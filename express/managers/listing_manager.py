@@ -63,7 +63,7 @@ class ListingManager(BaseManager):
 
     def _get_sell_listing_details(self, sku: str, currencies: dict) -> str:
         variables = self._get_listing_variables(sku, currencies)
-        sell_details = "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
+        sell_details = "{price} I have {in_stock} 24/7 FAST "
         sell_details += "Offer (try to take it for free, I'll counter) or chat me. "
         sell_details += "(double-click Ctrl+C): buy_1x_{formatted_sku}"
 
@@ -71,7 +71,7 @@ class ListingManager(BaseManager):
 
     def _get_buy_listing_details(self, sku: str, currencies: dict) -> str:
         variables = self._get_listing_variables(sku, currencies)
-        buy_details = "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
+        buy_details = "{price} Stock {in_stock}/{max_stock_string} 24/7 FAST "
         buy_details += "Offer or chat me. "
         buy_details += "(double-click Ctrl+C): sell_1x_{formatted_sku}"
 
@@ -169,7 +169,39 @@ class ListingManager(BaseManager):
 
     def create_listing(self, sku: str, intent: str) -> None:
         logging.debug(f"Creating {intent} listing for {sku}")
+        
+        # Check if listing already exists
+        if self.is_listed(sku, intent):
+            logging.debug(f"{intent} listing for {sku} already exists")
+            return
+            
         currencies = self.db.get_item(sku)[intent]
+        
+        # Debug: Log the exact currency format being passed
+        logging.info(f"Currency format for {sku} ({intent}): {currencies}")
+        
+        # Fix currency format - convert keys to int and remove 0 keys
+        if isinstance(currencies, dict):
+            fixed_currencies = {}
+            
+            # Handle metal
+            if "metal" in currencies:
+                fixed_currencies["metal"] = float(currencies["metal"])
+            
+            # Handle keys - convert to int and omit if 0
+            if "keys" in currencies:
+                keys_value = int(currencies["keys"])
+                if keys_value > 0:
+                    fixed_currencies["keys"] = keys_value
+            
+            currencies = fixed_currencies
+            logging.info(f"Fixed currency format: {currencies}")
+        
+        # Validate currencies format
+        if not isinstance(currencies, dict) or ("keys" not in currencies and "metal" not in currencies):
+            logging.error(f"Invalid currencies format for {sku}: {currencies}")
+            return
+            
         listing_variables = self._get_listing_variables(sku, currencies)
         in_stock = listing_variables["in_stock"]
 
@@ -180,6 +212,7 @@ class ListingManager(BaseManager):
         if (
             listing_variables["max_stock"] != -1
             and in_stock >= listing_variables["max_stock"]
+            and intent == "buy"
         ):
             logging.debug(f"Max stock reached for {sku} to create a buy listing")
             return
@@ -193,23 +226,53 @@ class ListingManager(BaseManager):
         asset_id = 0
 
         if intent == "sell":
-            asset_id = self._get_asset_id_for_sku(sku)
-            logging.debug(f"Asset id for {sku} is {asset_id}")
+            try:
+                asset_id = self._get_asset_id_for_sku(sku)
+                logging.info(f"Asset id for {sku} is {asset_id}")
+            except Exception as e:
+                logging.error(f"Failed to get asset ID for {sku}: {e}")
+                return
 
         details = self._get_listing_details(sku, intent, currencies)
-        listing = self._bptf.create_listing(
-            sku=sku,
-            intent=intent,
-            currencies=currencies,
-            details=details,
-            asset_id=asset_id,
-        )
-
+        
+        # Log listing parameters for debugging
+        logging.debug(f"Creating listing - SKU: {sku}, Intent: {intent}, Currencies: {currencies}, Asset ID: {asset_id}")
+        
+        # Create listing using positional arguments as per library specification
+        try:
+            if asset_id > 0:
+                listing = self._bptf.create_listing(sku, intent, currencies, details, asset_id)
+            else:
+                listing = self._bptf.create_listing(sku, intent, currencies, details)
+        except TypeError as e:
+            error_msg = str(e)
+            if "unexpected keyword argument" in error_msg:
+                # Extract the problematic field name
+                import re
+                field_match = re.search(r"unexpected keyword argument '(\w+)'", error_msg)
+                field_name = field_match.group(1) if field_match else "unknown"
+                
+                logging.error(f"Failed to create listing for {sku}: Library version mismatch")
+                logging.error(f"API returned field '{field_name}' not supported by Listing class")
+                logging.error(f"This indicates the backpack_tf library needs updating")
+                return
+            else:
+                raise
+        except Exception as e:
+            logging.error(f"Failed to create listing for {sku}: {e}")
+            return
+            
         logging.debug(f"Listing created: {asdict(listing)}")
 
         if listing.id:
             listing_key = self._get_listing_key(intent, sku)
-            self._listings[listing_key] = asdict(listing) | listing_variables
+            listing_dict = asdict(listing) | listing_variables
+            
+            # Store asset_id for deletion purposes
+            if asset_id > 0:
+                listing_dict["asset_id"] = asset_id
+                
+            self._listings[listing_key] = listing_dict
             logging.info(f"Listing for {intent}ing {sku} was created")
 
     def delete_inactive_listings(self, current_skus: list[str]) -> None:
@@ -231,7 +294,12 @@ class ListingManager(BaseManager):
         if key not in self._listings:
             raise ListingDoesNotExist
 
-        success = self._bptf.delete_listing(self._listings[key].id)
+        # Use the appropriate deletion method based on listing type
+        listing_data = self._listings[key]
+        if "asset_id" in listing_data and listing_data["asset_id"] > 0:
+            success = self._bptf.delete_listing_by_asset_id(listing_data["asset_id"])
+        else:
+            success = self._bptf.delete_listing_by_sku(sku)
 
         if success is not True:
             logging.error(f"Error when trying to delete {intent} listing for {sku}")
@@ -247,6 +315,21 @@ class ListingManager(BaseManager):
 
     def set_price_changed(self, sku: str) -> None:
         logging.debug(f"Updating listing for {sku}...")
+        
+        # Remove existing listings first to force recreation with new prices
+        try:
+            if self.is_listed(sku, "buy"):
+                self.remove_listing(sku, "buy")
+        except ListingDoesNotExist:
+            pass
+            
+        try:
+            if self.is_listed(sku, "sell"):
+                self.remove_listing(sku, "sell")
+        except ListingDoesNotExist:
+            pass
+            
+        # Create new listings with updated prices
         self.create_listing(sku, "buy")
         self.create_listing(sku, "sell")
 
