@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable
 
 import steam
 from tf2_utils import (
@@ -23,19 +23,11 @@ from ..conversion import item_data_to_item_object, item_object_to_item_data
 from ..inventory import get_first_non_pure_sku
 from ..options import COUNTER_OFFER_MESSAGE, SEND_OFFER_MESSAGE
 from ..utils import is_only_taking_items, is_two_sided_offer, swap_intent
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class TradeManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.pricing = client.pricing_manager
-        self.inventory_manager = client.inventory_manager
-        self.db = client.database
-        self.options = client.options
-
+class TradeManager(BaseManager):
+    def setup(self) -> None:
         self._owners = [int(steam_id) for steam_id in self.options.owners]
 
     @staticmethod
@@ -51,8 +43,9 @@ class TradeManager:
         trade: steam.TradeOffer, action_name: str, action_func: Callable
     ) -> None:
         logging.info(f"{action_name.capitalize()} offer #{trade.id}...")
+        tries = 5
 
-        for i in range(3):
+        for i in range(tries):
             try:
                 return await action_func()
             except steam.errors.HTTPException as e:
@@ -60,7 +53,7 @@ class TradeManager:
                 await asyncio.sleep(2**i)
 
         logging.warning(
-            f"Failed when {action_name.lower()} offer #{trade.id} after 3 attempts"
+            f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
 
     async def accept(self, trade: steam.TradeOffer) -> None:
@@ -219,6 +212,11 @@ class TradeManager:
 
         for item in selected_inventory:
             asset_id = item["assetid"]
+
+            if int(asset_id) == 0:
+                logging.warning(f"Item {item} has no asset id, skipping")
+                continue
+
             item_identifier = item["sku"] if item_type == "sku" else asset_id
 
             if item_identifier not in items:
@@ -327,8 +325,8 @@ class TradeManager:
         offer_data = {}
 
         # get fresh instance of inventory (stores both our and theirs)
-        inventory = self.inventory_manager.get_inventory_instance()
-        our_inventory = self.inventory_manager.our_inventory
+        inventory = self.inventory.get_inventory_instance()
+        our_inventory = self.inventory.our_inventory
         their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
         data = await self._get_offer_items(
             partner, intent, items, item_type, their_inventory, our_inventory

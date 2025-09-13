@@ -24,7 +24,6 @@ def item_data_to_item_object(
         "classid": int(item_data["classid"]),
         "instanceid": int(item_data["instanceid"]),
         "icon_url": item_data["icon_url"],
-        "icon_url_large": item_data["icon_url_large"],
         "descriptions": [i["value"] for i in item_data.get("descriptions", [])],
         "tradable": item_data["tradable"],
         "actions": item_data["actions"],

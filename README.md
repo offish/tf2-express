@@ -7,7 +7,7 @@
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-Automated TF2 trading bot with GUI support, built with Python. Prices are by default provided by [Prices.TF](https://prices.tf).
+Automated TF2 trading bot with GUI support, built with Python. Prices are by default provided by [PriceDB.IO](https://pricedb.io).
 
 ## Donate
 Donations are not required, but greatly appericated.
@@ -92,24 +92,27 @@ Example config:
 > As of v3.0.0 tf2-express only supports running one bot instance at a time. It will use the first entry in `bots` in the config.
 
 ### Options
-- `username` is the username for the Steam account you want to use the bot with. This will also be the of the MongoDB database.
-- `use_backpack_tf` whether to list items on Backpack.TF or not.
-- `backpack_tf_token` can be found on [here](https://next.backpack.tf/account/api-access) (copy Access Token, not API key)
-- `pricing_provider` is the provider for pricing. Prices.tf is the default.
-- `inventory_provider` is the provider for inventory. The default is Steam Community, but you can use a third party provider like Steam.Supply or Express-Load [[?]](#3rd-party-inventory-providers)
-- `inventory_api_key` is the API key for the inventory provider. You don't need to set this if you are using the default inventory provider.
-- `backpack_tf_user_agent` user agent to show on next.backpack.tf.
-- `accept_donations` whether to accept donations or not.
-- `auto_counter_bad_offers` whether to counter offers with wrong values or not.
-- `decline_trade_hold` whether to decline trade hold or not.
-- `auto_cancel_sent_offers` whether to auto cancel our sent offers or not after some time.
-- `cancel_sent_offers_after_seconds` how long to wait before auto cancelling sent offers.
-- `max_price_age_seconds` how old a price can be before it is fetched again.
-- `enable_arbitrage` whether to enable arbitrage or not [[?]](#arbitrage)
-- `enable_craft_hats` whether to enable random craft hats or not [[?]](#random-craft-hats)
-- `save_trade_offers` whether to save trade offers in the MongoDB database or not.
-- `groups` is a list of group IDs to join.
-- `owners` is a list of owner Steam ID64s. The bot will accept offers from owners no matter what.
+| Option             | Description| Default   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | — |
+| `use_backpack_tf` | Whether to list items on Backpack.TF or not. | false |
+| `backpack_tf_token`| Access token from [backpack.tf API access](https://next.backpack.tf/account/api-access). | — |
+| `pricing_provider` | Provider for item pricing. | `pricedb` |
+| `inventory_provider` | Provider for inventory. Default is Steam Community, can use third-party like Steam.Supply or Express-Load. | `steamcommunity` |
+| `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| — |
+| `backpack_tf_user_agent` | User agent shown on next.backpack.tf. | — |
+| `accept_donations` | Whether to accept donations or not. | false |
+| `auto_counter_bad_offers` | Whether to counter offers with wrong values or not. | false |
+| `decline_trade_hold` | Whether to decline trades that have trade hold. | false |
+| `auto_cancel_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
+| `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | — |
+| `max_price_age_seconds`| Maximum age (in seconds) of a price before it is fetched again. | — |
+| `enable_arbitrage` | Whether to enable arbitrage or not. [\[?\]](#arbitrage) | false |
+| `enable_craft_hats`| Whether to enable Random Craft Hats or not. [\[?\]](#random-craft-hats) | false |
+| `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |
+| `groups` | List of group IDs to join. | \[] |
+| `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
+
 
 ## Running
 ```bash

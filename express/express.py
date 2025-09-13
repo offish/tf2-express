@@ -4,6 +4,8 @@ import logging
 import steam
 
 from .database import Database
+from .managers.arbitrage_manager import ArbitrageManager
+from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
@@ -23,6 +25,7 @@ class Express(steam.Client):
         self.processed_offers = {}
         self._bot_is_ready = False
 
+        self.arbitrage_manager = None
         self.inventory_manager = None
         self.listing_manager = None
         self.pricing_manager = None
@@ -40,19 +43,30 @@ class Express(steam.Client):
         self.database = Database(options.username)
 
     async def setup(self) -> None:
-        # set inventory
-        self.inventory_manager = InventoryManager(self)
-        self.inventory_manager.get_inventory_instance()
-        self.inventory_manager.fetch_our_inventory()
-
         # set managers
-        self.listing_manager = ListingManager(
-            self, self.options.backpack_tf_token, str(self.user.id64)
-        )
+        self.inventory_manager = InventoryManager(self)
+        self.arbitrage_manager = ArbitrageManager(self)
+        self.listing_manager = ListingManager(self)
         self.pricing_manager = PricingManager(self)
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
         self.ws_manager = WebSocketManager(self)
+
+        managers: list[BaseManager] = [
+            self.inventory_manager,
+            self.arbitrage_manager,
+            self.listing_manager,
+            self.pricing_manager,
+            self.trade_manager,
+            self.chat_manager,
+            self.ws_manager,
+        ]
+
+        for manager in managers:
+            manager.setup()
+
+        # set inventory
+        self.inventory_manager.fetch_our_inventory()
 
         # get inventory stock and update database
         stock = self.inventory_manager.get_stock()
@@ -61,7 +75,7 @@ class Express(steam.Client):
         # we are now ready (other events can now fire)
         self._bot_is_ready = True
 
-        asyncio.create_task(self.pricing_manager.pricer.listen())
+        asyncio.create_task(self.pricing_manager.provider.listen())
         asyncio.create_task(self.pricing_manager.run())
 
         if self.options.use_backpack_tf:
@@ -72,6 +86,9 @@ class Express(steam.Client):
 
         if self.options.auto_cancel_sent_offers:
             asyncio.create_task(self.trade_manager.run())
+
+        if self.options.enable_arbitrage:
+            asyncio.create_task(self.arbitrage_manager.listen())
 
     async def bot_is_ready(self) -> None:
         while not self._bot_is_ready:
@@ -176,3 +193,7 @@ class Express(steam.Client):
             shared_secret=shared_secret,
             debug=False,
         )
+
+    @property
+    def steam_id(self) -> str:
+        return str(self.user.id64)

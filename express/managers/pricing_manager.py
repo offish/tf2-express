@@ -1,29 +1,22 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from tf2_utils.utils import to_scrap
 
 from ..exceptions import NoKeyPrice
 from ..pricers.pricing_providers import get_pricing_provider
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class PricingManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.db = client.database
-        self.options = client.options
-        self.listing_manager = client.listing_manager
-
+class PricingManager(BaseManager):
+    def setup(self) -> None:
         self._last_autopriced_items = []
         self._failed_skus = []  # Track SKUs that failed to get prices
         self._last_retry_time = 0  # Track when we last retried failed SKUs
 
-        self.pricer = get_pricing_provider(
+        self.provider = get_pricing_provider(
             self.options.pricing_provider, self._on_price_update
         )
 

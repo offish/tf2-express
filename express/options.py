@@ -12,7 +12,7 @@ class Options:
     username: str
     use_backpack_tf: bool
     backpack_tf_token: str = ""
-    pricing_provider: str = "pricestf"  # pricestf or bptfautopricer
+    pricing_provider: str = "pricedb"  # pricedb
     inventory_provider: str = "steamcommunity"  # steamsupply, expressload, etc.
     inventory_api_key: str = ""  # api key for the inventory provider
     backpack_tf_user_agent: str = "Listing goin' up!"
@@ -28,6 +28,7 @@ class Options:
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
     client_options: dict = field(default_factory=dict)  # client options for steam.py
+    arbitrage_url: str = ""  # url to websocket hosted by tf2-arbitrage
     is_express_tf_bot: bool = False  # is this bot an express.tf bot
     express_tf_uri: str = ""
     express_tf_token: str = ""

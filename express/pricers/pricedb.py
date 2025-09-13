@@ -8,27 +8,28 @@ from .pricing_provider import PricingProvider
 
 # NOTE: prices are on the format we expect, so no need to format it
 # {
-#     "name": "Strange Australium Minigun",
-#     "sku": "202;11;australium",
+#     "sku": "5021;6",
+#     "name": "Mann Co. Supply Crate Key",
+#     "buy": {"keys": 0, "metal": 67.33},
+#     "sell": {"keys": 0, "metal": 68.11},
+#     "time": 1640995200,
 #     "source": "bptf",
-#     "time": 1700403492,
-#     "buy": {"keys": 25, "metal": 21.33},
-#     "sell": {"keys": 26, "metal": 61.77}
 # }
 
 
-class BPTFAutopricer(PricingProvider):
+class PriceDB(PricingProvider):
     def __init__(self, callback: Callable[[dict], None]):
         super().__init__(callback)
 
-        self.url = "http://127.0.0.1:3456"
+        self.socket_url = "ws://ws.pricedb.io:5500/"
+        self.api_url = "https://pricedb.io/api"
         self.sio = AsyncClient()
 
         self.sio.on("connect", self.on_connect)
         self.sio.on("price", self.on_price_update)
 
     def get_price(self, sku: str) -> dict:
-        response = requests.get(f"{self.url}/items/{sku}")
+        response = requests.get(f"{self.api_url}/item/{sku}")
         response.raise_for_status()
 
         data = response.json()
@@ -36,11 +37,16 @@ class BPTFAutopricer(PricingProvider):
 
         return data
 
-    def get_multiple_prices(self, skus: list[str]) -> list[dict]:
+    def get_multiple_prices(self, skus: list[str]) -> dict:
         prices = {}
 
-        for sku in skus:
-            prices[sku] = self.get_price(sku)
+        response = requests.post(f"{self.api_url}/items-bulk", json={"skus": skus})
+        response.raise_for_status()
+        data = response.json()
+
+        for price in data:
+            sku = price["sku"]
+            prices[sku] = price
 
         return prices
 
