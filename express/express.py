@@ -17,7 +17,6 @@ from .options import FRIEND_ACCEPT_MESSAGE, Options
 
 class Express(steam.Client):
     def __init__(self, options: Options) -> None:
-        self.group = None
         self.options = options
         self.are_prices_updated = False
         self.pending_offer_users = set()
@@ -88,7 +87,7 @@ class Express(steam.Client):
             asyncio.create_task(self.trade_manager.run())
 
         if self.options.enable_arbitrage:
-            asyncio.create_task(self.arbitrage_manager.listen())
+            asyncio.create_task(self.arbitrage_manager.run())
 
     async def bot_is_ready(self) -> None:
         while not self._bot_is_ready:
@@ -162,17 +161,13 @@ class Express(steam.Client):
             del self.processed_offers[offer_id]
 
     async def join_groups(self) -> None:
-        group_id = 103582791463210868
-        groups = [group_id, 103582791463210863, *self.options.groups]
+        groups = [103582791463210863, *self.options.groups]
 
         for i in groups:
             group = await self.fetch_clan(i)
 
             if group is None:
                 continue
-
-            if group.id64 == group_id:
-                self.group = group
 
             await group.join()
 

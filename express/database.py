@@ -19,6 +19,7 @@ class Database:
         self.name = database
         self.trades = db["trades"]
         self.items = db["items"]
+        self.arbitrage = db["arbitrage"]
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
@@ -216,3 +217,15 @@ class Database:
     def delete_item(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})
         logging.info(f"Removed {sku} from the database")
+
+    def insert_arbitrage(self, data: dict) -> None:
+        self.arbitrage.insert_one(data)
+
+    def update_arbitrage(self, sku: str, data: dict) -> None:
+        self.arbitrage.replace_one({"sku": sku}, data)
+
+    def delete_arbitrage(self, sku: str) -> None:
+        self.arbitrage.delete_one({"sku": sku})
+
+    def get_arbitrages(self) -> list[dict]:
+        return list(self.arbitrage.find())

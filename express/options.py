@@ -16,19 +16,23 @@ class Options:
     inventory_provider: str = "steamcommunity"  # steamsupply, expressload, etc.
     inventory_api_key: str = ""  # api key for the inventory provider
     backpack_tf_user_agent: str = "Listing goin' up!"
+    check_backpack_tf_bans: bool = False
+    check_marketplace_tf_bans: bool = False
+    backpack_tf_api_key: str = ""  # api key for backpack.tf
+    marketplace_tf_api_key: str = ""  # api key for marketplace.tf
     accept_donations: bool = True
-    auto_counter_bad_offers: bool = True  # counter offers with wrong values
+    auto_counter_bad_offers: bool = False  # counter offers with wrong values
     decline_trade_hold: bool = True
-    auto_cancel_sent_offers: bool = True  # cancel offers sent by us after some time
+    auto_cancel_sent_offers: bool = False  # cancel offers sent by us after some time
     cancel_sent_offers_after_seconds: int = 300  # auto cancel has to be enabled
     max_price_age_seconds: int = 3600  # if over the threshold, has to fetch price
-    enable_arbitrage: bool = False  # used by tf2-arbitrage
     enable_craft_hats: bool = False  # enable random craft hats
     save_trade_offers: bool = True  # save trade offers in database
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
     client_options: dict = field(default_factory=dict)  # client options for steam.py
-    arbitrage_url: str = ""  # url to websocket hosted by tf2-arbitrage
+    enable_arbitrage: bool = False
+    stn_api_key: str = ""  # api key for stn.tf
     is_express_tf_bot: bool = False  # is this bot an express.tf bot
     express_tf_uri: str = ""
     express_tf_token: str = ""

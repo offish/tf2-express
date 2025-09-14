@@ -72,6 +72,23 @@ class ExpressInventory(Inventory):
 
         return stock
 
+    def get_non_pure_items(self) -> list[str]:
+        non_pure_items = []
+
+        if self.our_inventory is None:
+            logging.warning("Inventory was not fetched")
+            return non_pure_items
+
+        for item in self.our_inventory:
+            sku = item["sku"]
+
+            if not is_pure(sku):
+                non_pure_items.append(sku)
+
+        logging.debug(f"Non-pure items: {non_pure_items}")
+
+        return non_pure_items
+
     def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
         inventory = self.our_inventory if who == "us" else self.their_inventory
 

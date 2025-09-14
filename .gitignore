@@ -174,4 +174,5 @@ cython_debug/
 .pypirc
 
 # Other
+express/arbitrage/
 config.json

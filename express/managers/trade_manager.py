@@ -8,6 +8,7 @@ import steam
 from tf2_utils import (
     CurrencyExchange,
     Item,
+    MarketplaceTF,
     get_metal,
     get_sku,
     get_steam_id_from_trade_url,
@@ -28,7 +29,11 @@ from .base_manager import BaseManager
 
 class TradeManager(BaseManager):
     def setup(self) -> None:
-        self._owners = [int(steam_id) for steam_id in self.options.owners]
+        self.arbitrage = self.client.arbitrage_manager
+        self.owners = [str(steam_id) for steam_id in self.options.owners]
+
+        if self.options.check_marketplace_tf_bans:
+            self.marketplace_tf = MarketplaceTF(self.options.marketplace_tf_api_key)
 
     @staticmethod
     def _is_offer_active(trade: steam.TradeOffer) -> bool:
@@ -55,6 +60,25 @@ class TradeManager(BaseManager):
         logging.warning(
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
+
+    def is_marketplace_tf_banned(self, steam_id: str) -> bool:
+        return (
+            self.options.check_backpack_tf_bans
+            and self.marketplace_tf.get_is_banned(steam_id)
+        )
+
+    def is_backpack_tf_banned(self, steam_id: str) -> bool:
+        return self.options.check_backpack_tf_bans and self.listing_manager.is_banned(
+            steam_id
+        )
+
+    def is_arbitrage_offer(self, their_items, our_items) -> bool:
+        return self.options.enable_arbitrage and self.arbitrage.is_arbitrage_offer(
+            their_items, our_items
+        )
+
+    def is_owner(self, steam_id: str) -> bool:
+        return str(steam_id) in self.owners
 
     async def accept(self, trade: steam.TradeOffer) -> None:
         await self._retry_action(trade, "accepting", trade.accept)
@@ -404,6 +428,7 @@ class TradeManager(BaseManager):
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
     ) -> None:
         partner = trade.user
+        partner_id = str(partner.id64)
         their_items_amount = len(trade.receiving)
         our_items_amount = len(trade.sending)
         items_amount = their_items_amount + our_items_amount
@@ -411,10 +436,19 @@ class TradeManager(BaseManager):
         logging.info(f"Processing offer #{trade.id} from {partner.name}...")
         logging.info(f"Offer contains {items_amount} item(s)")
 
-        # is owner
-        if partner.id64 in self._owners:
+        if self.is_owner(partner_id):
             logging.info("Offer is from owner")
             await self.accept(trade)
+            return
+
+        if self.is_backpack_tf_banned(partner_id):
+            logging.info("User is banned on Backpack.TF")
+            await self.decline(trade)
+            return
+
+        if self.is_marketplace_tf_banned(partner_id):
+            logging.info("User is banned on Marketplace.TF")
+            await self.decline(trade)
             return
 
         # nothing on our side
@@ -435,6 +469,11 @@ class TradeManager(BaseManager):
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
         our_items = [item_object_to_item_data(i) for i in trade.sending]
+
+        if self.is_arbitrage_offer(their_items, our_items):
+            logging.info("Offer is an arbitrage offer")
+            await self.arbitrage.process_offer(trade, their_items, our_items)
+            return
 
         # only items on our side
         if is_only_taking_items(their_items_amount, our_items_amount):

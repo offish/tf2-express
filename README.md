@@ -16,7 +16,7 @@ Donations are not required, but greatly appericated.
 
 ## Features
 * GUI for adding and changing items, prices, `max_stock` + browsing trades
-* Supports automated price updates from [Prices.TF](https://prices.tf)
+* Supports automated price updates from [PriceDB.IO](https://pricedb.io)
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
 * Supports buy/sell message commands (`sell_5021_6`)
@@ -94,25 +94,25 @@ Example config:
 ### Options
 | Option             | Description| Default   |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | — |
-| `use_backpack_tf` | Whether to list items on Backpack.TF or not. | false |
-| `backpack_tf_token`| Access token from [backpack.tf API access](https://next.backpack.tf/account/api-access). | — |
+| `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | - |
+| `use_backpack_tf` | Whether to list items on Backpack.TF or not. | - |
+| `backpack_tf_token`| Access token from [backpack.tf API access](https://next.backpack.tf/account/api-access). | - |
 | `pricing_provider` | Provider for item pricing. | `pricedb` |
 | `inventory_provider` | Provider for inventory. Default is Steam Community, can use third-party like Steam.Supply or Express-Load. | `steamcommunity` |
-| `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| — |
-| `backpack_tf_user_agent` | User agent shown on next.backpack.tf. | — |
-| `accept_donations` | Whether to accept donations or not. | false |
+| `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| - |
+| `backpack_tf_user_agent` | User agent shown on next.backpack.tf. | `Listing goin' up!` |
+| `accept_donations` | Whether to accept donations or not. | true |
 | `auto_counter_bad_offers` | Whether to counter offers with wrong values or not. | false |
-| `decline_trade_hold` | Whether to decline trades that have trade hold. | false |
+| `decline_trade_hold` | Whether to decline trades that have trade hold. | true |
 | `auto_cancel_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
-| `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | — |
-| `max_price_age_seconds`| Maximum age (in seconds) of a price before it is fetched again. | — |
+| `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | 300 |
+| `max_price_age_seconds`| Maximum age (in seconds) of an item price before it is fetched again. | 3600 |
 | `enable_arbitrage` | Whether to enable arbitrage or not. [\[?\]](#arbitrage) | false |
 | `enable_craft_hats`| Whether to enable Random Craft Hats or not. [\[?\]](#random-craft-hats) | false |
 | `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |
 | `groups` | List of group IDs to join. | \[] |
 | `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
-
+| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | {} |
 
 ## Running
 ```bash
@@ -157,7 +157,7 @@ The GUI will then be available at http://127.0.0.1:5000/
 
 ## Explanation
 ### Random Craft Hats
-If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: -100;6), if `enable_craft_hats` is enabled. 
+If a craftable hat does not have a specific price in the database, it will be viewed as a Random Craft Hat (SKU: `-100;6`), if `enable_craft_hats` is enabled. 
 
 > [!CAUTION]
 > This applies to any craftable unique hat, which includes hats such as The Team Captain, Earbuds, Max Heads etc. If these do not have their own price in the database, they will be priced as a Random Craft Hat, if this option is enabled. Be careful when using this option, as it can lead to unwanted trades.
