@@ -8,7 +8,6 @@ import steam
 from tf2_utils import (
     CurrencyExchange,
     Item,
-    MarketplaceTF,
     get_metal,
     get_sku,
     get_steam_id_from_trade_url,
@@ -31,9 +30,6 @@ class TradeManager(BaseManager):
     def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
         self.owners = [str(steam_id) for steam_id in self.options.owners]
-
-        if self.options.check_marketplace_tf_bans:
-            self.marketplace_tf = MarketplaceTF(self.options.marketplace_tf_api_key)
 
     @staticmethod
     def _is_offer_active(trade: steam.TradeOffer) -> bool:
@@ -59,12 +55,6 @@ class TradeManager(BaseManager):
 
         logging.warning(
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
-        )
-
-    def is_marketplace_tf_banned(self, steam_id: str) -> bool:
-        return (
-            self.options.check_backpack_tf_bans
-            and self.marketplace_tf.get_is_banned(steam_id)
         )
 
     def is_backpack_tf_banned(self, steam_id: str) -> bool:
@@ -95,7 +85,7 @@ class TradeManager(BaseManager):
         # if item does not have a price, but is a craft hat
         # use the craft hat sku instead
         if (
-            not self.db.has_price(sku)
+            not self.database.has_price(sku)
             and Item(item).is_craft_hat()
             and self.options.enable_craft_hats
         ):
@@ -130,7 +120,7 @@ class TradeManager(BaseManager):
                 continue
 
             # stock is updated every time a trade is completed
-            in_stock, max_stock = self.db.get_stock(sku)
+            in_stock, max_stock = self.database.get_stock(sku)
 
             # item does not have max_stock
             if max_stock == -1:
@@ -146,7 +136,7 @@ class TradeManager(BaseManager):
     ) -> tuple[int, bool]:
         has_unpriced = False
         total = 0
-        key_scrap_price = self.pricing.get_key_scrap_price(intent)
+        key_scrap_price = self.pricing_manager.get_key_scrap_price(intent)
 
         # valute one item at a time
         for i in items:
@@ -172,10 +162,10 @@ class TradeManager(BaseManager):
 
             # has a specifc price
             elif sku in all_skus:
-                keys, metal = self.db.get_price(sku, intent)
+                keys, metal = self.database.get_price(sku, intent)
 
             elif item.is_craft_hat() and self.options.enable_craft_hats:
-                keys, metal = self.db.get_price("-100;6", intent)
+                keys, metal = self.database.get_price("-100;6", intent)
 
             value = keys * key_scrap_price + to_scrap(metal)
 
@@ -199,14 +189,14 @@ class TradeManager(BaseManager):
 
         for item in their_items:
             sku = self._get_sku(item)
-            scrap_price = self.pricing.get_scrap_price(sku, "buy")
+            scrap_price = self.pricing_manager.get_scrap_price(sku, "buy")
             their_value += scrap_price
 
             logging.debug(f"{sku=} has {scrap_price=}")
 
         for item in our_items:
             sku = self._get_sku(item)
-            scrap_price = self.pricing.get_scrap_price(sku, "sell")
+            scrap_price = self.pricing_manager.get_scrap_price(sku, "sell")
             our_value += scrap_price
 
             logging.debug(f"{sku=} has {scrap_price=}")
@@ -223,8 +213,8 @@ class TradeManager(BaseManager):
     ) -> tuple[bool, list[dict], int] | None:
         is_friend = partner.is_friend()
         swapped_intent = swap_intent(intent)
-        key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
-        all_skus = self.db.get_skus()
+        key_scrap_price = self.pricing_manager.get_key_scrap_price(swapped_intent)
+        all_skus = self.database.get_skus()
 
         selected_items = []
         total_scrap_price = 0
@@ -254,12 +244,12 @@ class TradeManager(BaseManager):
                 message = f"Sorry, I'm not banking {sku}"
                 break
 
-            if not self.db.has_price(sku):
+            if not self.database.has_price(sku):
                 logging.warning(f"Item {sku} does not have a price")
                 message = f"Sorry, I do not have a price for {sku}"
                 break
 
-            keys, metal = self.db.get_price(sku, intent)
+            keys, metal = self.database.get_price(sku, intent)
             scrap_price = key_scrap_price * keys + to_scrap(metal)
 
             logging.debug(f"{sku=} has {intent} {scrap_price=}")
@@ -314,7 +304,7 @@ class TradeManager(BaseManager):
             our_items = items_selected
             their_items = []
 
-        key_scrap_price = self.pricing.get_key_scrap_price(swapped_intent)
+        key_scrap_price = self.pricing_manager.get_key_scrap_price(swapped_intent)
         currencies = CurrencyExchange(
             their_inventory, our_inventory, intent, total_scrap_price, key_scrap_price
         )
@@ -349,8 +339,8 @@ class TradeManager(BaseManager):
         offer_data = {}
 
         # get fresh instance of inventory (stores both our and theirs)
-        inventory = self.inventory.get_inventory_instance()
-        our_inventory = self.inventory.our_inventory
+        inventory = self.inventory_manager.get_inventory_instance()
+        our_inventory = self.inventory_manager.our_inventory
         their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
         data = await self._get_offer_items(
             partner, intent, items, item_type, their_inventory, our_inventory
@@ -404,6 +394,8 @@ class TradeManager(BaseManager):
         self, trade: steam.TradeOffer, our_items: list[dict]
     ) -> None:
         # only supported counter offer for one item
+        # TODO: this only works if they are trying to take one item
+        # not if they have offered wrong values and are selling their item
         sku = get_first_non_pure_sku(our_items)
 
         if sku is None:
@@ -443,11 +435,6 @@ class TradeManager(BaseManager):
 
         if self.is_backpack_tf_banned(partner_id):
             logging.info("User is banned on Backpack.TF")
-            await self.decline(trade)
-            return
-
-        if self.is_marketplace_tf_banned(partner_id):
-            logging.info("User is banned on Marketplace.TF")
             await self.decline(trade)
             return
 
@@ -492,7 +479,7 @@ class TradeManager(BaseManager):
             logging.warning("Trade would surpass our max stock, ignoring offer")
             return
 
-        all_skus = self.db.get_skus()
+        all_skus = self.database.get_skus()
 
         # we dont care about unpriced items on their side
         their_value, _ = self._valuate_items(their_items, "buy", all_skus)
@@ -649,12 +636,12 @@ class TradeManager(BaseManager):
             "message": trade.message,
             "their_items": their_items,
             "our_items": our_items,
-            "key_prices": self.pricing._get_key_prices(),
+            "key_prices": self.pricing_manager.get_key_prices(),
             "state": trade.state.name.lower(),
             "timestamp": time.time(),
         }
 
-        self.db.insert_trade(offer_data)
+        self.database.insert_trade(offer_data)
         # await self._group.invite(trade.user)
         logging.debug("Getting receipt...")
 

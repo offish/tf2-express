@@ -25,6 +25,7 @@ class ListingManager(BaseManager):
         self._bptf = BackpackTF(
             token=backpack_tf_token,
             steam_id=self.client.steam_id,
+            api_key=self.options.backpack_tf_api_key,
             user_agent=self.options.backpack_tf_user_agent,
         )
         self._bptf._library = "tf2-express"
@@ -37,8 +38,8 @@ class ListingManager(BaseManager):
         keys = currencies["keys"]
         metal = currencies["metal"]
         formatted_sku = sku.replace(";", "_")
-        max_stock = self.db.get_max_stock(sku)
-        in_stock = self.inventory.get_in_stock(sku)
+        max_stock = self.database.get_max_stock(sku)
+        in_stock = self.inventory_manager.get_in_stock(sku)
         max_stock_string = str(max_stock)
 
         if max_stock == -1:
@@ -85,21 +86,21 @@ class ListingManager(BaseManager):
         )
 
     def _get_asset_id_for_sku(self, sku: str) -> int:
-        asset_id = self.inventory.get_last_item_in_our_inventory(sku)["assetid"]
+        asset_id = self.inventory_manager.get_last_item_in_our_inventory(sku)["assetid"]
         return int(asset_id)
 
     def _is_asset_id_in_inventory(self, asset_id: str | int) -> bool:
         if isinstance(asset_id, int):
             asset_id = str(asset_id)
 
-        for item in self.inventory.get_our_inventory():
+        for item in self.inventory_manager.get_our_inventory():
             if item["assetid"] == asset_id:
                 return True
 
         return False
 
     def _has_enough_pure(self, keys: int, metal: int) -> bool:
-        inventory = self.inventory.get_our_inventory()
+        inventory = self.inventory_manager.get_our_inventory()
         keys_amount = 0
         scrap_amount = 0
 
@@ -124,7 +125,8 @@ class ListingManager(BaseManager):
 
         sku = listing["sku"]
         intent = listing["intent"]
-        in_stock = self.inventory.get_stock().get(sku, 0)
+        stock = self.inventory_manager.get_stock()
+        in_stock = stock.get(sku, 0)
 
         # nothing to update
         if in_stock == listing["in_stock"]:
@@ -174,7 +176,7 @@ class ListingManager(BaseManager):
             logging.debug(f"{intent} listing for {sku} already exists")
             return 0
 
-        currencies = self.db.get_item(sku)[intent]
+        currencies = self.database.get_item(sku)[intent]
         assert isinstance(currencies, dict)
         assert "keys" in currencies or "metal" in currencies
         assert len(currencies) <= 2 and len(currencies) > 1
@@ -283,7 +285,7 @@ class ListingManager(BaseManager):
         logging.info("Creating listings...")
         logging.debug("Creating sell listings...")
 
-        pricelist = self.db.get_pricelist()
+        pricelist = self.database.get_pricelist()
         pricelist_skus = [
             item["sku"] for item in pricelist if has_buy_and_sell_price(item)
         ]
@@ -291,7 +293,7 @@ class ListingManager(BaseManager):
         listings_created = 0
 
         # first list the items we have in our inventory
-        for item in self.inventory.get_our_inventory():
+        for item in self.inventory_manager.get_our_inventory():
             sku = get_sku(item)
 
             # we dont care about metal

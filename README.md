@@ -106,7 +106,6 @@ Example config:
 | `decline_trade_hold` | Whether to decline trades that have trade hold. | true |
 | `auto_cancel_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
 | `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | 300 |
-| `max_price_age_seconds`| Maximum age (in seconds) of an item price before it is fetched again. | 3600 |
 | `enable_arbitrage` | Whether to enable arbitrage or not. [\[?\]](#arbitrage) | false |
 | `enable_craft_hats`| Whether to enable Random Craft Hats or not. [\[?\]](#random-craft-hats) | false |
 | `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |

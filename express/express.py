@@ -4,6 +4,7 @@ import logging
 import steam
 
 from .database import Database
+from .exceptions import MissingBackpackAPIKey, MissingBackpackTFToken, MissingSTNAPIKey
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
@@ -18,11 +19,12 @@ from .options import FRIEND_ACCEPT_MESSAGE, Options
 class Express(steam.Client):
     def __init__(self, options: Options) -> None:
         self.options = options
+        self.options_check()
         self.are_prices_updated = False
         self.pending_offer_users = set()
         self.pending_site_offers = {}
         self.processed_offers = {}
-        self._bot_is_ready = False
+        self.is_bot_ready = False
 
         self.arbitrage_manager = None
         self.inventory_manager = None
@@ -72,7 +74,7 @@ class Express(steam.Client):
         self.database.update_stock(stock)
 
         # we are now ready (other events can now fire)
-        self._bot_is_ready = True
+        self.is_bot_ready = True
 
         asyncio.create_task(self.pricing_manager.provider.listen())
         asyncio.create_task(self.pricing_manager.run())
@@ -89,8 +91,20 @@ class Express(steam.Client):
         if self.options.enable_arbitrage:
             asyncio.create_task(self.arbitrage_manager.run())
 
+    def options_check(self) -> None:
+        if self.options.use_backpack_tf and not self.options.backpack_tf_token:
+            raise MissingBackpackTFToken("Backpack.TF token is required for listing")
+
+        if self.options.check_backpack_tf_bans and not self.options.backpack_tf_api_key:
+            raise MissingBackpackAPIKey(
+                "Backpack.TF API key is needed for checking bans"
+            )
+
+        if self.options.enable_arbitrage and not self.options.stn_api_key:
+            raise MissingSTNAPIKey("STN.TF API key is needed for arbitrage")
+
     async def bot_is_ready(self) -> None:
-        while not self._bot_is_ready:
+        while not self.is_bot_ready:
             await asyncio.sleep(1)
 
     async def bot_is_ready_and_prices_updated(self) -> None:

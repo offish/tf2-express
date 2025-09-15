@@ -5,8 +5,9 @@ from typing import Any
 
 from tf2_utils.utils import to_scrap
 
-from ..exceptions import NoKeyPrice
+from ..exceptions import NoKeyPrice, WrongPriceFormat
 from ..pricers.pricing_providers import get_pricing_provider
+from ..utils import has_invalid_price_format
 from .base_manager import BaseManager
 
 
@@ -17,7 +18,7 @@ class PricingManager(BaseManager):
         self._last_failed_time = 0
 
         self.provider = get_pricing_provider(
-            self.options.pricing_provider, self._on_price_update
+            self.options.pricing_provider, self.on_price_update
         )
 
     @staticmethod
@@ -25,62 +26,60 @@ class PricingManager(BaseManager):
         # must be autopriced items
         return {item["sku"]: item for item in item_list if item.get("autoprice", False)}
 
-    def _get_key_prices(self) -> dict:
-        return self.db.get_item("5021;6")
+    def on_price_update(self, data: dict) -> None:
+        if has_invalid_price_format(data):
+            raise WrongPriceFormat(f"Price update has invalid format: {data}")
+
+        sku = data["sku"]
+
+        if sku not in self.database.get_autopriced_skus():
+            return
+
+        self._update_price(sku, data)
+
+    def get_item(self, sku: str) -> dict[str, Any]:
+        return self.database.get_item(sku)
+
+    def get_key_prices(self) -> dict:
+        return self.database.get_item("5021;6")
 
     def get_key_scrap_price(self, intent: str) -> int:
-        price = self._get_key_prices().get(intent)
+        price = self.get_key_prices().get(intent)
 
         if "metal" not in price:
             raise NoKeyPrice("Keys need to have a price in the database!")
 
         return to_scrap(price["metal"])
 
-    def get_item(self, sku: str) -> dict[str, Any]:
-        return self.db.get_item(sku)
-
     def get_scrap_price(self, sku: str, intent: str) -> int:
         key_price = self.get_key_scrap_price(intent)
-        keys, metal = self.db.get_price(sku, intent)
+        keys, metal = self.database.get_price(sku, intent)
         return keys * key_price + to_scrap(metal)
 
     def _update_price(
-        self, sku: str, price: dict, notify_listing_manager: bool = True
+        self, sku: str, data: dict, notify_listing_manager: bool = True
     ) -> None:
-        data = {"sku": sku} | price
-        self.db.update_autoprice(data)
+        self.database.update_autoprice({"sku": sku} | data)
 
         if self.options.use_backpack_tf and notify_listing_manager:
             self.listing_manager.set_price_changed(sku)
-
-    def _on_price_update(self, data: dict) -> None:
-        if data.get("type") != "PRICE_CHANGED":
-            return
-
-        if "sku" not in data.get("data", {}):
-            return
-
-        sku = data["data"]["sku"]
-
-        if sku not in self.db.get_autopriced_skus():
-            return
-
-        self._update_price(sku, data)
 
     def _update_all_autopriced_items(self) -> None:
         logging.info("Updating autopriced items...")
 
         skus = [
             item["sku"]
-            for item in self.db.get_autopriced()
-            if item.get("updated", 0) + self.options.max_price_age_seconds < time.time()
-            or item["buy"] == {}
-            or item["sell"] == {}
+            for item in self.database.get_autopriced()
+            if item["buy"] == {} or item["sell"] == {}
         ]
 
-        updated_count = 0
+        if not skus:
+            logging.info("No autopriced items to update")
+            return
+
         prices = self.provider.get_multiple_prices(skus)
         logging.debug(f"Got prices for {len(prices)} out of {len(skus)} items")
+        updated_count = 0
 
         for sku in prices:
             price = prices[sku]
@@ -106,6 +105,7 @@ class PricingManager(BaseManager):
             return
 
         logging.info(f"Retrying prices for {len(self._failed_skus)} failed items...")
+        logging.debug(f"Failed skus: {self._failed_skus}")
 
         skus = list(self._failed_skus)
         prices = self.provider.get_multiple_prices(skus)
@@ -141,12 +141,12 @@ class PricingManager(BaseManager):
 
     def _update_entire_pricelist(self) -> None:
         self._update_all_autopriced_items()
-        self._last_autopriced_items = self.db.get_autopriced()
+        self._last_autopriced_items = self.database.get_autopriced()
         self.client.are_prices_updated = True
 
     def _get_skus_changed(self) -> list[str]:
         old_pricelist = self._get_items(self._last_autopriced_items)
-        new_pricelist = self._get_items(self.db.get_autopriced())
+        new_pricelist = self._get_items(self.database.get_autopriced())
         changed_skus = set()
 
         for sku in new_pricelist:
@@ -176,7 +176,7 @@ class PricingManager(BaseManager):
             await asyncio.sleep(5)
 
             # TODO: something wrong with this, says there are failed, but non are sent to api
-            # self._retry_failed_skus()
+            self._retry_failed_skus()
             skus = self._get_skus_changed()
 
             # no changes to pricelist
@@ -189,4 +189,4 @@ class PricingManager(BaseManager):
             for sku in skus:
                 self._get_and_update_price(sku)
 
-            self._last_autopriced_items = self.db.get_autopriced()
+            self._last_autopriced_items = self.database.get_autopriced()

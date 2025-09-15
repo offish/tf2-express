@@ -4,12 +4,23 @@ import logging
 from steam import TradeOffer
 from tf2_utils import get_sku, is_pure
 
-from ..arbitrage.arbitrage import Arbitrage
 from .base_manager import BaseManager
+
+try:
+    from ..arbitrage.arbitrage import Arbitrage
+except ImportError:
+    Arbitrage = None
 
 
 class ArbitrageManager(BaseManager):
     def setup(self) -> None:
+        if not self.options.enable_arbitrage:
+            return
+
+        if Arbitrage is None:
+            logging.info("No arbitrage module available")
+            return
+
         self.arbitrage = Arbitrage(self)
 
     def is_arbitrage_offer(
@@ -18,7 +29,7 @@ class ArbitrageManager(BaseManager):
         if not self.options.enable_arbitrage:
             return False
 
-        arbitrages = self.db.get_arbitrages()
+        arbitrages = self.database.get_arbitrages()
 
         if len(arbitrages) == 0:
             return False

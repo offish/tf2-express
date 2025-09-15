@@ -17,6 +17,40 @@ from .exceptions import NoConfigFound
 schema_items_utils = SchemaItemsUtils()
 
 
+def has_correct_price_format(data: dict) -> bool:
+    if not isinstance(data, dict):
+        return False
+
+    for key in ["sku", "buy", "sell"]:
+        if key not in data:
+            return False
+
+    if not isinstance(data["buy"], dict) or not isinstance(data["sell"], dict):
+        return False
+
+    for price in [data["buy"], data["sell"]]:
+        if len(price) < 1 or len(price) > 2:
+            return False
+
+        if "keys" not in price and "metal" not in price:
+            return False
+
+        keys = price.get("keys", 0)
+        metal = price.get("metal", 0.0)
+
+        if not (isinstance(keys, int) and keys >= 0):
+            return False
+
+        if not (isinstance(metal, (int, float)) and metal >= 0):
+            return False
+
+    return True
+
+
+def has_invalid_price_format(data: dict) -> bool:
+    return not has_correct_price_format(data)
+
+
 def has_buy_and_sell_price(data: dict) -> bool:
     return data.get("buy", {}) != {} and data.get("sell", {}) != {}
 

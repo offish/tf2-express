@@ -32,8 +32,9 @@ class BasePriceDB:
     def get_price(self, sku: str) -> dict:
         return self.request("GET", f"item/{sku}")
 
-    def get_schema(self) -> dict:
-        return self.request("GET", "autob/items").get("items", [])
+    def get_schema(self) -> list[dict]:
+        items = self.request("GET", "autob/items")
+        return items.get("items", [])
 
     def get_multiple_prices(self, skus: list[str]) -> dict:
         data = self.request("POST", "items-bulk", json={"skus": skus})
@@ -51,19 +52,33 @@ class PriceDB(BasePriceDB, PricingProvider):
         super().__init__()
         PricingProvider.__init__(self, callback)
 
-        self.socket_url = "ws://ws.pricedb.io:5500/"
         self.sio = AsyncClient()
-
         self.sio.on("connect", self.on_connect)
         self.sio.on("price", self.on_price_update)
 
     async def on_connect(self) -> None:
-        logging.info("Connected to PriceDB Socket.IO Server")
+        logging.info("Connected to PriceDB socket")
 
     async def on_price_update(self, data: dict) -> None:
+        # Data recevied looks like this (the format we expect)
+        # we only care about the sku, buy and sell
+        # {
+        #     "success": True,
+        #     "sku": "30371;11",
+        #     "name": "Strange Archer's Groundings",
+        #     "currency": "metal",
+        #     "source": "bptf",
+        #     "time": 1757771632,
+        #     "buy": {"keys": 1, "metal": 5.66},
+        #     "sell": {"keys": 1, "metal": 14.88},
+        # }
         logging.debug(f"got data: {data}")
+
+        if data.get("success") is not True:
+            return
+
         self.callback(data)
 
     async def listen(self) -> None:
-        await self.sio.connect(self.socket_url)
+        await self.sio.connect("ws://ws.pricedb.io:5500/")
         await self.sio.wait()

@@ -20,11 +20,14 @@ class InventoryManager(BaseManager, ExpressInventory):
     @staticmethod
     def _get_new_asset_id(item: dict, moved_items: list[MovedItem]) -> int:
         for moved_item in moved_items:
-            if is_same_item(
-                item,
-                {"instanceid": moved_item.instance_id, "classid": moved_item.class_id},
-            ):
-                return moved_item.new_id
+            moved = {
+                "instanceid": moved_item.instance_id,
+                "classid": moved_item.class_id,
+            }
+
+            if is_same_item(item, moved):
+                return int(moved_item.new_id)
+
         return -1
 
     def get_in_stock(self, sku: str) -> int:
