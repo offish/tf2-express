@@ -135,10 +135,11 @@ class Panel:
     def autoprice_item(self, request: Request, sku: str) -> str:
         database_name = self._get_database(request)
 
-        if sku == ["-50;6", "-100;6"]:
+        if sku in ["-50;6", "-100;6"]:
             print(f"Autopricing {sku} is not possible!")
-        else:
-            self._database.update_price(sku, {}, {}, True)
+            return database_name
+
+        self._database.update_price(sku, {}, {}, override_autoprice=True)
 
         return database_name
 
@@ -153,6 +154,7 @@ class Panel:
     def edit_item(self, request: Request) -> str:
         database_name = self._get_database(request)
         data = dict(request.form.items())
+        sku = data["sku"]
 
         buy_keys = data.get("buy_keys", 0)
         buy_metal = data.get("buy_metal", 0.0)
@@ -173,11 +175,21 @@ class Panel:
         if not sell_metal:
             sell_metal = 0.0
 
+        buy_price = {"keys": int(buy_keys), "metal": float(buy_metal)}
+        sell_price = {"keys": int(sell_keys), "metal": float(sell_metal)}
+
+        item = self._database.get_item(sku)
+        autoprice = item["autoprice"]
+
+        if item["buy"] != buy_price or item["sell"] != sell_price:
+            autoprice = False
+
         self._database.update_price(
-            data["sku"],
-            buy={"keys": int(buy_keys), "metal": float(buy_metal)},
-            sell={"keys": int(sell_keys), "metal": float(sell_metal)},
-            max_stock=int(max_stock),
+            sku=sku,
+            buy=buy_price,
+            sell=sell_price,
+            override_autoprice=autoprice,
+            override_max_stock=int(max_stock),
         )
 
         return database_name

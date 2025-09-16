@@ -36,9 +36,21 @@ class BasePriceDB:
         items = self.request("GET", "autob/items")
         return items.get("items", [])
 
+    def get_items_bulk(self, skus: list[str]) -> list[dict]:
+        return self.request("POST", "items-bulk", json={"skus": skus})
+
+    def get_prices_by_schema(self, skus: list[str]) -> list[dict]:
+        schema = self.get_schema()
+        return [item for item in schema if item["sku"] in skus]
+
     def get_multiple_prices(self, skus: list[str]) -> dict:
-        data = self.request("POST", "items-bulk", json={"skus": skus})
         prices = {}
+        data = []
+
+        if len(skus) <= 50:
+            data = self.get_items_bulk(skus)
+        else:
+            data = self.get_prices_by_schema(skus)
 
         for price in data:
             sku = price["sku"]
@@ -72,7 +84,7 @@ class PriceDB(BasePriceDB, PricingProvider):
         #     "buy": {"keys": 1, "metal": 5.66},
         #     "sell": {"keys": 1, "metal": 14.88},
         # }
-        logging.debug(f"got data: {data}")
+        # logging.debug(f"got data: {data}")
 
         if data.get("success") is not True:
             return

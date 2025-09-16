@@ -4,7 +4,7 @@ from os import getenv
 from typing import Any
 
 from pymongo import MongoClient
-from tf2_utils import is_metal, is_pure
+from tf2_utils import is_metal
 
 from .exceptions import SKUNotFound
 from .utils import has_buy_and_sell_price, sku_to_item_data
@@ -35,12 +35,6 @@ class Database:
             return False
 
         return has_buy_and_sell_price(data)
-
-    def is_temporarily_priced(self, sku: str) -> bool:
-        if is_pure(sku):
-            return False
-
-        return self.get_item(sku).get("temporary", False)
 
     def insert_trade(self, data: dict) -> None:
         self.trades.insert_one(data)
@@ -153,7 +147,6 @@ class Database:
         autoprice: bool = True,
         in_stock: int = 0,
         max_stock: int = -1,
-        temporary: bool = False,
         buy: dict = {},
         sell: dict = {},
     ) -> None:
@@ -171,7 +164,6 @@ class Database:
             "buy": buy,
             "sell": sell,
             "autoprice": autoprice,
-            "temporary": temporary,  # delete price after we have sold
             "in_stock": in_stock,
             "max_stock": max_stock,
             "color": color,
@@ -186,21 +178,22 @@ class Database:
         sku: str,
         buy: dict,
         sell: dict,
-        autoprice: bool = False,
-        max_stock: int = -1,
+        override_autoprice: bool = None,
+        override_max_stock: int = None,
     ) -> None:
-        if not autoprice:
-            assert "keys" in buy and "metal" in buy, (
-                "Buy price must have keys and metal"
-            )
-            assert "keys" in sell and "metal" in sell, (
-                "Sell price must have keys and metal"
-            )
-
         data = self.get_item(sku)
 
         if not data:
             raise SKUNotFound(f"{sku} does not exist in database!")
+
+        autoprice = data["autoprice"]
+        max_stock = data["max_stock"]
+
+        if override_autoprice is not None:
+            autoprice = override_autoprice
+
+        if override_max_stock is not None:
+            max_stock = override_max_stock
 
         data["buy"] = buy
         data["sell"] = sell
@@ -212,7 +205,7 @@ class Database:
         logging.info(f"Updated price for {sku}")
 
     def update_autoprice(self, data: dict) -> None:
-        self.update_price(data["sku"], data["buy"], data["sell"], True)
+        self.update_price(data["sku"], data["buy"], data["sell"])
 
     def delete_item(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})

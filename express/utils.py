@@ -61,6 +61,10 @@ def is_same_item(a: dict, b: dict) -> bool:
     )
 
 
+def filter_skus(item_list: list[dict]) -> list[str]:
+    return [item["sku"] for item in item_list]
+
+
 def swap_intent(intent: str) -> str:
     return "buy" if intent.lower() == "sell" else "sell"
 
