@@ -32,3 +32,7 @@ class NoKeyPrice(ExpressException):
 
 class WrongPriceFormat(ExpressException):
     pass
+
+
+class NoArbitrageModuleFound(ExpressException):
+    pass

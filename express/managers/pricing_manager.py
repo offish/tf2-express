@@ -33,7 +33,7 @@ class PricingManager(BaseManager):
         if sku not in self.autopriced_skus:
             return
 
-        self.update_price(sku, data)
+        self.update_price(sku, data, notify_listing_manager=True)
 
     def set_prices_updated(self) -> None:
         assert self.client.are_prices_updated is False
@@ -58,9 +58,7 @@ class PricingManager(BaseManager):
         keys, metal = self.database.get_price(sku, intent)
         return keys * key_price + to_scrap(metal)
 
-    def update_price(
-        self, sku: str, data: dict, notify_listing_manager: bool = True
-    ) -> None:
+    def update_price(self, sku: str, data: dict, notify_listing_manager: bool) -> None:
         price = {"sku": sku} | data
 
         if has_invalid_price_format(price):
@@ -74,14 +72,24 @@ class PricingManager(BaseManager):
         if self.options.use_backpack_tf and notify_listing_manager:
             self.listing_manager.set_price_changed(sku)
 
-    def update_prices(self, prices: dict[str, dict]) -> None:
+    def update_prices(
+        self, prices: dict[str, dict], notify_listing_manager: bool = True
+    ) -> None:
         for sku in prices:
             price = prices[sku]
-            self.update_price(sku, price, notify_listing_manager=False)
+            self.update_price(sku, price, notify_listing_manager)
 
-        logging.info(f"Updated prices for {len(prices)} item(s)")
+        logging.info(f"Updated prices for {len(prices)} items")
+
+    def get_and_update_price(self, sku: str) -> None:
+        price = self.provider.get_price(sku)
+        self.update_price(sku, price, notify_listing_manager=True)
 
     def get_and_update_prices(self, skus: list[str]) -> None:
+        if len(skus) == 1:
+            self.get_and_update_price(skus[0])
+            return
+
         prices = self.provider.get_multiple_prices(skus)
 
         if not prices:
@@ -102,7 +110,8 @@ class PricingManager(BaseManager):
 
         prices = self.provider.get_multiple_prices(skus)
         logging.debug(f"Got prices for {len(prices)} out of {len(skus)} items")
-        self.update_prices(prices)
+        # dont notify listing manager, we will create listings after this
+        self.update_prices(prices, notify_listing_manager=False)
 
         self.autopriced_items = autopriced_items
         self.autopriced_skus = skus

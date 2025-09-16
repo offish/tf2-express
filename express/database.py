@@ -102,7 +102,7 @@ class Database:
         return item
 
     def get_pricelist(self) -> list[dict]:
-        return self.items.find()
+        return list(self.items.find())
 
     def get_stock(self, sku: str) -> tuple[int, int]:
         """returns in_stock, max_stock"""

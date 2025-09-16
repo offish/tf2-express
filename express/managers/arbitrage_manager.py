@@ -4,6 +4,7 @@ import logging
 from steam import TradeOffer
 from tf2_utils import get_sku, is_pure
 
+from ..exceptions import NoArbitrageModuleFound
 from .base_manager import BaseManager
 
 try:
@@ -18,8 +19,7 @@ class ArbitrageManager(BaseManager):
             return
 
         if Arbitrage is None:
-            logging.info("No arbitrage module available")
-            return
+            raise NoArbitrageModuleFound("Arbitrage functionality is not public")
 
         self.arbitrage = Arbitrage(self)
 
