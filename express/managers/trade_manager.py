@@ -256,6 +256,7 @@ class TradeManager(BaseManager):
 
             total_scrap_price += scrap_price
             selected_items.append(item)
+            break  # found correct item, break
 
         logging.debug(f"{len(selected_items)=} {len(items)=}")
 

@@ -94,3 +94,6 @@ class PriceDB(BasePriceDB, PricingProvider):
     async def listen(self) -> None:
         await self.sio.connect("ws://ws.pricedb.io:5500/")
         await self.sio.wait()
+
+    async def close(self) -> None:
+        await self.sio.disconnect()

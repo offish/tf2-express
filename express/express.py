@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import logging
 
 import steam
@@ -65,6 +66,9 @@ class Express(steam.Client):
 
         for manager in managers:
             manager.setup()
+
+        # delete listings on exit and disconnect from websocket
+        atexit.register(self.cleanup)
 
         # set inventory
         self.inventory_manager.fetch_our_inventory()
@@ -202,6 +206,12 @@ class Express(steam.Client):
             shared_secret=shared_secret,
             debug=False,
         )
+
+    def cleanup(self) -> None:
+        if self.options.use_backpack_tf:
+            self.listing_manager.close()
+
+        asyncio.run(self.pricing_manager.provider.close())
 
     @property
     def steam_id(self) -> str:

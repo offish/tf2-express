@@ -71,3 +71,6 @@ class PricingProvider:
 
     async def listen(self) -> None:
         raise NotImplementedError
+
+    async def close(self) -> None:
+        raise NotImplementedError

@@ -5,7 +5,7 @@ from dataclasses import asdict
 from backpack_tf import BackpackTF
 from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
 
-from ..exceptions import ListingDoesNotExist, MissingBackpackTFToken
+from ..exceptions import ListingDoesNotExist
 from ..utils import has_buy_and_sell_price, has_correct_price_format
 from .base_manager import BaseManager
 
@@ -30,20 +30,14 @@ def surpasses_max_stock(intent: str, in_stock: int, max_stock: int) -> bool:
 
 class ListingManager(BaseManager):
     def setup(self) -> None:
-        backpack_tf_token = self.options.backpack_tf_token
-
         self.can_list = False
         self._listings = {}
         self._has_updated_listings = True
         self._is_ready = False
 
-        if not backpack_tf_token:
-            raise MissingBackpackTFToken
-
         self._bptf = BackpackTF(
-            token=backpack_tf_token,
+            token=self.options.backpack_tf_token,
             steam_id=self.client.steam_id,
-            api_key=self.options.backpack_tf_api_key,
             user_agent=self.options.backpack_tf_user_agent,
         )
         self._bptf._library = "tf2-express"
@@ -155,8 +149,8 @@ class ListingManager(BaseManager):
         if in_stock == listing["in_stock"]:
             return
 
-        keys = listing["keys"]
-        metal = listing["metal"]
+        keys = int(listing.get("keys", 0))
+        metal = float(listing.get("metal", 0.0))
 
         # not enough pure anymore
         if intent == "buy" and not self.has_enough_pure(keys, metal):
@@ -292,12 +286,13 @@ class ListingManager(BaseManager):
             raise ListingDoesNotExist
 
         asset_id = self._listings[key].get("asset_id", 0)
+        item_name = self._listings[key]["item"].get("baseName")
+        assert item_name is not None, "Item name is None"
 
         if asset_id:
             success = self._bptf.delete_listing_by_asset_id(asset_id)
         else:
-            # this uses wrong name for deletion
-            success = self._bptf.delete_listing_by_sku(sku)
+            success = self._bptf.delete_listing_by_sku(item_name)
 
         if success is not True:
             logging.error(f"Error when trying to delete {intent} listing for {sku}")
@@ -399,9 +394,9 @@ class ListingManager(BaseManager):
 
             self._has_updated_listings = True
 
-    # def __del__(self):
-    #     self._bptf.delete_all_listings()
-    #     logging.info("Deleted all listings")
-    #     self._listings.clear()
-    #     self._bptf.stop_user_agent()
-    #     logging.info("Stopped Backpack.TF user agent")
+    def close(self):
+        self._bptf.delete_all_listings()
+        logging.info("Deleted all listings")
+        self._listings.clear()
+        self._bptf.stop_user_agent()
+        logging.info("Stopped Backpack.TF user agent")
