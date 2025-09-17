@@ -32,10 +32,18 @@ class ChatManager(BaseManager):
 
         # parse message
         intent = data["intent"]
-        amount = 1  # amounts other than 1 are not supported yet
+        amount = data["amount"]
         sku = data["sku"]
 
         logging.info(f"{message.author.name} wants to {intent} {amount} of {sku}")
+
+        if amount < 1:
+            await message.channel.send("You must trade at least 1 item")
+            return
+
+        if amount > 10:
+            await message.channel.send("You can only trade up to 10 items at a time")
+            amount = 10
 
         # swap intents
         intent = swap_intent(intent)
@@ -47,7 +55,7 @@ class ChatManager(BaseManager):
             return
 
         offer_id = await self.client.trade_manager.send_offer(
-            message.author, intent, [sku], "sku"
+            message.author, intent, [sku] * amount, "sku"
         )
 
         if offer_id:

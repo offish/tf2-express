@@ -216,6 +216,7 @@ class TradeManager(BaseManager):
         key_scrap_price = self.pricing_manager.get_key_scrap_price(swapped_intent)
         all_skus = self.database.get_skus()
 
+        item_list = items.copy()
         selected_items = []
         total_scrap_price = 0
         message = ""
@@ -225,6 +226,10 @@ class TradeManager(BaseManager):
         selected_inventory.reverse()
 
         for item in selected_inventory:
+            if len(item_list) == 0:
+                logging.info("Found all items for offer")
+                break
+
             asset_id = item["assetid"]
 
             if int(asset_id) == 0:
@@ -233,7 +238,7 @@ class TradeManager(BaseManager):
 
             item_identifier = item["sku"] if item_type == "sku" else asset_id
 
-            if item_identifier not in items:
+            if item_identifier not in item_list:
                 continue
 
             sku = self._get_sku(item)
@@ -256,7 +261,7 @@ class TradeManager(BaseManager):
 
             total_scrap_price += scrap_price
             selected_items.append(item)
-            break  # found correct item, break
+            item_list.remove(item_identifier)
 
         logging.debug(f"{len(selected_items)=} {len(items)=}")
 
@@ -560,8 +565,22 @@ class TradeManager(BaseManager):
         assert intent in ["buy", "sell"]
         assert item_type in ["sku", "asset_id"]
 
+        logging.debug(
+            f"Sending offer to {partner.name} {intent=} {items=} {item_type=}"
+        )
+        steam_id = str(partner.id64)
+        is_friend = partner.is_friend()
+
+        if self.is_backpack_tf_banned(steam_id):
+            logging.info("User is banned on Backpack.TF, not sending offer")
+
+            if is_friend:
+                await partner.send("You seem to be banned on Backpack.TF, stopping...")
+
+            return 0
+
         await self.client.bot_is_ready_and_prices_updated()
-        data = await self._create_offer(partner, items, item_type, intent, token)
+        data = await self._create_offer(partner, items, item_type, intent, token=token)
 
         if data is None:
             return 0
@@ -569,7 +588,7 @@ class TradeManager(BaseManager):
         offer, offer_data = data
         logging.info(f"Sending offer to {partner.name}...")
 
-        if partner.is_friend():
+        if is_friend:
             await partner.send("Sending offer...")
 
         await partner.send(trade=offer)

@@ -38,6 +38,7 @@ class ListingManager(BaseManager):
         self._bptf = BackpackTF(
             token=self.options.backpack_tf_token,
             steam_id=self.client.steam_id,
+            api_key=self.options.backpack_tf_api_key,
             user_agent=self.options.backpack_tf_user_agent,
         )
         self._bptf._library = "tf2-express"
@@ -62,7 +63,9 @@ class ListingManager(BaseManager):
             steam_id = str(steam_id)
 
         res = self._bptf._request(
-            "GET", "/users/info/v1", params={"steamids": steam_id}
+            "GET",
+            "/users/info/v1",
+            params={"steamids": steam_id, "key": self.options.backpack_tf_api_key},
         )
         logging.debug(f"User info: {res}")
 
