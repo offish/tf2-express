@@ -87,8 +87,10 @@ class ChatManager(BaseManager):
         if max_stock == -1:
             max_stock = "∞"
 
-        text = f"I'm buying {sku} for {buy_keys} keys and {buy_metal} ref\n"
-        text += f"and selling for {sell_keys} keys and {sell_metal} ref\n"
-        text += f"I currently have {in_stock} in stock, my max is {max_stock}\n"
+        text = (
+            f"I'm buying {sku} for {buy_keys} keys and {buy_metal} ref\n"
+            + f"and selling for {sell_keys} keys and {sell_metal} ref\n"
+            + f"I currently have {in_stock} in stock, my max is {max_stock}\n"
+        )
 
         await message.channel.send(text)

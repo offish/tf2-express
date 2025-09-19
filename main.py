@@ -8,7 +8,7 @@ from express.utils import (
     ExpressFormatter,
     check_for_updates,
     create_and_get_log_file,
-    get_bot_config,
+    get_config,
 )
 
 log_file = create_and_get_log_file()
@@ -30,7 +30,7 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 
 def main() -> None:
-    config = get_bot_config()
+    config = get_config()
     options = Options(username=config["username"], **config["options"])
     express = Express(options)
     express.start(**config)

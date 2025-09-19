@@ -2,30 +2,28 @@ import asyncio
 import logging
 from dataclasses import asdict
 
-from backpack_tf import BackpackTF
-from tf2_utils import get_metal, get_sku, is_key, is_metal, is_pure, to_scrap
+from backpack_tf import BackpackTF, Listing
+from tf2_utils import (
+    get_metal,
+    get_sku,
+    is_key,
+    is_metal,
+    is_pure,
+    to_scrap,
+)
 
 from ..exceptions import ListingDoesNotExist
+from ..listing import (
+    ListingConstruct,
+    format_buy_listing_details,
+    format_sell_listing_details,
+    get_listing_key,
+    get_matching_listing,
+    has_enough_stock,
+    surpasses_max_stock,
+)
 from ..utils import has_buy_and_sell_price, has_correct_price_format
 from .base_manager import BaseManager
-
-
-def get_listing_key(intent: str, sku: str) -> str:
-    return f"{intent}_{sku}"
-
-
-def has_enough_stock(intent: str, in_stock: int) -> bool:
-    if intent == "sell":
-        return in_stock > 0
-
-    return True
-
-
-def surpasses_max_stock(intent: str, in_stock: int, max_stock: int) -> bool:
-    if intent == "sell":
-        return False
-
-    return max_stock != -1 and in_stock >= max_stock
 
 
 class ListingManager(BaseManager):
@@ -35,20 +33,20 @@ class ListingManager(BaseManager):
         self._has_updated_listings = True
         self._is_ready = False
 
-        self._bptf = BackpackTF(
+        self.backpack_tf = BackpackTF(
             token=self.options.backpack_tf_token,
             steam_id=self.client.steam_id,
             api_key=self.options.backpack_tf_api_key,
             user_agent=self.options.backpack_tf_user_agent,
         )
-        self._bptf._library = "tf2-express"
+        self.backpack_tf._library = "tf2-express"
 
     async def wait_until_ready(self) -> None:
         while not self._is_ready:
             await asyncio.sleep(0.1)
 
     def set_user_agent(self) -> bool:
-        user_agent = self._bptf.register_user_agent()
+        user_agent = self.backpack_tf.register_user_agent()
         logging.debug(f"User agent: {user_agent}")
 
         if user_agent.get("status") != "active":
@@ -58,21 +56,38 @@ class ListingManager(BaseManager):
         logging.info("Backpack.TF user agent is now active")
         return True
 
-    def is_banned(self, steam_id: str | int) -> bool:
-        if isinstance(steam_id, int):
-            steam_id = str(steam_id)
+    def set_inventory_changed(self) -> None:
+        logging.debug("Inventory changed")
+        self._has_updated_listings = False
 
-        res = self._bptf._request(
-            "GET",
-            "/users/info/v1",
-            params={"steamids": steam_id, "key": self.options.backpack_tf_api_key},
+    def set_price_changed(self, sku: str) -> None:
+        logging.debug(f"Updating listing for {sku}...")
+
+        for intent in ["buy", "sell"]:
+            if self.is_listed(sku, intent):
+                self.remove_listing(sku, intent)
+
+            self.create_listing(sku, intent)
+
+    def set_listing(self, listing: Listing, construct: ListingConstruct) -> None:
+        listing_key = get_listing_key(construct.intent, construct.sku)
+        listing_data = (
+            asdict(listing) | construct.listing | construct.listings_variables
         )
-        logging.debug(f"User info: {res}")
 
-        user = res["users"][steam_id]
-        bans = user.get("bans", None)
+        if construct.asset_id > 0:
+            listing_data["asset_id"] = construct.asset_id
 
-        return bans is not None
+        logging.debug(f"Setting listing {listing_key=} {listing_data=}")
+        self._listings[listing_key] = listing_data
+
+        intent = construct.intent.capitalize()
+        logging.info(f"{intent} listing was created for {construct.sku}")
+
+    def is_backpack_tf_banned(self, steam_id: str | int) -> bool:
+        return self.options.check_backpack_tf_bans and self.backpack_tf.is_banned(
+            steam_id
+        )
 
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         keys = currencies["keys"]
@@ -102,27 +117,13 @@ class ListingManager(BaseManager):
         logging.debug(f"Listing variables: {variables}")
         return variables
 
-    def _get_sell_listing_details(self, sku: str, currencies: dict) -> str:
+    def get_listing_details(self, sku: str, intent: str, currencies: dict) -> str:
         variables = self._get_listing_variables(sku, currencies)
-        sell_details = "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
-        sell_details += "Offer (try to take it for free, I'll counter) or chat me. "
-        sell_details += "(double-click Ctrl+C): buy_{formatted_sku}"
 
-        return sell_details.format(**variables)
-
-    def _get_buy_listing_details(self, sku: str, currencies: dict) -> str:
-        variables = self._get_listing_variables(sku, currencies)
-        buy_details = "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
-        buy_details += "Offer or chat me. "
-        buy_details += "(double-click Ctrl+C): sell_{formatted_sku}"
-
-        return buy_details.format(**variables)
-
-    def _get_listing_details(self, sku: str, intent: str, currencies: dict) -> str:
         return (
-            self._get_buy_listing_details(sku, currencies)
+            format_buy_listing_details(variables)
             if intent == "buy"
-            else self._get_sell_listing_details(sku, currencies)
+            else format_sell_listing_details(variables)
         )
 
     def _get_asset_id_for_sku(self, sku: str) -> int:
@@ -205,16 +206,22 @@ class ListingManager(BaseManager):
 
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
 
-    def create_listing(self, sku: str, intent: str) -> bool:
-        logging.debug(f"Creating {intent} listing for {sku}")
+    def get_priced_skus(self) -> list[str]:
+        pricelist = self.database.get_pricelist()
+        return [item["sku"] for item in pricelist if has_buy_and_sell_price(item)]
+
+    def create_listing_construct(
+        self, sku: str, intent: str
+    ) -> ListingConstruct | None:
+        logging.debug(f"Creating construct for listing {intent=} {sku=}")
 
         # listing random craft hats and weps not supported yet
         if sku in ["-50;6", "-100;6"]:
-            return False
+            return
 
         if self.is_listed(sku, intent):
             logging.debug(f"{intent} listing for {sku} already exists")
-            return False
+            return
 
         item = self.database.get_item(sku)
         assert has_correct_price_format(item), f"Item has wrong price format: {item}"
@@ -233,100 +240,35 @@ class ListingManager(BaseManager):
 
         if not has_enough_stock(intent, in_stock):
             logging.debug(f"Not enough stock for {sku} to create a sell listing")
-            return False
+            return
 
         if surpasses_max_stock(intent, in_stock, max_stock):
             logging.debug(f"Max stock reached for {sku} to create a buy listing")
-            return False
+            return
 
         if intent == "buy" and not self.has_enough_pure(keys, metal):
             logging.debug(f"Not enough pure for {sku} to create a buy listing")
-            return False
+            return
 
         asset_id = 0
 
         if intent == "sell":
             asset_id = self._get_asset_id_for_sku(sku)
-            logging.info(f"Asset ID for {sku} is {asset_id}")
+            logging.debug(f"Asset ID for {sku} is {asset_id}")
 
-        details = self._get_listing_details(sku, intent, currencies)
+        details = self.get_listing_details(sku, intent, currencies)
         logging.debug(f"creating listing {sku=} {intent=} {currencies=} {asset_id=}")
         logging.debug(f"{details=}")
 
-        listing = self._bptf.create_listing(sku, intent, currencies, details, asset_id)
-        logging.debug(f"{asdict(listing)}")
+        return ListingConstruct(
+            sku, intent, currencies, details, asset_id, listing_variables
+        )
 
-        if listing.id:
-            listing_key = get_listing_key(intent, sku)
-            listing_dict = asdict(listing) | listing_variables
+    def create_sell_constructs(self) -> list[ListingConstruct]:
+        logging.debug("Collecting data for sell listings...")
 
-            if asset_id > 0:
-                listing_dict["asset_id"] = asset_id
-
-            self._listings[listing_key] = listing_dict
-            logging.info(f"{intent.capitalize()} listing was created for {sku}")
-            return True
-
-        return False
-
-    def delete_inactive_listings(self, current_skus: list[str]) -> None:
-        logging.debug("Deleting inactive listings...")
-
-        for i in self._listings:
-            intent, sku = i.split("_")
-
-            if sku in current_skus:
-                continue
-
-            logging.debug(f"Deleting inactive {intent} listing for {sku}")
-            self.remove_listing(sku, intent)
-
-    def remove_listing(self, sku: str, intent: str) -> None:
-        logging.debug(f"Removing {intent} listing for {sku}")
-        key = get_listing_key(intent, sku)
-
-        if key not in self._listings:
-            raise ListingDoesNotExist
-
-        asset_id = self._listings[key].get("asset_id", 0)
-        item_name = self._listings[key]["item"].get("baseName")
-        assert item_name is not None, "Item name is None"
-
-        if asset_id:
-            success = self._bptf.delete_listing_by_asset_id(asset_id)
-        else:
-            success = self._bptf.delete_listing_by_sku(item_name)
-
-        if success is not True:
-            logging.error(f"Error when trying to delete {intent} listing for {sku}")
-            logging.error(success)
-            return
-
-        del self._listings[key]
-        logging.info(f"Deleted {intent} listing for {sku}")
-
-    def set_inventory_changed(self) -> None:
-        logging.debug("Inventory changed")
-        self._has_updated_listings = False
-
-    def set_price_changed(self, sku: str) -> None:
-        logging.debug(f"Updating listing for {sku}...")
-
-        for intent in ["buy", "sell"]:
-            if self.is_listed(sku, intent):
-                self.remove_listing(sku, intent)
-
-            self.create_listing(sku, intent)
-
-    def get_filtered_pricelist(self) -> list[dict]:
-        pricelist = self.database.get_pricelist()
-        return [item for item in pricelist if has_buy_and_sell_price(item)]
-
-    def create_sell_listings(self) -> None:
-        logging.debug("Creating sell listings...")
-
-        listings_created = 0
-        priced_skus = [item["sku"] for item in self.get_filtered_pricelist()]
+        listings = []
+        skus = self.get_priced_skus()
 
         # first list the items we have in our inventory
         for item in self.inventory_manager.get_our_inventory():
@@ -337,48 +279,113 @@ class ListingManager(BaseManager):
                 continue
 
             # item has to be priced
-            if sku not in priced_skus:
+            if sku not in skus:
                 logging.debug(f"{sku} does not have both buy and sell price")
                 continue
 
-            created = self.create_listing(sku, "sell")
+            data = self.create_listing_construct(sku, "sell")
 
-            if created:
-                listings_created += 1
+            if data is None:
+                continue
 
-        if not listings_created:
-            logging.warning("No sell listings were created")
-        else:
-            logging.info(f"Created {listings_created} sell listings")
+            listings.append(data)
 
-    def create_buy_listings(self) -> None:
-        logging.debug("Creating buy listings...")
+        return listings
 
-        listings_created = 0
-        pricelist = self.get_filtered_pricelist()
+    def create_buy_constructs(self) -> list[ListingConstruct]:
+        logging.debug("Collecting data for buy listings...")
 
-        for item in pricelist:
-            created = self.create_listing(item["sku"], "buy")
+        skus = self.get_priced_skus()
+        listings = []
 
-            if created:
-                listings_created += 1
+        for sku in skus:
+            data = self.create_listing_construct(sku, "buy")
 
-        if not listings_created:
-            logging.warning("No buy listings were created")
-        else:
-            logging.info(f"Created {listings_created} buy listings")
+            if data is None:
+                continue
+
+            listings.append(data)
+
+        return listings
+
+    def create_listing(self, sku: str, intent: str) -> bool:
+        data = self.create_listing_construct(sku, intent)
+
+        if data is None:
+            return False
+
+        listing = self.backpack_tf.create_listing(**data.listing)
+        logging.debug(f"{asdict(listing)}")
+
+        if listing.id:
+            self.set_listing(listing, data)
+
+            logging.info(f"{intent.capitalize()} listing was created for {sku}")
+            return True
+
+        return False
 
     def create_listings(self) -> None:
         logging.info("Creating listings...")
-        self.create_sell_listings()
-        self.create_buy_listings()
+
+        created_listings = 0
+        listings = self.create_sell_constructs() + self.create_buy_constructs()
+
+        listings_created = self.backpack_tf.create_listings(
+            [i.listing for i in listings]
+        )
+        logging.debug(f"{[asdict(i) for i in listings_created]}")
+
+        for construct in listings:
+            sku = construct.sku
+            intent = construct.intent
+            listing = get_matching_listing(construct, listings_created)
+
+            # probably not enough pure, so listing is not active
+            if listing is None:
+                logging.debug(f"No matching listing found for {intent} {sku}")
+                continue
+
+            self.set_listing(listing, construct)
+            created_listings += 1
+
+        if not created_listings:
+            logging.warning("No listings were created")
+        else:
+            logging.info(f"Created {created_listings} listings")
+
         logging.info("Done with creating listings")
+
+    def remove_listing(self, sku: str, intent: str) -> None:
+        logging.debug(f"Removing {intent} listing for {sku}")
+        key = get_listing_key(intent, sku)
+
+        if key not in self._listings:
+            raise ListingDoesNotExist
+
+        listing = self._listings[key]
+        asset_id = listing.get("asset_id", 0)
+        item_name = listing["item"].get("baseName")
+        assert item_name is not None, "Item name is None"
+
+        if asset_id:
+            success = self.backpack_tf.delete_listing_by_asset_id(asset_id)
+        else:
+            success = self.backpack_tf.delete_listing_by_sku(item_name)
+
+        if success is not True:
+            logging.error(f"Error when trying to delete {intent} listing for {sku}")
+            logging.error(success)
+            return
+
+        del self._listings[key]
+        logging.info(f"Deleted {intent} listing for {sku}")
 
     async def run(self) -> None:
         if not self.set_user_agent():
             return
 
-        self._bptf.delete_all_listings()
+        self.backpack_tf.delete_all_listings()
         self._is_ready = True
         logging.info("Deleted all listings")
 
@@ -398,8 +405,8 @@ class ListingManager(BaseManager):
             self._has_updated_listings = True
 
     def close(self):
-        self._bptf.delete_all_listings()
+        self.backpack_tf.delete_all_listings()
         logging.info("Deleted all listings")
         self._listings.clear()
-        self._bptf.stop_user_agent()
+        self.backpack_tf.stop_user_agent()
         logging.info("Stopped Backpack.TF user agent")

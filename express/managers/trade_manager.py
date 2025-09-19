@@ -30,6 +30,7 @@ class TradeManager(BaseManager):
     def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
         self.owners = [str(steam_id) for steam_id in self.options.owners]
+        self.blacklist = [str(steam_id) for steam_id in self.options.blacklist]
 
     @staticmethod
     def _is_offer_active(trade: steam.TradeOffer) -> bool:
@@ -57,18 +58,16 @@ class TradeManager(BaseManager):
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
 
-    def is_backpack_tf_banned(self, steam_id: str) -> bool:
-        return self.options.check_backpack_tf_bans and self.listing_manager.is_banned(
-            steam_id
-        )
-
     def is_arbitrage_offer(self, their_items, our_items) -> bool:
         return self.options.enable_arbitrage and self.arbitrage.is_arbitrage_offer(
             their_items, our_items
         )
 
-    def is_owner(self, steam_id: str) -> bool:
+    def is_owner(self, steam_id: str | int) -> bool:
         return str(steam_id) in self.owners
+
+    def is_blacklisted(self, steam_id: str | int) -> bool:
+        return str(steam_id) in self.blacklist
 
     async def accept(self, trade: steam.TradeOffer) -> None:
         await self._retry_action(trade, "accepting", trade.accept)
@@ -434,12 +433,17 @@ class TradeManager(BaseManager):
         logging.info(f"Processing offer #{trade.id} from {partner.name}...")
         logging.info(f"Offer contains {items_amount} item(s)")
 
+        if self.is_blacklisted(partner_id):
+            logging.info("Offer is from blacklisted user")
+            await self.decline(trade)
+            return
+
         if self.is_owner(partner_id):
             logging.info("Offer is from owner")
             await self.accept(trade)
             return
 
-        if self.is_backpack_tf_banned(partner_id):
+        if self.listing_manager.is_backpack_tf_banned(partner_id):
             logging.info("User is banned on Backpack.TF")
             await self.decline(trade)
             return
@@ -571,11 +575,19 @@ class TradeManager(BaseManager):
         steam_id = str(partner.id64)
         is_friend = partner.is_friend()
 
-        if self.is_backpack_tf_banned(steam_id):
+        if self.is_blacklisted(steam_id):
+            logging.info("User is blacklisted, not sending offer")
+
+            if is_friend:
+                await partner.send("Aborted. You have been blacklisted by the owner")
+
+            return 0
+
+        if self.listing_manager.is_backpack_tf_banned(steam_id):
             logging.info("User is banned on Backpack.TF, not sending offer")
 
             if is_friend:
-                await partner.send("You seem to be banned on Backpack.TF, stopping...")
+                await partner.send("Aborted. You seem to be banned on Backpack.TF")
 
             return 0
 

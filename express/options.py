@@ -27,6 +27,7 @@ class Options:
     save_trade_offers: bool = True  # save trade offers in database
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
+    blacklist: list[str] = field(default_factory=list)  # list of blacklisted steam id64
     client_options: dict = field(default_factory=dict)  # client options for steam.py
     enable_arbitrage: bool = False
     stn_api_key: str = ""  # api key for stn.tf

@@ -102,11 +102,6 @@ def get_config() -> dict:
     return read_json_file(path)
 
 
-def get_bot_config() -> dict:
-    # only one bot is supported for now
-    return get_config().get("bots", [])[0]
-
-
 def get_version(repository: str, folder: str) -> str:
     url = "https://raw.githubusercontent.com/offish/{}/master/{}/__init__.py".format(
         repository, folder

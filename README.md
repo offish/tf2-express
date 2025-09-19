@@ -15,16 +15,16 @@ Donations are not required, but greatly appericated.
 - [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
 
 ## Features
-* GUI for adding and changing items, prices, `max_stock` + browsing trades
+* GUI for adding/changing items, prices and `max_stock` + browsing trades
 * Supports automated price updates from [PriceDB.IO](https://pricedb.io)
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
-* Supports buy/sell message commands (`sell_5021_6`)
+* Supports buy/sell message commands (`sell_1x_5021_6`)
 * Sends counter offer when user is trying to take items for free
 * Sends counter offer when values are incorrect
 * Supports Random Craft Hats [[?]](#random-craft-hats)
 * Bank as many items as you want
-* Add items by either name or SKU
+* Add items by either name or SKU [[?]](#adding-items)
 * Uses MongoDB for saving items, prices and trades
 * Limited inventory fetching to mitigate rate-limits
 * Supports arbitraging items from different trading sites [[?]](#arbitrage)
@@ -34,10 +34,10 @@ All available options can be found [here](express/options.py).
 
 **Key dependencies:**
 * [steam.py](https://github.com/gobot1234/steam.py)
+* [tf2-utils](https://github.com/offish/tf2-utils)
 * [backpack-tf](https://github.com/offish/backpack-tf)
 * [tf2-sku](https://github.com/offish/tf2-sku)
 * [tf2-data](https://github.com/offish/tf2-data)
-* [tf2-utils](https://github.com/offish/tf2-utils)
 
 ## Showcase
 ![GUI Showcase](https://github.com/user-attachments/assets/06f61b55-06a2-4bd7-a575-9225d68d2396)
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 ```
 
 > [!NOTE]
-> You need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify/delete collections  manually.
+> You need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify collections manually.
 
 ## Setup
 > [!NOTE]
@@ -62,29 +62,25 @@ pip install -r requirements.txt
 Example config:
 ```json
 {
-    "bots": [
-        {
-            "username": "username",
-            "password": "password",
-            "shared_secret": "Aa11aA1+1aa1aAa1a=",
-            "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
-            "options": {
-                "use_backpack_tf": true,
-                "backpack_tf_token": "token",
-                "enable_arbitrage": false,
-                "inventory_provider": "steamsupply",
-                "inventory_api_key": "mySteamSupplyApiKey",
-                "accept_donations": true,
-                "decline_trade_hold": true,
-                "enable_craft_hats": true,
-                "save_trade_offers": true,
-                "owners": [
-                    "76511111111111111",
-                    "76522222222222222"
-                ]
-            }
-        }
-    ]
+    "username": "username",
+    "password": "password",
+    "shared_secret": "Aa11aA1+1aa1aAa1a=",
+    "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
+    "options": {
+        "use_backpack_tf": true,
+        "backpack_tf_token": "token",
+        "enable_arbitrage": false,
+        "inventory_provider": "steamsupply",
+        "inventory_api_key": "mySteamSupplyApiKey",
+        "accept_donations": true,
+        "decline_trade_hold": true,
+        "enable_craft_hats": true,
+        "save_trade_offers": true,
+        "owners": [
+            "76511111111111111",
+            "76522222222222222"
+        ]
+    }
 }
 ```
 
@@ -163,11 +159,14 @@ If a craftable hat does not have a specific price in the database, it will be vi
 
 Simply open the GUI and add "Random Craft Hat" or `-100;6` to the pricelist. Set the buy and sell price to whatever you want. Random Craft Hats cannot get automatic price updates.
 
-### Arbitrage
-"Arbitraging is the process of taking advantage of a price difference between two or more markets". In this case, it is used to buy items from one trade site and sell to another for profit. `tf2-express` can act on deals from [`tf2-arbitrage`](https://github.com/offish/tf2-arbitrage) and send or receive offers.
+### Adding Items
+The bot supports adding items via the GUI by using either item names or SKUs. Example: `Uncraftable Tour of Duty Ticket` or `725;6;uncraftable` would add the same item (`725;6;uncraftable`).
 
 > [!IMPORTANT]
-> As of tf2-express v3.0.0 arbitrage is currently broken.
+> Adding by name is sometimes bugged. For items like `Strange Wrench` it would get the SKU `7;6`, this is wrong and applies to other "default" items aswell. The correct SKU would be `197;11`. This issue stems from how defindexes are handled in `tf2-data` and `tf2-utils`. If an added item has the wrong SKU - delete the item and add it again using the SKU and not the item name. To check if a SKU is correct you can go to the GUI, click on the item and open it on [Marketplace.TF](https://marketplace.tf). If the item has 0 previous sales, it is most likely wrong.
+
+### Arbitrage
+"Arbitraging is the process of taking advantage of a price difference between two or more markets". Prior to v3.0.0 this bot used to support arbitraging of items via  [`tf2-arbitrage`](https://github.com/offish/tf2-arbitrage). This support has now been removed. The bot still supports arbitraging of items, but the code and logic for this remains private for the time being.
 
 ### 3rd Party Inventory Providers
 Steam can rate-limit inventory fetch requests if they are called too often. This can be avoided using a third party provider like SteamApis, Steam.Supply, Express-Load or your own. This is especially useful if you are running multiple bots.

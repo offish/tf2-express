@@ -3,6 +3,7 @@ from typing import Callable
 
 import requests
 from socketio import AsyncClient
+from socketio.exceptions import ConnectionError
 
 from .pricing_provider import PricingProvider
 
@@ -66,10 +67,18 @@ class PriceDB(BasePriceDB, PricingProvider):
 
         self.sio = AsyncClient()
         self.sio.on("connect", self.on_connect)
+        self.sio.on("disconnect", self.on_disconnect)
         self.sio.on("price", self.on_price_update)
+        self.sio.on("connect_error", self.on_connect_error)
 
     async def on_connect(self) -> None:
         logging.info("Connected to PriceDB socket")
+
+    async def on_disconnect(self) -> None:
+        logging.warning("Disconnected from PriceDB socket")
+
+    async def on_connect_error(self, data) -> None:
+        logging.warning(f"Connection error: {data}")
 
     async def on_price_update(self, data: dict) -> None:
         # Data recevied looks like this (the format we expect)
@@ -92,7 +101,17 @@ class PriceDB(BasePriceDB, PricingProvider):
         self.callback(data)
 
     async def listen(self) -> None:
-        await self.sio.connect("ws://ws.pricedb.io:5500/")
+        logging.info("Connecting to PriceDB socket...")
+
+        while True:
+            try:
+                await self.sio.connect("ws://ws.pricedb.io:5500/")
+                break
+            except ConnectionError:
+                logging.warning("Failed to connect to PriceDB socket - retrying in 5s")
+                await self.sio.sleep(5)
+                continue
+
         await self.sio.wait()
 
     async def close(self) -> None:
