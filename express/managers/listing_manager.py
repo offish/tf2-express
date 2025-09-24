@@ -65,7 +65,7 @@ class ListingManager(BaseManager):
 
         for intent in ["buy", "sell"]:
             if self.is_listed(sku, intent):
-                self.remove_listing(sku, intent)
+                self.delete_listing(sku, intent)
 
             self.create_listing(sku, intent)
 
@@ -158,23 +158,23 @@ class ListingManager(BaseManager):
 
         # not enough pure anymore
         if intent == "buy" and not self.has_enough_pure(keys, metal):
-            self.remove_listing(sku, intent)
+            self.delete_listing(sku, intent)
             return
 
         # we dont have the item anymore
         if not has_enough_stock(intent, in_stock):
-            self.remove_listing(sku, intent)
+            self.delete_listing(sku, intent)
             return
 
         # remove listing if max stock has been reached
         if surpasses_max_stock(intent, in_stock, max_stock):
-            self.remove_listing(sku, intent)
+            self.delete_listing(sku, intent)
             return
 
         asset_id = listing.get("asset_id", 0)
 
         if intent == "sell" and not self._is_asset_id_in_inventory(asset_id):
-            self.remove_listing(sku, intent)
+            self.delete_listing(sku, intent)
             self.create_listing(sku, intent)
             return
 
@@ -356,13 +356,13 @@ class ListingManager(BaseManager):
 
         logging.info("Done with creating listings")
 
-    def remove_listing(self, sku: str, intent: str) -> None:
+    def delete_listing(self, sku: str, intent: str) -> None:
         logging.debug(f"Removing {intent} listing for {sku}")
-        key = get_listing_key(intent, sku)
 
-        if key not in self._listings:
+        if not self.is_listed(sku, intent):
             raise ListingDoesNotExist
 
+        key = get_listing_key(intent, sku)
         listing = self._listings[key]
         asset_id = listing.get("asset_id", 0)
         item_name = listing["item"].get("baseName")

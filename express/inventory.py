@@ -127,9 +127,13 @@ class ExpressInventory(Inventory):
         self.our_inventory.append(item)
 
 
-def get_first_non_pure_sku(items: list[dict]) -> str | None:
+def get_non_pure_skus(items: list[dict]) -> list[str]:
+    skus = []
+
     for i in items:
         sku = get_sku(i)
 
         if not is_pure(sku):
-            return sku
+            skus.append(sku)
+
+    return skus

@@ -20,7 +20,7 @@ from tf2_utils import (
 )
 
 from ..conversion import item_data_to_item_object, item_object_to_item_data
-from ..inventory import get_first_non_pure_sku
+from ..inventory import get_non_pure_skus
 from ..options import COUNTER_OFFER_MESSAGE, SEND_OFFER_MESSAGE
 from ..utils import is_only_taking_items, is_two_sided_offer, swap_intent
 from .base_manager import BaseManager
@@ -340,13 +340,13 @@ class TradeManager(BaseManager):
         token: str = None,
         message: str = None,
     ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
-        partner_steam_id = partner.id64
+        partner_steam_id = str(partner.id64)
         offer_data = {}
 
         # get fresh instance of inventory (stores both our and theirs)
         inventory = self.inventory_manager.get_inventory_instance()
         our_inventory = self.inventory_manager.our_inventory
-        their_inventory = inventory.fetch_their_inventory(str(partner_steam_id))
+        their_inventory = inventory.fetch_their_inventory(partner_steam_id)
         data = await self._get_offer_items(
             partner, intent, items, item_type, their_inventory, our_inventory
         )
@@ -395,22 +395,39 @@ class TradeManager(BaseManager):
             offer_data,
         )
 
-    async def _counter_offer(
-        self, trade: steam.TradeOffer, our_items: list[dict]
+    async def counter_offer(
+        self,
+        trade: steam.TradeOffer,
+        our_items: list[dict],
+        their_items: list[dict],
     ) -> None:
-        # only supported counter offer for one item
-        # TODO: this only works if they are trying to take one item
-        # not if they have offered wrong values and are selling their item
-        sku = get_first_non_pure_sku(our_items)
+        our_non_pure_skus = get_non_pure_skus(our_items)
+        their_non_pure_skus = get_non_pure_skus(their_items)
+        intent = "sell"
 
-        if sku is None:
-            logging.warning("Found no non-pure items to counter offer")
+        if not our_non_pure_skus and not their_non_pure_skus:
+            logging.info("No non-pure items to counter offer, declining...")
             await self.decline(trade)
             return
 
-        logging.info(f"Counter offering {sku} to {trade.user.name}...")
+        if our_non_pure_skus and their_non_pure_skus:
+            logging.info(
+                "Both sides have non-pure items, cannot counter offer, declining..."
+            )
+            await self.decline(trade)
+            return
+
+        if their_non_pure_skus:
+            intent = "buy"
+
+        if our_non_pure_skus:
+            intent = "sell"
+
+        skus = our_non_pure_skus + their_non_pure_skus
+
+        logging.info(f"Counter offering {skus} to {trade.user.name}...")
         data = await self._create_offer(
-            trade.user, [sku], "sku", "sell", message=COUNTER_OFFER_MESSAGE
+            trade.user, skus, "sku", intent, message=COUNTER_OFFER_MESSAGE
         )
 
         if data is None:
@@ -420,6 +437,11 @@ class TradeManager(BaseManager):
         offer, offer_data = data
         await trade.counter(offer)
         self.client.add_offer_data(offer.id, offer_data)
+
+    async def counter_taking_offer(
+        self, trade: steam.TradeOffer, our_items: list[dict]
+    ) -> None:
+        await self.counter_offer(trade, our_items, [])
 
     async def _process_offer(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -475,7 +497,7 @@ class TradeManager(BaseManager):
         # only items on our side
         if is_only_taking_items(their_items_amount, our_items_amount):
             logging.info("User is trying to take items")
-            await self._counter_offer(trade, our_items)
+            await self.counter_taking_offer(trade, our_items)
             return
 
         # should never not be a two sided offer here
@@ -521,7 +543,7 @@ class TradeManager(BaseManager):
 
         if self.options.auto_counter_bad_offers:
             logging.info("Counter offering...")
-            await self._counter_offer(trade, our_items)
+            await self.counter_offer(trade, our_items, their_items)
             return
 
         logging.info("Ignoring offer as automatic decline is disabled")
