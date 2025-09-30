@@ -19,7 +19,7 @@ Donations are not required, but greatly appericated.
 * Supports automated price updates from [PriceDB.IO](https://pricedb.io)
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
-* Supports buy/sell message commands (`sell_1x_5021_6`)
+* Supports buy/sell message commands (`sell_1x_5021_6` or `sell_mann_co_supply_crate_key`)
 * Sends counter offer when user is trying to take items for free
 * Sends counter offer when values are incorrect
 * Supports Random Craft Hats [[?]](#random-craft-hats)
@@ -104,6 +104,7 @@ Example config:
 | `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |
 | `groups` | List of group IDs to join. | \[] |
 | `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
+| `blacklist` | List of blacklisted SteamID64s. Bot will decline offers from blacklisted users. | \[] |
 | `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | {} |
 
 ## Running

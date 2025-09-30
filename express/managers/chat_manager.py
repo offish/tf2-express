@@ -27,15 +27,30 @@ class ChatManager(BaseManager):
         data = parse_command(msg)
 
         if data is None:
-            await message.channel.send("Could not parse your message")
+            await message.channel.send("Error. Could not parse your message")
             return
 
         # parse message
         intent = data["intent"]
         amount = data["amount"]
-        sku = data["sku"]
+        identifier = data["sku"] if data["is_sku"] else data["item_name"]
+        sku = ""
 
-        logging.info(f"{message.author.name} wants to {intent} {amount} of {sku}")
+        if data["is_sku"]:
+            sku = data["sku"]
+        else:
+            item_name = data["item_name"]
+            item = self.database.find_item_by_name(item_name)
+
+            if item is None:
+                await message.channel.send(f"Error. No item with name '{item_name}'")
+                return
+
+            sku = item["sku"]
+
+        logging.info(
+            f"{message.author.name} wants to {intent} {amount} of {identifier}"
+        )
 
         if amount < 1:
             await message.channel.send("You must trade at least 1 item")

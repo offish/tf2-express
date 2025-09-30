@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from tf2_utils import is_metal
 
 from .exceptions import SKUNotFound
-from .utils import has_buy_and_sell_price, sku_to_item_data
+from .utils import has_buy_and_sell_price, normalize_item_name, sku_to_item_data
 
 
 class Database:
@@ -35,6 +35,12 @@ class Database:
             return False
 
         return has_buy_and_sell_price(data)
+
+    def find_item_by_name(self, normalized_name: str) -> dict | None:
+        for item in self.items.find():
+            if normalized_name == normalize_item_name(item["name"]):
+                del item["_id"]
+                return item
 
     def insert_trade(self, data: dict) -> None:
         self.trades.insert_one(data)

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -67,6 +68,13 @@ def filter_skus(item_list: list[dict]) -> list[str]:
 
 def swap_intent(intent: str) -> str:
     return "buy" if intent.lower() == "sell" else "sell"
+
+
+def normalize_item_name(name: str) -> str:
+    name = name.lower()
+    name = re.sub(r"[^\w\s]", "", name)
+    name = re.sub(r"\s+", "_", name)
+    return name
 
 
 def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
