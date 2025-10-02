@@ -15,13 +15,12 @@ from tf2_utils import (
 from ..exceptions import ListingDoesNotExist
 from ..listing import (
     ListingConstruct,
-    format_buy_listing_details,
-    format_sell_listing_details,
     get_listing_key,
     get_matching_listing,
     has_enough_stock,
     surpasses_max_stock,
 )
+from ..options import BUY_LISTING_DETAILS, SELL_LISTING_DETAILS
 from ..utils import has_buy_and_sell_price, has_correct_price_format
 from .base_manager import BaseManager
 
@@ -90,9 +89,13 @@ class ListingManager(BaseManager):
         )
 
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
+        formatted_identifier = sku.replace(";", "_")
+
+        if not self.options.use_sku_command_in_listing_details:
+            formatted_identifier = self.database.get_normalized_item_name(sku)
+
         keys = currencies["keys"]
         metal = currencies["metal"]
-        formatted_sku = sku.replace(";", "_")
         max_stock = self.database.get_max_stock(sku)
         in_stock = self.inventory_manager.get_in_stock(sku)
         max_stock_string = str(max_stock)
@@ -109,7 +112,7 @@ class ListingManager(BaseManager):
             "sku": sku,
             "in_stock": in_stock,
             "max_stock": max_stock,
-            "formatted_sku": formatted_sku,
+            "formatted_identifier": formatted_identifier,
             "price": price,
             "max_stock_string": max_stock_string,
         }
@@ -121,9 +124,9 @@ class ListingManager(BaseManager):
         variables = self._get_listing_variables(sku, currencies)
 
         return (
-            format_buy_listing_details(variables)
+            BUY_LISTING_DETAILS.format(**variables)
             if intent == "buy"
-            else format_sell_listing_details(variables)
+            else SELL_LISTING_DETAILS.format(**variables)
         )
 
     def _get_asset_id_for_sku(self, sku: str) -> int:

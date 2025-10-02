@@ -1,10 +1,39 @@
 from dataclasses import dataclass, field
 
 FRIEND_ACCEPT_MESSAGE = """Hello {username}, thanks for adding me!
-Get started by sending a command like "buy_1x_5021_6" or check out my listings!
+Get started by sending a command like "buy_ellis_cap" or write "help"
 """
+
 SEND_OFFER_MESSAGE = "Thank you!"
+
 COUNTER_OFFER_MESSAGE = "Your offer contained wrong values, here is a corrected one!"
+
+PRICE_COMMAND = """I'm buying {sku} for {buy_keys} keys and {buy_metal} ref
+and selling for {sell_keys} keys and {sell_metal} ref
+I currently have {in_stock} in stock, my max is {max_stock}
+"""
+
+HELP_COMMAND = """Available commands:
+
+- help - Shows this message
+- buy_ellis_cap - Buy items from the bot
+- sell_ellis_cap - Sell items to the bot
+- price_ellis_cap - Check the buy and sell price and its stock for an item
+
+You can use the item name or SKU, e.g. "buy_5021_6" or "buy_mann_co_supply_crate_key"
+You can also specify amount to buy/sell multiple items at once, e.g. "buy_10x_5021_6"
+"""
+
+SELL_LISTING_DETAILS = (
+    "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
+    + "Offer (try to take it for free, I'll counter) or chat me. "
+    + "(double-click Ctrl+C): buy_{formatted_identifier}"
+)
+
+BUY_LISTING_DETAILS = (
+    "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
+    + "Offer or chat me. (double-click Ctrl+C): sell_{formatted_identifier}"
+)
 
 
 @dataclass
@@ -25,6 +54,9 @@ class Options:
     cancel_sent_offers_after_seconds: int = 300  # auto cancel has to be enabled
     enable_craft_hats: bool = False  # enable random craft hats
     save_trade_offers: bool = True  # save trade offers in database
+    use_sku_command_in_listing_details: bool = False  # disable for item name instead
+    use_ai_chat_responses: bool = False  #  for chat commands which are not recognized
+    groq_api_key: str = ""  # api key for groq (free)
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
     blacklist: list[str] = field(default_factory=list)  # list of blacklisted steam id64

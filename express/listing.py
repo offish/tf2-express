@@ -23,23 +23,6 @@ def surpasses_max_stock(intent: str, in_stock: int, max_stock: int) -> bool:
     return max_stock != -1 and in_stock >= max_stock
 
 
-def format_sell_listing_details(variables: dict) -> str:
-    sell_details = (
-        "{price} ⚡️ I have {in_stock} ⚡️ 24/7 FAST ⚡️ "
-        + "Offer (try to take it for free, I'll counter) or chat me. "
-        + "(double-click Ctrl+C): buy_1x_{formatted_sku}"
-    )
-    return sell_details.format(**variables)
-
-
-def format_buy_listing_details(variables: dict) -> str:
-    buy_details = (
-        "{price} ⚡️ Stock {in_stock}/{max_stock_string} ⚡️ 24/7 FAST ⚡️ "
-        + "Offer or chat me. (double-click Ctrl+C): sell_1x_{formatted_sku}"
-    )
-    return buy_details.format(**variables)
-
-
 class ListingConstruct:
     def __init__(
         self,

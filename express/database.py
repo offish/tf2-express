@@ -42,6 +42,12 @@ class Database:
                 del item["_id"]
                 return item
 
+    def get_normalized_item_name(self, sku: str) -> str | None:
+        item = self.get_item(sku)
+
+        if item:
+            return normalize_item_name(item["name"])
+
     def insert_trade(self, data: dict) -> None:
         self.trades.insert_one(data)
         logging.info("Offer was added to the database")

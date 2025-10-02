@@ -5,7 +5,12 @@ import logging
 import steam
 
 from .database import Database
-from .exceptions import MissingBackpackAPIKey, MissingBackpackTFToken, MissingSTNAPIKey
+from .exceptions import (
+    MissingAIAPIKey,
+    MissingBackpackAPIKey,
+    MissingBackpackTFToken,
+    MissingSTNAPIKey,
+)
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
@@ -100,12 +105,13 @@ class Express(steam.Client):
             raise MissingBackpackTFToken("Backpack.TF token is required for listing")
 
         if self.options.check_backpack_tf_bans and not self.options.backpack_tf_api_key:
-            raise MissingBackpackAPIKey(
-                "Backpack.TF API key is needed for checking bans"
-            )
+            raise MissingBackpackAPIKey("Backpack.TF API key is needed for ban checks")
 
         if self.options.enable_arbitrage and not self.options.stn_api_key:
             raise MissingSTNAPIKey("STN.TF API key is needed for arbitrage")
+
+        if self.options.use_ai_chat_responses and not self.options.groq_api_key:
+            raise MissingAIAPIKey("You need to set an API key for AI chat responses")
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:

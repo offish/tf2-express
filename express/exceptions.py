@@ -26,6 +26,10 @@ class MissingSTNAPIKey(ExpressException):
     pass
 
 
+class MissingAIAPIKey(ExpressException):
+    pass
+
+
 class NoKeyPrice(ExpressException):
     pass
 
