@@ -11,11 +11,12 @@ from .base_manager import BaseManager
 
 class ChatManager(BaseManager):
     def setup(self) -> None:
-        if not self.options.use_ai_chat_responses:
+        if not self.options.llm_chat_responses:
             return
 
-        api_key = self.options.groq_api_key
-        self.ai_manager = AIManager(api_key)
+        api_key = self.options.llm_api_key
+        model = self.options.llm_model
+        self.ai_manager = AIManager(api_key, model)
 
     async def process_message(self, message: Message, msg: str) -> None:
         if msg == "help":
@@ -34,7 +35,7 @@ class ChatManager(BaseManager):
             await self.handle_price_command(message, msg)
             return
 
-        if not self.options.use_ai_chat_responses:
+        if not self.options.llm_chat_responses:
             await message.channel.send("Invalid command")
             return
 

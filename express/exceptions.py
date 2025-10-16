@@ -18,15 +18,7 @@ class MissingBackpackTFToken(ExpressException):
     pass
 
 
-class MissingBackpackAPIKey(ExpressException):
-    pass
-
-
-class MissingSTNAPIKey(ExpressException):
-    pass
-
-
-class MissingAIAPIKey(ExpressException):
+class MissingAPIKey(ExpressException):
     pass
 
 

@@ -1,4 +1,6 @@
-from groq import Groq
+import os
+
+from litellm import completion
 
 SYSTEM_PROMPT = """You are a helpful and friendly assistant for a Team Fortress 2 trading bot.
 Your role is to assist users with commands related to buying, selling, and checking prices of in-game items.
@@ -21,19 +23,18 @@ Your role is to assist users with commands related to buying, selling, and check
 
 
 class AIManager:
-    def __init__(self, api_key: str) -> None:
-        self.client = Groq(api_key=api_key)
-        self.model = "llama-3.3-70b-versatile"
+    def __init__(self, api_key: str, model: str) -> None:
+        provider = model.split("/")[0]
+        provider_key = f"{provider}_API_KEY".upper()
+        os.environ[provider_key] = api_key
+        self.model = model
 
     def prompt(self, text: str) -> str:
-        response = self.client.chat.completions.create(
+        response = completion(
+            model=self.model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": text,
-                },
+                {"role": "user", "content": text},
             ],
-            model=self.model,
         )
         return response.choices[0].message.content

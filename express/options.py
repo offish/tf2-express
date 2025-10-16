@@ -48,15 +48,16 @@ class Options:
     check_backpack_tf_bans: bool = False
     backpack_tf_api_key: str = ""  # api key for backpack.tf
     accept_donations: bool = True
-    auto_counter_bad_offers: bool = False  # counter offers with wrong values
+    counter_bad_offers: bool = False  # counter offers with wrong values
     decline_trade_hold: bool = True
-    auto_cancel_sent_offers: bool = False  # cancel offers sent by us after some time
+    cancel_old_sent_offers: bool = False  # cancel offers sent by us after some time
     cancel_sent_offers_after_seconds: int = 300  # auto cancel has to be enabled
     enable_craft_hats: bool = False  # enable random craft hats
     save_trade_offers: bool = True  # save trade offers in database
-    use_sku_command_in_listing_details: bool = False  # disable for item name instead
-    use_ai_chat_responses: bool = False  #  for chat commands which are not recognized
-    groq_api_key: str = ""  # api key for groq (free)
+    sku_in_listing_details: bool = False  # disable for item name instead
+    llm_chat_responses: bool = False  #  for chat commands which are not recognized
+    llm_model: str = "groq/llama-3.3-70b-versatile"  # model to use for llm responses
+    llm_api_key: str = ""  # api key for to llm provider
     groups: list[int] = field(default_factory=list)
     owners: list[str] = field(default_factory=list)  # list of owner steam id64
     blacklist: list[str] = field(default_factory=list)  # list of blacklisted steam id64

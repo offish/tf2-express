@@ -5,12 +5,7 @@ import logging
 import steam
 
 from .database import Database
-from .exceptions import (
-    MissingAIAPIKey,
-    MissingBackpackAPIKey,
-    MissingBackpackTFToken,
-    MissingSTNAPIKey,
-)
+from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
@@ -94,7 +89,7 @@ class Express(steam.Client):
         if self.options.is_express_tf_bot:
             asyncio.create_task(self.ws_manager.listen())
 
-        if self.options.auto_cancel_sent_offers:
+        if self.options.cancel_old_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
         if self.options.enable_arbitrage:
@@ -105,13 +100,16 @@ class Express(steam.Client):
             raise MissingBackpackTFToken("Backpack.TF token is required for listing")
 
         if self.options.check_backpack_tf_bans and not self.options.backpack_tf_api_key:
-            raise MissingBackpackAPIKey("Backpack.TF API key is needed for ban checks")
+            raise MissingAPIKey("Backpack.TF API key is needed for ban checks")
 
         if self.options.enable_arbitrage and not self.options.stn_api_key:
-            raise MissingSTNAPIKey("STN.TF API key is needed for arbitrage")
+            raise MissingAPIKey("STN.TF API key is needed for arbitrage")
 
-        if self.options.use_ai_chat_responses and not self.options.groq_api_key:
-            raise MissingAIAPIKey("You need to set an API key for AI chat responses")
+        if self.options.llm_chat_responses and not self.options.llm_api_key:
+            raise MissingAPIKey("You need to set an API key for AI chat responses")
+
+        if self.options.llm_chat_responses and not self.options.llm_model:
+            raise ExpressException("You need to set a model for AI chat responses")
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:

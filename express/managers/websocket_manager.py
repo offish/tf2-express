@@ -68,7 +68,7 @@ class WebSocketManager(BaseManager):
 
         swapped_intent = swap_intent(intent)
         offer_id = await self.client.trade_manager.send_offer_by_trade_url(
-            trade_url, swapped_intent, asset_ids
+            trade_url, swapped_intent, asset_ids, "asset_id"
         )
 
         if not offer_id:

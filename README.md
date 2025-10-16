@@ -7,30 +7,33 @@
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-Automated TF2 trading bot with GUI support, built with Python. Prices are by default provided by [PriceDB.IO](https://pricedb.io).
+Automated TF2 trading bot with AI and GUI support, built with Python. Prices are by default provided by [PriceDB.IO](https://pricedb.io).
 
 ## Donate
-Donations are not required, but greatly appericated.
 - BTC: `bc1q9gmh5x2g9s0pw3282a5ypr6ms8qvuxh3fd7afh`
 - [Steam Trade Offer](https://steamcommunity.com/tradeoffer/new/?partner=293059984&token=0-l_idZR)
 
 ## Features
 * GUI for adding/changing items, prices and `max_stock` + browsing trades
+* Add items by name or SKU [[?]](#adding-items)
 * Supports automated price updates from [PriceDB.IO](https://pricedb.io)
+* Supports 3rd party pricing providers
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
 * Supports buy/sell message commands (`sell_1x_5021_6` or `sell_mann_co_supply_crate_key`)
+* AI specialized chat message for unrecognized commands
 * Sends counter offer when user is trying to take items for free
 * Sends counter offer when values are incorrect
 * Supports Random Craft Hats [[?]](#random-craft-hats)
 * Bank as many items as you want
-* Add items by either name or SKU [[?]](#adding-items)
 * Uses MongoDB for saving items, prices and trades
 * Limited inventory fetching to mitigate rate-limits
-* Supports arbitraging items from different trading sites [[?]](#arbitrage)
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
+* Supports arbitraging items from different trading sites [[?]](#arbitrage)
+* Blacklist certain SteamIDs from trading
+* Checks if trade partner is banned on [Backpack.TF](https://backpack.tf)
 
-All available options can be found [here](express/options.py).
+All options are available [here](express/options.py).
 
 **Key dependencies:**
 * [steam.py](https://github.com/gobot1234/steam.py)
@@ -85,8 +88,8 @@ Example config:
 ```
 
 ### Options
-| Option             | Description| Default   |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
 | `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | - |
 | `use_backpack_tf` | Whether to list items on Backpack.TF or not. | - |
 | `backpack_tf_token`| Access token from [backpack.tf API access](https://next.backpack.tf/account/api-access). | - |
@@ -95,17 +98,21 @@ Example config:
 | `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| - |
 | `backpack_tf_user_agent` | User agent shown on next.backpack.tf. | `Listing goin' up!` |
 | `accept_donations` | Whether to accept donations or not. | true |
-| `auto_counter_bad_offers` | Whether to counter offers with wrong values or not. | false |
+| `counter_bad_offers` | Whether to counter offers with wrong values or not. | false |
 | `decline_trade_hold` | Whether to decline trades that have trade hold. | true |
-| `auto_cancel_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
+| `cancel_old_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
 | `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | 300 |
 | `enable_arbitrage` | Whether to enable arbitrage or not. [\[?\]](#arbitrage) | false |
 | `enable_craft_hats`| Whether to enable Random Craft Hats or not. [\[?\]](#random-craft-hats) | false |
 | `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |
+| `sku_in_listing_details` | To use SKU in listing details (e.g. `buy_263_6` instead of `buy_ellis_cap`) | false |
+| `llm_chat_responses` | Whether the bot should have an AI response when a command is not recognized or not.  | false |
+| `llm_model` | Which model to run. Look at [LiteLLM docs](https://docs.litellm.ai/docs/providers) for other models.  | `groq/llama-3.3-70b-versatile` |
+| `llm_api_key` | API key for a provider. Groq has a free tier [here](https://console.groq.com/keys). Has to match the provider in `llm_model`. | - |
 | `groups` | List of group IDs to join. | \[] |
 | `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
 | `blacklist` | List of blacklisted SteamID64s. Bot will decline offers from blacklisted users. | \[] |
-| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | {} |
+| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | \{} |
 
 ## Running
 ```bash

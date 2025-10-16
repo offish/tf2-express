@@ -91,7 +91,7 @@ class ListingManager(BaseManager):
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         formatted_identifier = sku.replace(";", "_")
 
-        if not self.options.use_sku_command_in_listing_details:
+        if not self.options.sku_in_listing_details:
             formatted_identifier = self.database.get_normalized_item_name(sku)
 
         keys = currencies["keys"]

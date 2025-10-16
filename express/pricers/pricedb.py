@@ -105,7 +105,7 @@ class PriceDB(BasePriceDB, PricingProvider):
 
         while True:
             try:
-                await self.sio.connect("ws://ws.pricedb.io:5500/")
+                await self.sio.connect("ws://ws.pricedb.io/")
                 break
             except ConnectionError:
                 logging.warning("Failed to connect to PriceDB socket - retrying in 5s")

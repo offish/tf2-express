@@ -107,7 +107,7 @@ class Database:
         item = self.items.find_one({"sku": sku})
 
         if item is None:
-            logging.debug(f"{sku} not found in database")
+            # logging.debug(f"{sku} not found in database")
             return {}
 
         del item["_id"]

@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 from steam.protobufs.econ import Asset, ItemDescription
@@ -10,7 +9,7 @@ from steam.user import User
 def item_data_to_item_object(
     state: ConnectionState, owner: User, item_data: dict[str, Any]
 ) -> Item:
-    logging.debug(f"{item_data=}")
+    # logging.debug(f"{item_data=}")
     asset_item_data = {
         "assetid": int(item_data["assetid"]),
         "appid": int(item_data["appid"]),
@@ -44,7 +43,6 @@ def item_object_to_item_data(item: Item) -> dict[str, Any]:
         "appid": int(item._app_id),
         "classid": item.class_id,
         "instanceid": item.instance_id,
-        "icon_url": item.icon.url,
         "tradable": item._is_tradable,
         "actions": [{"link": i.link, "name": i.name} for i in item.actions],
         "name": item.name,

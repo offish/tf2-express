@@ -58,7 +58,9 @@ class TradeManager(BaseManager):
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
 
-    def is_arbitrage_offer(self, their_items, our_items) -> bool:
+    def is_arbitrage_offer(
+        self, their_items: list[dict], our_items: list[dict]
+    ) -> bool:
         return self.options.enable_arbitrage and self.arbitrage.is_arbitrage_offer(
             their_items, our_items
         )
@@ -180,25 +182,37 @@ class TradeManager(BaseManager):
         return total, has_unpriced
 
     def _item_values_adds_up(
-        self, their_items: list[dict], our_items: list[dict]
+        self,
+        their_items: list[dict],
+        our_items: list[dict],
+        intent: str,
+        scrap_value: int = None,
     ) -> tuple[bool, int, int]:
         logging.debug("checking if values for offer is equal...")
         their_value = 0
         our_value = 0
 
         for item in their_items:
-            sku = self._get_sku(item)
-            scrap_price = self.pricing_manager.get_scrap_price(sku, "buy")
+            scrap_price = 0
+
+            if intent == "buy" and scrap_value:
+                scrap_price = scrap_value
+            else:
+                sku = self._get_sku(item)
+                scrap_price = self.pricing_manager.get_scrap_price(sku, "buy")
+
             their_value += scrap_price
 
-            logging.debug(f"{sku=} has {scrap_price=}")
-
         for item in our_items:
-            sku = self._get_sku(item)
-            scrap_price = self.pricing_manager.get_scrap_price(sku, "sell")
-            our_value += scrap_price
+            scrap_price = 0
 
-            logging.debug(f"{sku=} has {scrap_price=}")
+            if intent == "sell" and scrap_value:
+                scrap_price = scrap_value
+            else:
+                sku = self._get_sku(item)
+                scrap_price = self.pricing_manager.get_scrap_price(sku, "sell")
+
+            our_value += scrap_price
 
         return (their_value == our_value, their_value, our_value)
 
@@ -209,6 +223,7 @@ class TradeManager(BaseManager):
         items: list[str],
         item_type: str,
         selected_inventory: list[dict],
+        scrap_value: int = None,
     ) -> tuple[bool, list[dict], int] | None:
         is_friend = partner.is_friend()
         swapped_intent = swap_intent(intent)
@@ -217,10 +232,10 @@ class TradeManager(BaseManager):
 
         item_list = items.copy()
         selected_items = []
-        total_scrap_price = 0
+        total_scrap_value = 0
         message = ""
 
-        logging.debug(f"{key_scrap_price=} with {swapped_intent=}")
+        logging.debug(f"{key_scrap_price=} with {swapped_intent=} ({scrap_value=})")
 
         selected_inventory.reverse()
 
@@ -243,22 +258,27 @@ class TradeManager(BaseManager):
             sku = self._get_sku(item)
             logging.debug(f"{item_identifier=} as {sku=} {asset_id=}")
 
-            if sku not in all_skus:
+            if not scrap_value and sku not in all_skus:
                 logging.warning(f"We are not banking {sku}!")
                 message = f"Sorry, I'm not banking {sku}"
                 break
 
-            if not self.database.has_price(sku):
+            if not scrap_value and not self.database.has_price(sku):
                 logging.warning(f"Item {sku} does not have a price")
                 message = f"Sorry, I do not have a price for {sku}"
                 break
 
-            keys, metal = self.database.get_price(sku, intent)
-            scrap_price = key_scrap_price * keys + to_scrap(metal)
+            scrap = 0
 
-            logging.debug(f"{sku=} has {intent} {scrap_price=}")
+            if scrap_value:
+                scrap = scrap_value
+            else:
+                keys, metal = self.database.get_price(sku, intent)
+                scrap = key_scrap_price * keys + to_scrap(metal)
 
-            total_scrap_price += scrap_price
+            logging.debug(f"{sku=} has {intent} {scrap=}")
+
+            total_scrap_value += scrap
             selected_items.append(item)
             item_list.remove(item_identifier)
 
@@ -276,7 +296,7 @@ class TradeManager(BaseManager):
 
         # if a message was set, an error occured
         if not message:
-            return (selected_items, total_scrap_price)
+            return (selected_items, total_scrap_value)
 
         if is_friend:
             await partner.send(message)
@@ -289,12 +309,13 @@ class TradeManager(BaseManager):
         item_type: str,
         their_inventory: list[dict],
         our_inventory: list[dict],
+        scrap_value: int = None,
     ) -> tuple[list[dict], list[dict]] | None:
         swapped_intent = swap_intent(intent)
         selected_inventory = their_inventory if intent == "buy" else our_inventory
 
         data = await self._get_selected_items(
-            partner, intent, items, item_type, selected_inventory
+            partner, intent, items, item_type, selected_inventory, scrap_value
         )
 
         if data is None:
@@ -339,6 +360,7 @@ class TradeManager(BaseManager):
         intent: str,
         token: str = None,
         message: str = None,
+        scrap_value: int = None,
     ) -> tuple[steam.TradeOffer, dict[str, Any]] | None:
         partner_steam_id = str(partner.id64)
         offer_data = {}
@@ -348,7 +370,13 @@ class TradeManager(BaseManager):
         our_inventory = self.inventory_manager.our_inventory
         their_inventory = inventory.fetch_their_inventory(partner_steam_id)
         data = await self._get_offer_items(
-            partner, intent, items, item_type, their_inventory, our_inventory
+            partner,
+            intent,
+            items,
+            item_type,
+            their_inventory,
+            our_inventory,
+            scrap_value,
         )
 
         if data is None:
@@ -357,7 +385,7 @@ class TradeManager(BaseManager):
         their_items, our_items = data
         logging.debug(f"{len(their_items)=} {len(our_items)=}")
         is_adding_up, their_value, our_value = self._item_values_adds_up(
-            their_items, our_items
+            their_items, our_items, intent, scrap_value
         )
 
         if not is_adding_up:
@@ -456,12 +484,12 @@ class TradeManager(BaseManager):
         logging.info(f"Offer contains {items_amount} item(s)")
 
         if self.is_blacklisted(partner_id):
-            logging.info("Offer is from blacklisted user")
+            logging.info(f"Offer is from blacklisted user ({partner.name})")
             await self.decline(trade)
             return
 
         if self.is_owner(partner_id):
-            logging.info("Offer is from owner")
+            logging.info(f"Offer is from owner ({partner.name})")
             await self.accept(trade)
             return
 
@@ -541,7 +569,7 @@ class TradeManager(BaseManager):
             await self.accept(trade)
             return
 
-        if self.options.auto_counter_bad_offers:
+        if self.options.counter_bad_offers:
             logging.info("Counter offering...")
             await self.counter_offer(trade, our_items, their_items)
             return
@@ -587,6 +615,7 @@ class TradeManager(BaseManager):
         items: list[str],
         item_type: str,
         token: str = None,
+        scrap_value: int = None,
     ) -> int:
         assert intent in ["buy", "sell"]
         assert item_type in ["sku", "asset_id"]
@@ -614,7 +643,9 @@ class TradeManager(BaseManager):
             return 0
 
         await self.client.bot_is_ready_and_prices_updated()
-        data = await self._create_offer(partner, items, item_type, intent, token=token)
+        data = await self._create_offer(
+            partner, items, item_type, intent, token=token, scrap_value=scrap_value
+        )
 
         if data is None:
             return 0
@@ -633,14 +664,26 @@ class TradeManager(BaseManager):
         return offer.id
 
     async def send_offer_by_trade_url(
-        self, trade_url: str, intent: str, asset_ids: list[str]
+        self,
+        trade_url: str,
+        intent: str,
+        items: list[str],
+        item_type: str,
+        scrap_value: int = None,
     ) -> int:
         steam_id = get_steam_id_from_trade_url(trade_url)
         token = get_token_from_trade_url(trade_url)
-        partner = self.client.get_user(int(steam_id))
+        partner = await self.client.fetch_user(int(steam_id))
+
+        if not partner:
+            logging.warning(f"Could not find user {steam_id}")
+            return -1
+
         logging.debug(f"{partner.name} {intent=} has {steam_id=} {token=}")
 
-        return await self.send_offer(partner, intent, asset_ids, "asset_id", token)
+        return await self.send_offer(
+            partner, intent, items, item_type, token, scrap_value
+        )
 
     async def process_offer_state(
         self, trade: steam.TradeOffer, offer_data: dict[str, Any]
@@ -650,6 +693,8 @@ class TradeManager(BaseManager):
         is_friend = trade.user.is_friend()
         state_name = trade.state.name.lower()
         was_accepted = trade.state == steam.TradeOfferState.Accepted
+        their_items = [item_object_to_item_data(i) for i in trade.receiving]
+        our_items = [item_object_to_item_data(i) for i in trade.sending]
 
         logging.info(f"Offer #{offer_id} with {trade.user.name} was {state_name}")
 
@@ -658,7 +703,6 @@ class TradeManager(BaseManager):
 
         if offer_id in self.client.pending_site_offers:
             self.client.ws_manager.remove_user_from_queue(steam_id)
-
             await self.client.ws_manager._send_ws_message(
                 {
                     "success": was_accepted,
@@ -668,20 +712,20 @@ class TradeManager(BaseManager):
                     "message": f"Offer was {state_name}!",
                 }
             )
-
             del self.client.pending_site_offers[offer_id]
 
         if trade.user.id64 in self.client.pending_offer_users:
             self.client.pending_offer_users.remove(trade.user.id64)
+
+        if self.is_arbitrage_offer(their_items, our_items):
+            logging.info("Offer was an arbitrage offer")
+            await self.arbitrage.process_offer_state(trade, their_items, our_items)
 
         if not was_accepted:
             return
 
         if is_friend:
             await trade.user.send("Thank you for the trade!")
-
-        their_items = [item_object_to_item_data(i) for i in trade.receiving]
-        our_items = [item_object_to_item_data(i) for i in trade.sending]
 
         offer_data |= {
             "offer_id": offer_id,
