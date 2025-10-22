@@ -20,7 +20,6 @@ from ..listing import (
     has_enough_stock,
     surpasses_max_stock,
 )
-from ..options import BUY_LISTING_DETAILS, SELL_LISTING_DETAILS
 from ..utils import has_buy_and_sell_price, has_correct_price_format
 from .base_manager import BaseManager
 
@@ -124,9 +123,9 @@ class ListingManager(BaseManager):
         variables = self._get_listing_variables(sku, currencies)
 
         return (
-            BUY_LISTING_DETAILS.format(**variables)
+            self.options.messages.buy_listing_details.format(**variables)
             if intent == "buy"
-            else SELL_LISTING_DETAILS.format(**variables)
+            else self.options.messages.sell_listing_details.format(**variables)
         )
 
     def _get_asset_id_for_sku(self, sku: str) -> int:

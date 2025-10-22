@@ -9,12 +9,13 @@ from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
+from .managers.discord_manager import DiscordManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
 from .managers.pricing_manager import PricingManager
 from .managers.trade_manager import TradeManager
 from .managers.websocket_manager import WebSocketManager
-from .options import FRIEND_ACCEPT_MESSAGE, Options
+from .options import Options
 
 
 class Express(steam.Client):
@@ -50,6 +51,7 @@ class Express(steam.Client):
         self.arbitrage_manager = ArbitrageManager(self)
         self.listing_manager = ListingManager(self)
         self.pricing_manager = PricingManager(self)
+        self.discord_manager = DiscordManager(self)
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
         self.ws_manager = WebSocketManager(self)
@@ -59,6 +61,7 @@ class Express(steam.Client):
             self.arbitrage_manager,
             self.listing_manager,
             self.pricing_manager,
+            self.discord_manager,
             self.trade_manager,
             self.chat_manager,
             self.ws_manager,
@@ -95,6 +98,9 @@ class Express(steam.Client):
         if self.options.enable_arbitrage:
             asyncio.create_task(self.arbitrage_manager.run())
 
+        if self.options.enable_discord:
+            asyncio.create_task(self.discord_manager.run())
+
     def options_check(self) -> None:
         if self.options.use_backpack_tf and not self.options.backpack_tf_token:
             raise MissingBackpackTFToken("Backpack.TF token is required for listing")
@@ -110,6 +116,12 @@ class Express(steam.Client):
 
         if self.options.llm_chat_responses and not self.options.llm_model:
             raise ExpressException("You need to set a model for AI chat responses")
+
+        if self.options.enable_discord and not self.options.discord_token:
+            raise ExpressException("Discord bot token is required")
+
+        if self.options.enable_discord and not self.options.discord_channel_id:
+            raise ExpressException("Discord channel ID is required")
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:
@@ -156,7 +168,7 @@ class Express(steam.Client):
         await invite.accept()
 
     async def on_friend_add(self, friend: steam.Friend) -> None:
-        message = FRIEND_ACCEPT_MESSAGE.format(username=friend.name)
+        message = self.options.messages.friend_accept.format(username=friend.name)
         await friend.send(message)
 
     async def on_trade(self, trade: steam.TradeOffer) -> None:

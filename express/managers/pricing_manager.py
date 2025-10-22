@@ -81,16 +81,16 @@ class PricingManager(BaseManager):
 
         logging.info(f"Updated prices for {len(prices)} items")
 
-    def get_and_update_price(self, sku: str) -> None:
-        price = self.provider.get_price(sku)
+    async def get_and_update_price(self, sku: str) -> None:
+        price = await self.provider.get_price(sku)
         self.update_price(sku, price, notify_listing_manager=True)
 
-    def get_and_update_prices(self, skus: list[str]) -> None:
+    async def get_and_update_prices(self, skus: list[str]) -> None:
         if len(skus) == 1:
-            self.get_and_update_price(skus[0])
+            await self.get_and_update_price(skus[0])
             return
 
-        prices = self.provider.get_multiple_prices(skus)
+        prices = await self.provider.get_multiple_prices(skus)
 
         if not prices:
             logging.warning(f"No price data received for {skus} ({prices})")
@@ -98,7 +98,7 @@ class PricingManager(BaseManager):
 
         self.update_prices(prices)
 
-    def update_pricelist(self) -> None:
+    async def update_pricelist(self) -> None:
         logging.info("Updating autopriced items...")
 
         autopriced_items = self.database.get_autopriced()
@@ -108,7 +108,7 @@ class PricingManager(BaseManager):
             logging.info("No autopriced items to update")
             return
 
-        prices = self.provider.get_multiple_prices(skus)
+        prices = await self.provider.get_multiple_prices(skus)
         logging.debug(f"Got prices for {len(prices)} out of {len(skus)} items")
         # dont notify listing manager, we will create listings after this
         self.update_prices(prices, notify_listing_manager=False)
@@ -142,7 +142,7 @@ class PricingManager(BaseManager):
         if self.options.use_backpack_tf:
             await self.listing_manager.wait_until_ready()
 
-        self.update_pricelist()
+        await self.update_pricelist()
         self.set_prices_updated()
 
         if self.options.use_backpack_tf:
@@ -160,7 +160,7 @@ class PricingManager(BaseManager):
                 continue
 
             logging.info("Pricelist has changed, updating prices and listings...")
-            self.get_and_update_prices(skus)
+            await self.get_and_update_prices(skus)
 
             autopriced_items = self.database.get_autopriced()
             self.autopriced_items = autopriced_items

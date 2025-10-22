@@ -1,7 +1,7 @@
 import logging
 from typing import Callable
 
-import requests
+import aiohttp
 from socketio import AsyncClient
 from socketio.exceptions import ConnectionError
 
@@ -21,37 +21,40 @@ from .pricing_provider import PricingProvider
 class BasePriceDB:
     def __init__(self):
         self.api_url = "https://pricedb.io/api"
+        self.session = aiohttp.ClientSession()
 
-    def request(self, method: str, endpoint: str, **kwargs) -> dict:
+    async def request(self, method: str, endpoint: str, **kwargs) -> dict:
         url = f"{self.api_url}/{endpoint}"
-        response = requests.request(method.upper(), url, **kwargs)
-        response.raise_for_status()
-        logging.debug(f"got data for {url} {response.text[:50]}")
 
-        return response.json()
+        async with self.session.request(method.upper(), url, **kwargs) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            logging.debug(f"got data for {url} {str(data)[:50]}")
 
-    def get_price(self, sku: str) -> dict:
-        return self.request("GET", f"item/{sku}")
+        return data
 
-    def get_schema(self) -> list[dict]:
-        items = self.request("GET", "autob/items")
+    async def get_price(self, sku: str) -> dict:
+        return await self.request("GET", f"item/{sku}")
+
+    async def get_schema(self) -> list[dict]:
+        items = await self.request("GET", "autob/items")
         return items.get("items", [])
 
-    def get_items_bulk(self, skus: list[str]) -> list[dict]:
-        return self.request("POST", "items-bulk", json={"skus": skus})
+    async def get_items_bulk(self, skus: list[str]) -> list[dict]:
+        return await self.request("POST", "items-bulk", json={"skus": skus})
 
-    def get_prices_by_schema(self, skus: list[str]) -> list[dict]:
-        schema = self.get_schema()
+    async def get_prices_by_schema(self, skus: list[str]) -> list[dict]:
+        schema = await self.get_schema()
         return [item for item in schema if item["sku"] in skus]
 
-    def get_multiple_prices(self, skus: list[str]) -> dict:
+    async def get_multiple_prices(self, skus: list[str]) -> dict:
         prices = {}
         data = []
 
         if len(skus) <= 50:
-            data = self.get_items_bulk(skus)
+            data = await self.get_items_bulk(skus)
         else:
-            data = self.get_prices_by_schema(skus)
+            data = await self.get_prices_by_schema(skus)
 
         for price in data:
             sku = price["sku"]

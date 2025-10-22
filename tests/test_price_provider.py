@@ -22,14 +22,14 @@ def test_pricing_provider() -> None:
         get_pricing_provider("invalid_provider", callback)
 
 
-def test_get_price() -> None:
-    price = provider.get_price("5021;6")
+async def test_get_price() -> None:
+    price = await provider.get_price("5021;6")
     assert has_correct_price_format(price)
 
 
-def test_get_multiple_prices() -> None:
+async def test_get_multiple_prices() -> None:
     skus = ["5021;6", "725;6;uncraftable", "233;6"]
-    prices = provider.get_multiple_prices(skus)
+    prices = await provider.get_multiple_prices(skus)
     assert len(prices) == 3
 
     for sku in prices:

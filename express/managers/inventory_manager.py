@@ -52,12 +52,8 @@ class InventoryManager(BaseManager, ExpressInventory):
                 if not is_same_item(item, old_item):
                     continue
 
-                logging.debug(f"{old_item=}")
-
                 index = updated_inventory.index(old_item)
                 del updated_inventory[index]
-
-                logging.debug(f"removed from inventory {index=}")
                 break
 
         for item in their_items:
@@ -75,7 +71,7 @@ class InventoryManager(BaseManager, ExpressInventory):
 
         self.set_our_inventory(updated_inventory)
 
-        logging.info("Our inventory was updated")
+        logging.info("Inventory was updated")
 
         # notify listing manager inventory has changed (stock needs to be updated)
         if self.options.use_backpack_tf:

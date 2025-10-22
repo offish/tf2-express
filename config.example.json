@@ -13,5 +13,8 @@
             "76511111111111111",
             "76522222222222222"
         ]
+    },
+    "messages": {
+        "send_offer": "Thank you for using tf2-express!"
     }
 }

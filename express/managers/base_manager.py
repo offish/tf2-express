@@ -12,6 +12,7 @@ class BaseManager:
         self.inventory_manager = client.inventory_manager
         self.listing_manager = client.listing_manager
         self.pricing_manager = client.pricing_manager
+        self.discord_manager = client.discord_manager
 
     def setup(self) -> None:
         pass

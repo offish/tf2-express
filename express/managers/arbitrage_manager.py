@@ -27,6 +27,18 @@ class ArbitrageManager(BaseManager):
     ) -> bool:
         return self.arbitrage.is_arbitrage_offer(their_items, our_items)
 
+    async def quickbuy(self, skus: list[str]) -> None:
+        if not self.options.enable_arbitrage:
+            return
+
+        return await self.arbitrage.quickbuy(skus)
+
+    async def quicksell(self, skus: list[str]) -> None:
+        if not self.options.enable_arbitrage:
+            return
+
+        return await self.arbitrage.quicksell(skus)
+
     async def process_offer(
         self, trade: TradeOffer, their_items: list[dict], our_items: list[dict]
     ) -> None:

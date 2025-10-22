@@ -21,7 +21,6 @@ from tf2_utils import (
 
 from ..conversion import item_data_to_item_object, item_object_to_item_data
 from ..inventory import get_non_pure_skus
-from ..options import COUNTER_OFFER_MESSAGE, SEND_OFFER_MESSAGE
 from ..utils import is_only_taking_items, is_two_sided_offer, swap_intent
 from .base_manager import BaseManager
 
@@ -380,6 +379,10 @@ class TradeManager(BaseManager):
         )
 
         if data is None:
+            logging.warning("Error, could not get items for offer")
+
+            if partner.is_friend():
+                await partner.send(self.options.messages.sending_offer_error)
             return
 
         their_items, our_items = data
@@ -392,8 +395,7 @@ class TradeManager(BaseManager):
             logging.warning("Error, values in offer did not add up!")
 
             if partner.is_friend():
-                await partner.send("Sorry, there was an error processing your offer")
-
+                await partner.send(self.options.messages.sending_offer_error)
             return
 
         logging.debug(f"Value for trade was equal {their_value=} {our_value=}")
@@ -411,7 +413,7 @@ class TradeManager(BaseManager):
         ]
 
         if message is None:
-            message = SEND_OFFER_MESSAGE
+            message = self.options.messages.send_offer
 
         return (
             steam.TradeOffer(
@@ -455,7 +457,7 @@ class TradeManager(BaseManager):
 
         logging.info(f"Counter offering {skus} to {trade.user.name}...")
         data = await self._create_offer(
-            trade.user, skus, "sku", intent, message=COUNTER_OFFER_MESSAGE
+            trade.user, skus, "sku", intent, message=self.options.messages.counter_offer
         )
 
         if data is None:
@@ -630,7 +632,7 @@ class TradeManager(BaseManager):
             logging.info("User is blacklisted, not sending offer")
 
             if is_friend:
-                await partner.send("Aborted. You have been blacklisted by the owner")
+                await partner.send(self.options.messages.user_blacklisted)
 
             return 0
 
@@ -638,7 +640,7 @@ class TradeManager(BaseManager):
             logging.info("User is banned on Backpack.TF, not sending offer")
 
             if is_friend:
-                await partner.send("Aborted. You seem to be banned on Backpack.TF")
+                await partner.send(self.options.messages.user_banned)
 
             return 0
 
@@ -654,7 +656,7 @@ class TradeManager(BaseManager):
         logging.info(f"Sending offer to {partner.name}...")
 
         if is_friend:
-            await partner.send("Sending offer...")
+            await partner.send(self.options.messages.sending_offer)
 
         await partner.send(trade=offer)
 
@@ -717,6 +719,11 @@ class TradeManager(BaseManager):
         if trade.user.id64 in self.client.pending_offer_users:
             self.client.pending_offer_users.remove(trade.user.id64)
 
+        if self.options.enable_discord:
+            await self.discord_manager.send_offer_state_changed(
+                trade, their_items, our_items
+            )
+
         if self.is_arbitrage_offer(their_items, our_items):
             logging.info("Offer was an arbitrage offer")
             await self.arbitrage.process_offer_state(trade, their_items, our_items)
@@ -725,7 +732,7 @@ class TradeManager(BaseManager):
             return
 
         if is_friend:
-            await trade.user.send("Thank you for the trade!")
+            await trade.user.send(self.options.messages.offer_accepted)
 
         offer_data |= {
             "offer_id": offer_id,

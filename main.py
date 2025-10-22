@@ -2,7 +2,7 @@ import logging
 import sys
 
 from express.express import Express
-from express.options import Options
+from express.options import Messages, Options
 from express.utils import (
     ExpressFileFormatter,
     ExpressFormatter,
@@ -31,7 +31,10 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 def main() -> None:
     config = get_config()
-    options = Options(username=config["username"], **config["options"])
+    messages = Messages(**config["messages"])
+    options = Options(
+        username=config["username"], messages=messages, **config["options"]
+    )
     express = Express(options)
     express.start(**config)
 

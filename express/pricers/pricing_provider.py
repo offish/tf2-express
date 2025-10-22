@@ -20,7 +20,7 @@ class PricingProvider:
         """
         self.callback = callback
 
-    def get_price(self, sku: str) -> dict:
+    async def get_price(self, sku: str) -> dict:
         """Has to return a dict with the following format:
 
         .. code-block:: json
@@ -38,7 +38,7 @@ class PricingProvider:
         """
         raise NotImplementedError
 
-    def get_multiple_prices(self, skus: list[str]) -> dict:
+    async def get_multiple_prices(self, skus: list[str]) -> dict:
         """Has to return a list of dicts with the following format:
 
         .. code-block:: json
