@@ -1,9 +1,13 @@
 import asyncio
+import atexit
 import logging
 
 import steam
 
 from .database import Database
+from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
+from .managers.arbitrage_manager import ArbitrageManager
+from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
@@ -15,14 +19,15 @@ from .options import FRIEND_ACCEPT_MESSAGE, Options
 
 class Express(steam.Client):
     def __init__(self, options: Options) -> None:
-        self.group = None
         self.options = options
+        self.options_check()
         self.are_prices_updated = False
         self.pending_offer_users = set()
         self.pending_site_offers = {}
         self.processed_offers = {}
-        self._bot_is_ready = False
+        self.is_bot_ready = False
 
+        self.arbitrage_manager = None
         self.inventory_manager = None
         self.listing_manager = None
         self.pricing_manager = None
@@ -40,28 +45,42 @@ class Express(steam.Client):
         self.database = Database(options.username)
 
     async def setup(self) -> None:
-        # set inventory
-        self.inventory_manager = InventoryManager(self)
-        self.inventory_manager.get_inventory_instance()
-        self.inventory_manager.fetch_our_inventory()
-
         # set managers
-        self.listing_manager = ListingManager(
-            self, self.options.backpack_tf_token, str(self.user.id64)
-        )
+        self.inventory_manager = InventoryManager(self)
+        self.arbitrage_manager = ArbitrageManager(self)
+        self.listing_manager = ListingManager(self)
         self.pricing_manager = PricingManager(self)
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
         self.ws_manager = WebSocketManager(self)
+
+        managers: list[BaseManager] = [
+            self.inventory_manager,
+            self.arbitrage_manager,
+            self.listing_manager,
+            self.pricing_manager,
+            self.trade_manager,
+            self.chat_manager,
+            self.ws_manager,
+        ]
+
+        for manager in managers:
+            manager.setup()
+
+        # delete listings on exit and disconnect from websocket
+        atexit.register(self.cleanup)
+
+        # set inventory
+        self.inventory_manager.fetch_our_inventory()
 
         # get inventory stock and update database
         stock = self.inventory_manager.get_stock()
         self.database.update_stock(stock)
 
         # we are now ready (other events can now fire)
-        self._bot_is_ready = True
+        self.is_bot_ready = True
 
-        asyncio.create_task(self.pricing_manager.pricer.listen())
+        asyncio.create_task(self.pricing_manager.provider.listen())
         asyncio.create_task(self.pricing_manager.run())
 
         if self.options.use_backpack_tf:
@@ -70,11 +89,30 @@ class Express(steam.Client):
         if self.options.is_express_tf_bot:
             asyncio.create_task(self.ws_manager.listen())
 
-        if self.options.auto_cancel_sent_offers:
+        if self.options.cancel_old_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
+        if self.options.enable_arbitrage:
+            asyncio.create_task(self.arbitrage_manager.run())
+
+    def options_check(self) -> None:
+        if self.options.use_backpack_tf and not self.options.backpack_tf_token:
+            raise MissingBackpackTFToken("Backpack.TF token is required for listing")
+
+        if self.options.check_backpack_tf_bans and not self.options.backpack_tf_api_key:
+            raise MissingAPIKey("Backpack.TF API key is needed for ban checks")
+
+        if self.options.enable_arbitrage and not self.options.stn_api_key:
+            raise MissingAPIKey("STN.TF API key is needed for arbitrage")
+
+        if self.options.llm_chat_responses and not self.options.llm_api_key:
+            raise MissingAPIKey("You need to set an API key for AI chat responses")
+
+        if self.options.llm_chat_responses and not self.options.llm_model:
+            raise ExpressException("You need to set a model for AI chat responses")
+
     async def bot_is_ready(self) -> None:
-        while not self._bot_is_ready:
+        while not self.is_bot_ready:
             await asyncio.sleep(1)
 
     async def bot_is_ready_and_prices_updated(self) -> None:
@@ -145,17 +183,13 @@ class Express(steam.Client):
             del self.processed_offers[offer_id]
 
     async def join_groups(self) -> None:
-        group_id = 103582791463210868
-        groups = [group_id, 103582791463210863, *self.options.groups]
+        groups = [103582791463210863, *self.options.groups]
 
         for i in groups:
             group = await self.fetch_clan(i)
 
             if group is None:
                 continue
-
-            if group.id64 == group_id:
-                self.group = group
 
             await group.join()
 
@@ -176,3 +210,13 @@ class Express(steam.Client):
             shared_secret=shared_secret,
             debug=False,
         )
+
+    def cleanup(self) -> None:
+        if self.options.use_backpack_tf:
+            self.listing_manager.close()
+
+        asyncio.run(self.pricing_manager.provider.close())
+
+    @property
+    def steam_id(self) -> str:
+        return str(self.user.id64)

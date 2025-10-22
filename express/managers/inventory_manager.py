@@ -1,23 +1,18 @@
 import logging
-from typing import TYPE_CHECKING
 
 from steam import MovedItem, TradeOfferReceipt
 from tf2_utils import get_sku
 
 from ..inventory import ExpressInventory
 from ..utils import is_same_item
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class InventoryManager(ExpressInventory):
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.options = client.options
-
-        super().__init__(
-            str(client.user.id64),
+class InventoryManager(BaseManager, ExpressInventory):
+    def setup(self):
+        ExpressInventory.__init__(
+            self,
+            self.client.steam_id,
             self.options.inventory_provider,
             self.options.inventory_api_key,
         )
@@ -25,11 +20,14 @@ class InventoryManager(ExpressInventory):
     @staticmethod
     def _get_new_asset_id(item: dict, moved_items: list[MovedItem]) -> int:
         for moved_item in moved_items:
-            if is_same_item(
-                item,
-                {"instanceid": moved_item.instance_id, "classid": moved_item.class_id},
-            ):
-                return moved_item.new_id
+            moved = {
+                "instanceid": moved_item.instance_id,
+                "classid": moved_item.class_id,
+            }
+
+            if is_same_item(item, moved):
+                return int(moved_item.new_id)
+
         return -1
 
     def get_in_stock(self, sku: str) -> int:

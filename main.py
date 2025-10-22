@@ -8,7 +8,7 @@ from express.utils import (
     ExpressFormatter,
     check_for_updates,
     create_and_get_log_file,
-    get_bot_config,
+    get_config,
 )
 
 log_file = create_and_get_log_file()
@@ -17,6 +17,7 @@ file_handler = logging.FileHandler(log_file, encoding="utf-8")
 
 logging.getLogger("steam").setLevel(logging.WARNING)
 logging.getLogger("pymongo").setLevel(logging.INFO)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 logging.getLogger("websockets").setLevel(logging.INFO)
 logging.basicConfig(level=logging.DEBUG, handlers=[stream_handler, file_handler])
 
@@ -30,7 +31,7 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 
 def main() -> None:
-    config = get_bot_config()
+    config = get_config()
     options = Options(username=config["username"], **config["options"])
     express = Express(options)
     express.start(**config)

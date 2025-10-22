@@ -4,6 +4,7 @@ from express.utils import (
     has_buy_and_sell_price,
     is_only_taking_items,
     is_two_sided_offer,
+    normalize_item_name,
     sku_to_item_data,
     swap_intent,
 )
@@ -18,6 +19,20 @@ def test_has_buy_and_sell_price() -> None:
         )
         is True
     )
+
+
+def test_normalize_item_name() -> None:
+    assert (
+        normalize_item_name("Mann Co. Supply Crate Key") == "mann_co_supply_crate_key"
+    )
+    assert normalize_item_name("King's Sword") == "kings_sword"
+    assert normalize_item_name("Mega Ultra Blaster!") == "mega_ultra_blaster"
+    assert (
+        normalize_item_name("Strange Part: Kills While Explosive Jumping")
+        == "strange_part_kills_while_explosive_jumping"
+    )
+    assert normalize_item_name("Unusual Hat!!!") == "unusual_hat"
+    assert normalize_item_name("Multiple   Spaces") == "multiple_spaces"
 
 
 def test_swap_intent() -> None:

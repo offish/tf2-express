@@ -1,12 +1,22 @@
 from typing import Any
 
 
-def get_amount(amount_part: str) -> int | None:
+def try_parse_int(value: str) -> int | None:
     try:
-        amount_part = amount_part.replace("x", "")
-        return int(amount_part)
-    except Exception:
+        return int(value)
+    except ValueError:
         return None
+
+
+def get_amount(amount_part: str) -> int | None:
+    amount_part = amount_part.replace("x", "")
+    return try_parse_int(amount_part)
+
+
+def try_parse_sku(parts: list[str]) -> bool:
+    defindex = try_parse_int(parts[0])
+    quality = try_parse_int(parts[1])
+    return defindex is not None and quality is not None
 
 
 def parse_command(command: str) -> dict[str, Any] | None:
@@ -32,6 +42,11 @@ def parse_command(command: str) -> dict[str, Any] | None:
 
     sku_indexes = 2 if has_amount_part else 1
     sku_parts = parts[sku_indexes:]
-    sku = ";".join(sku_parts)
+    is_sku = try_parse_sku(sku_parts)
+    data = {"intent": intent, "amount": amount, "is_sku": is_sku}
 
-    return {"intent": intent, "amount": amount, "sku": sku}
+    if is_sku:
+        sku = ";".join(sku_parts)
+        return data | {"sku": sku}
+
+    return data | {"item_name": "_".join(sku_parts)}

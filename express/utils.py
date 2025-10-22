@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +18,40 @@ from .exceptions import NoConfigFound
 schema_items_utils = SchemaItemsUtils()
 
 
+def has_correct_price_format(data: dict) -> bool:
+    if not isinstance(data, dict):
+        return False
+
+    for key in ["sku", "buy", "sell"]:
+        if key not in data:
+            return False
+
+    if not isinstance(data["buy"], dict) or not isinstance(data["sell"], dict):
+        return False
+
+    for price in [data["buy"], data["sell"]]:
+        if len(price) < 1 or len(price) > 2:
+            return False
+
+        if "keys" not in price and "metal" not in price:
+            return False
+
+        keys = price.get("keys", 0)
+        metal = price.get("metal", 0.0)
+
+        if not (isinstance(keys, int) and keys >= 0):
+            return False
+
+        if not (isinstance(metal, (int, float)) and metal >= 0):
+            return False
+
+    return True
+
+
+def has_invalid_price_format(data: dict) -> bool:
+    return not has_correct_price_format(data)
+
+
 def has_buy_and_sell_price(data: dict) -> bool:
     return data.get("buy", {}) != {} and data.get("sell", {}) != {}
 
@@ -27,8 +62,19 @@ def is_same_item(a: dict, b: dict) -> bool:
     )
 
 
+def filter_skus(item_list: list[dict]) -> list[str]:
+    return [item["sku"] for item in item_list]
+
+
 def swap_intent(intent: str) -> str:
     return "buy" if intent.lower() == "sell" else "sell"
+
+
+def normalize_item_name(name: str) -> str:
+    name = name.lower()
+    name = re.sub(r"[^\w\s]", "", name)
+    name = re.sub(r"\s+", "_", name)
+    return name
 
 
 def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
@@ -62,11 +108,6 @@ def get_config() -> dict:
         raise NoConfigFound("No config.json file found!")
 
     return read_json_file(path)
-
-
-def get_bot_config() -> dict:
-    # only one bot is supported for now
-    return get_config().get("bots", [])[0]
 
 
 def get_version(repository: str, folder: str) -> str:

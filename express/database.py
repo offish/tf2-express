@@ -4,10 +4,10 @@ from os import getenv
 from typing import Any
 
 from pymongo import MongoClient
-from tf2_utils import is_metal, is_pure
+from tf2_utils import is_metal
 
 from .exceptions import SKUNotFound
-from .utils import has_buy_and_sell_price, sku_to_item_data
+from .utils import has_buy_and_sell_price, normalize_item_name, sku_to_item_data
 
 
 class Database:
@@ -19,6 +19,7 @@ class Database:
         self.name = database
         self.trades = db["trades"]
         self.items = db["items"]
+        self.arbitrage = db["arbitrage"]
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
@@ -35,11 +36,17 @@ class Database:
 
         return has_buy_and_sell_price(data)
 
-    def is_temporarily_priced(self, sku: str) -> bool:
-        if is_pure(sku):
-            return False
+    def find_item_by_name(self, normalized_name: str) -> dict | None:
+        for item in self.items.find():
+            if normalized_name == normalize_item_name(item["name"]):
+                del item["_id"]
+                return item
 
-        return self.get_item(sku).get("temporary", False)
+    def get_normalized_item_name(self, sku: str) -> str | None:
+        item = self.get_item(sku)
+
+        if item:
+            return normalize_item_name(item["name"])
 
     def insert_trade(self, data: dict) -> None:
         self.trades.insert_one(data)
@@ -100,14 +107,14 @@ class Database:
         item = self.items.find_one({"sku": sku})
 
         if item is None:
-            logging.debug(f"{sku} not found in database")
+            # logging.debug(f"{sku} not found in database")
             return {}
 
         del item["_id"]
         return item
 
     def get_pricelist(self) -> list[dict]:
-        return self.items.find()
+        return list(self.items.find())
 
     def get_stock(self, sku: str) -> tuple[int, int]:
         """returns in_stock, max_stock"""
@@ -152,7 +159,6 @@ class Database:
         autoprice: bool = True,
         in_stock: int = 0,
         max_stock: int = -1,
-        temporary: bool = False,
         buy: dict = {},
         sell: dict = {},
     ) -> None:
@@ -170,7 +176,6 @@ class Database:
             "buy": buy,
             "sell": sell,
             "autoprice": autoprice,
-            "temporary": temporary,  # delete price after we have sold
             "in_stock": in_stock,
             "max_stock": max_stock,
             "color": color,
@@ -185,21 +190,22 @@ class Database:
         sku: str,
         buy: dict,
         sell: dict,
-        autoprice: bool = False,
-        max_stock: int = -1,
+        override_autoprice: bool = None,
+        override_max_stock: int = None,
     ) -> None:
-        if not autoprice:
-            assert "keys" in buy and "metal" in buy, (
-                "Buy price must have keys and metal"
-            )
-            assert "keys" in sell and "metal" in sell, (
-                "Sell price must have keys and metal"
-            )
-
         data = self.get_item(sku)
 
         if not data:
             raise SKUNotFound(f"{sku} does not exist in database!")
+
+        autoprice = data["autoprice"]
+        max_stock = data["max_stock"]
+
+        if override_autoprice is not None:
+            autoprice = override_autoprice
+
+        if override_max_stock is not None:
+            max_stock = override_max_stock
 
         data["buy"] = buy
         data["sell"] = sell
@@ -211,8 +217,20 @@ class Database:
         logging.info(f"Updated price for {sku}")
 
     def update_autoprice(self, data: dict) -> None:
-        self.update_price(data["sku"], data["buy"], data["sell"], True)
+        self.update_price(data["sku"], data["buy"], data["sell"])
 
     def delete_item(self, sku: str) -> None:
         self.items.delete_one({"sku": sku})
         logging.info(f"Removed {sku} from the database")
+
+    def insert_arbitrage(self, data: dict) -> None:
+        self.arbitrage.insert_one(data)
+
+    def update_arbitrage(self, sku: str, data: dict) -> None:
+        self.arbitrage.replace_one({"sku": sku}, data)
+
+    def delete_arbitrage(self, sku: str) -> None:
+        self.arbitrage.delete_one({"sku": sku})
+
+    def get_arbitrages(self) -> list[dict]:
+        return list(self.arbitrage.find())

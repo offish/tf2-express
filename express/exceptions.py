@@ -18,5 +18,17 @@ class MissingBackpackTFToken(ExpressException):
     pass
 
 
+class MissingAPIKey(ExpressException):
+    pass
+
+
 class NoKeyPrice(ExpressException):
+    pass
+
+
+class WrongPriceFormat(ExpressException):
+    pass
+
+
+class NoArbitrageModuleFound(ExpressException):
     pass

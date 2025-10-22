@@ -1,22 +1,16 @@
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING
 
 from websockets import connect
 from websockets.exceptions import ConnectionClosedError, InvalidStatus
 
 from ..utils import swap_intent
-
-if TYPE_CHECKING:
-    from ..express import Express
+from .base_manager import BaseManager
 
 
-class WebSocketManager:
-    def __init__(self, client: "Express") -> None:
-        self.client = client
-        self.options = client.options
-
+class WebSocketManager(BaseManager):
+    def setup(self) -> None:
         self.ws = None
         self._users_in_queue = set()
 
@@ -74,7 +68,7 @@ class WebSocketManager:
 
         swapped_intent = swap_intent(intent)
         offer_id = await self.client.trade_manager.send_offer_by_trade_url(
-            trade_url, swapped_intent, asset_ids
+            trade_url, swapped_intent, asset_ids, "asset_id"
         )
 
         if not offer_id:
