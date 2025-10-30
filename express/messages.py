@@ -34,7 +34,9 @@ user_blacklisted = "Aborted. You are blacklisted from trading with this bot."
 invalid_command = "Invalid command, use 'help' to see available commands."
 user_pending_offer = "You appear to have a pending offer already."
 sending_offer = "Sending offer..."
-sending_offer_error = "Sorry, there was an error processing your offer."
+sending_offer_error = (
+    "There was an error while sending your trade offer. Please try again later."
+)
 send_offer = "Thank you!"
 counter_offer = "Your offer contained wrong values. Here is a corrected one!"
 offer_accepted = "Your offer has been accepted! Thank you for the trade!"

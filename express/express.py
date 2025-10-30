@@ -28,10 +28,11 @@ class Express(steam.Client):
         self.processed_offers = {}
         self.is_bot_ready = False
 
-        self.arbitrage_manager = None
         self.inventory_manager = None
+        self.arbitrage_manager = None
         self.listing_manager = None
         self.pricing_manager = None
+        self.discord_manager = None
         self.trade_manager = None
         self.chat_manager = None
         self.ws_manager = None
@@ -95,6 +96,13 @@ class Express(steam.Client):
         if self.options.cancel_old_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
+        if (
+            self.options.enable_arbitrage
+            or self.options.enable_quickbuy
+            or self.options.enable_quicksell
+        ):
+            await self.arbitrage_manager.begin()
+
         if self.options.enable_arbitrage:
             asyncio.create_task(self.arbitrage_manager.run())
 
@@ -146,6 +154,9 @@ class Express(steam.Client):
         await self.setup()
 
     async def on_message(self, message: steam.Message) -> None:
+        if not self.options.send_messages:
+            return
+
         # ignore our own messages
         if message.author == self.user:
             return

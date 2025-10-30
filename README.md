@@ -7,7 +7,7 @@
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-Automated TF2 trading bot with AI and GUI support, built with Python. Prices are by default provided by [PriceDB.IO](https://pricedb.io).
+Automated TF2 trading bot with automatic pricing and GUI support, built with Python. Prices are by default provided by [PriceDB.io](https://pricedb.io).
 
 ## Donate
 - BTC: `bc1q9gmh5x2g9s0pw3282a5ypr6ms8qvuxh3fd7afh`
@@ -16,7 +16,7 @@ Automated TF2 trading bot with AI and GUI support, built with Python. Prices are
 ## Features
 * GUI for adding/changing items, prices and `max_stock` + browsing trades
 * Add items by name or SKU [[?]](#adding-items)
-* Supports automated price updates from [PriceDB.IO](https://pricedb.io)
+* Supports automated price updates from [PriceDB.io](https://pricedb.io)
 * Supports 3rd party pricing providers
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
@@ -92,7 +92,7 @@ Example config:
 | ------ | ----------- | ------- |
 | `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | - |
 | `use_backpack_tf` | Whether to list items on Backpack.TF or not. | - |
-| `backpack_tf_token`| Access token from [backpack.tf API access](https://next.backpack.tf/account/api-access). | - |
+| `backpack_tf_token`| Access token for [Backpack.TF API access](https://next.backpack.tf/account/api-access). | - |
 | `pricing_provider` | Provider for item pricing. | `pricedb` |
 | `inventory_provider` | Provider for inventory. Default is Steam Community, can use third-party like Steam.Supply or Express-Load. | `steamcommunity` |
 | `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| - |

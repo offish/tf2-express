@@ -49,9 +49,8 @@ class ChatManager(BaseManager):
             return
 
         if msg.startswith("quicksell") and self.is_owner(message):
-            items = self.get_items(msg, "quicksell")
-            await message.channel.send(f"Processing quicksell for items: {items}")
-            await self.arbitrage.quicksell(items)
+            await message.channel.send("Going to quicksell all items")
+            await self.arbitrage.quicksell([])
             return
 
         if not self.options.llm_chat_responses:

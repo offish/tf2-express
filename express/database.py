@@ -3,7 +3,7 @@ import time
 from os import getenv
 from typing import Any
 
-from pymongo import MongoClient
+from pymongo import DESCENDING, MongoClient
 from tf2_utils import is_metal
 
 from .exceptions import SKUNotFound
@@ -20,6 +20,7 @@ class Database:
         self.trades = db["trades"]
         self.items = db["items"]
         self.arbitrage = db["arbitrage"]
+        self.quicksell = db["quicksell"]
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
@@ -54,7 +55,7 @@ class Database:
 
     def get_trades(self, start_index: int, amount: int) -> dict[str, Any]:
         # sort newest trades first
-        all_trades = list(self.trades.find().sort("time_updated", -1))
+        all_trades = list(self.trades.find().sort("timestamp", DESCENDING))
         total_trades = len(all_trades)
         intended_end_index = start_index + amount
         trades = all_trades[start_index:intended_end_index]

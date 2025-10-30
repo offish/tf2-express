@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 
 from steam import TradeOffer
 
@@ -14,7 +15,11 @@ except ImportError:
 
 class ArbitrageManager(BaseManager):
     def setup(self) -> None:
-        if not self.options.enable_arbitrage:
+        if not (
+            self.options.enable_arbitrage
+            or self.options.enable_quickbuy
+            or self.options.enable_quicksell
+        ):
             return
 
         if Arbitrage is None:
@@ -28,13 +33,13 @@ class ArbitrageManager(BaseManager):
         return self.arbitrage.is_arbitrage_offer(their_items, our_items)
 
     async def quickbuy(self, skus: list[str]) -> None:
-        if not self.options.enable_arbitrage:
+        if not self.options.enable_quickbuy:
             return
 
         return await self.arbitrage.quickbuy(skus)
 
     async def quicksell(self, skus: list[str]) -> None:
-        if not self.options.enable_arbitrage:
+        if not self.options.enable_quicksell:
             return
 
         return await self.arbitrage.quicksell(skus)
@@ -45,9 +50,12 @@ class ArbitrageManager(BaseManager):
         return await self.arbitrage.process_offer(trade, their_items, our_items)
 
     async def process_offer_state(
-        self, trade: TradeOffer, their_items: list[dict], our_items: list[dict]
+        self, trade: TradeOffer, their_items: list[Any], our_items: list[Any]
     ) -> None:
         return await self.arbitrage.process_offer_state(trade, their_items, our_items)
+
+    async def begin(self) -> None:
+        await self.arbitrage.setup()
 
     async def run(self) -> None:
         while True:

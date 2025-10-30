@@ -39,12 +39,25 @@ def item_data_to_item_object(
 
 
 def item_object_to_item_data(item: Item) -> dict[str, Any]:
+    # these are not always present
+    is_tradable = item._is_tradable if getattr(item, "_is_tradable", None) else True
+    icon = item.icon if getattr(item, "icon", None) else None
+    icon_url = icon.url if getattr(icon, "url", None) else ""
+
+    actions = []
+
+    for i in item.actions:
+        link = i.link if getattr(i, "link", None) else i["link"]
+        name = i.name if getattr(i, "name", None) else i["name"]
+        actions.append({"link": link, "name": name})
+
     return item.to_dict() | {
         "appid": int(item._app_id),
         "classid": item.class_id,
         "instanceid": item.instance_id,
-        "tradable": item._is_tradable,
-        "actions": [{"link": i.link, "name": i.name} for i in item.actions],
+        "icon_url": icon_url,
+        "tradable": is_tradable,
+        "actions": actions,
         "name": item.name,
         "market_hash_name": item.market_hash_name,
         "type": item.type,

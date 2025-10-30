@@ -20,9 +20,8 @@ class Panel:
         self._database = Database(database_name)
 
     def _set_database_names(self) -> None:
-        for bot in self._config["bots"]:
-            database_name = bot["username"]
-            self._database_names.append(database_name)
+        database_name = self._config["username"]
+        self._database_names.append(database_name)
 
     def _get_first_database_name(self) -> str:
         return self._database_names[0]
@@ -212,11 +211,15 @@ def summarize_items(items: list[dict]) -> dict:
             continue
 
         quality = Item(item).get_quality()
-        color = COLORS[quality]
+
+        if quality:
+            color = COLORS[quality]
+        else:
+            color = "808080"
 
         summary[item_name] = {
             "count": 1,
-            "image": item["icon_url"],
+            "image": item.get("icon_url", ""),
             "color": color,
         }
 

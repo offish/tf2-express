@@ -60,6 +60,7 @@ class Options:
     discord_token: str = ""  # discord bot token
     discord_channel_id: int = 0
     discord_owner_ids: list[int] = field(default_factory=list)
+    send_messages: bool = True  # enable sending/answering messages to users
     llm_chat_responses: bool = False  #  for chat commands which are not recognized
     llm_model: str = "groq/llama-3.3-70b-versatile"  # model to use for llm responses
     llm_api_key: str = ""  # api key for to llm provider
@@ -68,6 +69,8 @@ class Options:
     blacklist: list[str] = field(default_factory=list)  # list of blacklisted steam id64
     client_options: dict = field(default_factory=dict)  # client options for steam.py
     enable_arbitrage: bool = False
+    enable_quickbuy: bool = False
+    enable_quicksell: bool = False
     quicksell_on_startup: bool = False
     stn_api_key: str = ""  # api key for stn.tf
     is_express_tf_bot: bool = False  # is this bot an express.tf bot

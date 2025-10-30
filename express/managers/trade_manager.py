@@ -57,12 +57,14 @@ class TradeManager(BaseManager):
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
 
-    def is_arbitrage_offer(
-        self, their_items: list[dict], our_items: list[dict]
-    ) -> bool:
-        return self.options.enable_arbitrage and self.arbitrage.is_arbitrage_offer(
-            their_items, our_items
-        )
+    async def send_message(self, user: steam.User, message: str) -> None:
+        if not self.options.send_messages:
+            return
+
+        if not user.is_friend():
+            return
+
+        await user.send(message)
 
     def is_owner(self, steam_id: str | int) -> bool:
         return str(steam_id) in self.owners
@@ -224,7 +226,6 @@ class TradeManager(BaseManager):
         selected_inventory: list[dict],
         scrap_value: int = None,
     ) -> tuple[bool, list[dict], int] | None:
-        is_friend = partner.is_friend()
         swapped_intent = swap_intent(intent)
         key_scrap_price = self.pricing_manager.get_key_scrap_price(swapped_intent)
         all_skus = self.database.get_skus()
@@ -291,14 +292,13 @@ class TradeManager(BaseManager):
             else:
                 message = "Sorry, one or more items you requested has already been traded away"
 
-        logging.debug(f"{is_friend=} {message=}")
+        logging.debug(f"{message=}")
 
         # if a message was set, an error occured
         if not message:
             return (selected_items, total_scrap_value)
 
-        if is_friend:
-            await partner.send(message)
+        await self.send_message(partner, message)
 
     async def _get_offer_items(
         self,
@@ -337,11 +337,10 @@ class TradeManager(BaseManager):
 
         if not currencies.is_possible:
             logging.warning("Currencies does not add up for trade")
-
-            if partner.is_friend():
-                await partner.send(
-                    "Sorry, metal did not add up for this trade. Do you have enough metal?"
-                )
+            await self.send_message(
+                partner,
+                "Sorry, metal did not add up for this trade. Do you have enough metal?",
+            )
             return
 
         their_metal, our_metal = currencies.get_currencies()
@@ -380,9 +379,7 @@ class TradeManager(BaseManager):
 
         if data is None:
             logging.warning("Error, could not get items for offer")
-
-            if partner.is_friend():
-                await partner.send(self.options.messages.sending_offer_error)
+            await self.send_message(partner, self.options.messages.sending_offer_error)
             return
 
         their_items, our_items = data
@@ -393,9 +390,7 @@ class TradeManager(BaseManager):
 
         if not is_adding_up:
             logging.warning("Error, values in offer did not add up!")
-
-            if partner.is_friend():
-                await partner.send(self.options.messages.sending_offer_error)
+            await self.send_message(partner, self.options.messages.sending_offer_error)
             return
 
         logging.debug(f"Value for trade was equal {their_value=} {our_value=}")
@@ -610,6 +605,14 @@ class TradeManager(BaseManager):
 
         return offer_data
 
+    def is_arbitrage_offer(
+        self, their_items: list[dict], our_items: list[dict]
+    ) -> bool:
+        if not self.options.enable_arbitrage:
+            return False
+
+        return self.arbitrage.is_arbitrage_offer(their_items, our_items)
+
     async def send_offer(
         self,
         partner: steam.User,
@@ -626,22 +629,15 @@ class TradeManager(BaseManager):
             f"Sending offer to {partner.name} {intent=} {items=} {item_type=}"
         )
         steam_id = str(partner.id64)
-        is_friend = partner.is_friend()
 
         if self.is_blacklisted(steam_id):
             logging.info("User is blacklisted, not sending offer")
-
-            if is_friend:
-                await partner.send(self.options.messages.user_blacklisted)
-
+            await self.send_message(partner, self.options.messages.user_blacklisted)
             return 0
 
         if self.listing_manager.is_backpack_tf_banned(steam_id):
             logging.info("User is banned on Backpack.TF, not sending offer")
-
-            if is_friend:
-                await partner.send(self.options.messages.user_banned)
-
+            await self.send_message(partner, self.options.messages.user_banned)
             return 0
 
         await self.client.bot_is_ready_and_prices_updated()
@@ -655,10 +651,14 @@ class TradeManager(BaseManager):
         offer, offer_data = data
         logging.info(f"Sending offer to {partner.name}...")
 
-        if is_friend:
-            await partner.send(self.options.messages.sending_offer)
+        await self.send_message(partner, self.options.messages.sending_offer)
 
-        await partner.send(trade=offer)
+        try:
+            await partner.send(trade=offer)
+        except steam.errors.HTTPException:
+            logging.warning(f"There was an error while sending offer to {partner.name}")
+            await self.send_message(partner, self.options.messages.sending_offer_error)
+            return 0
 
         self.client.add_offer_data(offer.id, offer_data)
         logging.info(f"Sent offer for {items} to {partner.name}")
@@ -692,16 +692,16 @@ class TradeManager(BaseManager):
     ) -> None:
         steam_id = str(trade.user.id64)
         offer_id = str(trade.id)
-        is_friend = trade.user.is_friend()
         state_name = trade.state.name.lower()
         was_accepted = trade.state == steam.TradeOfferState.Accepted
-        their_items = [item_object_to_item_data(i) for i in trade.receiving]
-        our_items = [item_object_to_item_data(i) for i in trade.sending]
 
         logging.info(f"Offer #{offer_id} with {trade.user.name} was {state_name}")
 
-        if is_friend and trade.state != steam.TradeOfferState.Countered:
-            await trade.user.send(f"Your offer was {state_name}")
+        if trade.state == steam.TradeOfferState.Active:
+            return
+
+        if trade.state != steam.TradeOfferState.Accepted:
+            await self.send_message(trade.user, f"Your offer was {state_name}")
 
         if offer_id in self.client.pending_site_offers:
             self.client.ws_manager.remove_user_from_queue(steam_id)
@@ -721,18 +721,21 @@ class TradeManager(BaseManager):
 
         if self.options.enable_discord:
             await self.discord_manager.send_offer_state_changed(
-                trade, their_items, our_items
+                trade, trade.receiving, trade.sending
             )
 
-        if self.is_arbitrage_offer(their_items, our_items):
-            logging.info("Offer was an arbitrage offer")
-            await self.arbitrage.process_offer_state(trade, their_items, our_items)
+        if self.options.enable_arbitrage:
+            await self.arbitrage.process_offer_state(
+                trade, trade.receiving, trade.sending
+            )
 
         if not was_accepted:
             return
 
-        if is_friend:
-            await trade.user.send(self.options.messages.offer_accepted)
+        their_items = [item_object_to_item_data(i) for i in trade.receiving]
+        our_items = [item_object_to_item_data(i) for i in trade.sending]
+
+        await self.send_message(trade.user, self.options.messages.offer_accepted)
 
         offer_data |= {
             "offer_id": offer_id,

@@ -26,6 +26,8 @@ class BasePriceDB:
     async def request(self, method: str, endpoint: str, **kwargs) -> dict:
         url = f"{self.api_url}/{endpoint}"
 
+        logging.debug(f"requesting {method} {url} with {kwargs}")
+
         async with self.session.request(method.upper(), url, **kwargs) as resp:
             resp.raise_for_status()
             data = await resp.json()
@@ -41,6 +43,8 @@ class BasePriceDB:
         return items.get("items", [])
 
     async def get_items_bulk(self, skus: list[str]) -> list[dict]:
+        # remove duplicates
+        skus = list(set(skus))
         return await self.request("POST", "items-bulk", json={"skus": skus})
 
     async def get_prices_by_schema(self, skus: list[str]) -> list[dict]:
@@ -48,6 +52,8 @@ class BasePriceDB:
         return [item for item in schema if item["sku"] in skus]
 
     async def get_multiple_prices(self, skus: list[str]) -> dict:
+        # remove duplicates
+        skus = list(set(skus))
         prices = {}
         data = []
 
