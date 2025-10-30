@@ -1,8 +1,9 @@
+import logging
 from typing import Any
 
 from steam.protobufs.econ import Asset, ItemDescription
 from steam.state import ConnectionState
-from steam.trade import Item, MovedItem
+from steam.trade import Item
 from steam.user import User
 
 
@@ -38,7 +39,7 @@ def item_data_to_item_object(
     return Item(state=state, asset=asset, description=description, owner=owner)
 
 
-def item_object_to_item_data(item: Item) -> dict[str, Any]:
+def item_object_to_item_data(item: Item) -> dict[str, Any] | None:
     # these are not always present
     is_tradable = item._is_tradable if getattr(item, "_is_tradable", None) else True
     icon = item.icon if getattr(item, "icon", None) else None
@@ -51,38 +52,41 @@ def item_object_to_item_data(item: Item) -> dict[str, Any]:
         name = i.name if getattr(i, "name", None) else i["name"]
         actions.append({"link": link, "name": name})
 
-    return item.to_dict() | {
-        "appid": int(item._app_id),
-        "classid": item.class_id,
-        "instanceid": item.instance_id,
-        "icon_url": icon_url,
-        "tradable": is_tradable,
-        "actions": actions,
-        "name": item.name,
-        "market_hash_name": item.market_hash_name,
-        "type": item.type,
-        "marketable": item._is_marketable,
-        "descriptions": [
-            {
-                "type": i.type,
-                "value": i.value,
-                "color": i.color,
-                "label": i.label,
-            }
-            for i in item.descriptions
-        ],
-        "tags": [
-            {
-                "category": i.category,
-                "internal_name": i.internal_name,
-                "localized_category_name": i.localized_category_name,
-                "localized_tag_name": i.localized_tag_name,
-                "color": i.color,
-            }
-            for i in item.tags
-        ],
-    }
+    item_dict = None
 
-
-def receipt_object_to_item_data(item: MovedItem) -> dict[str, Any]:
-    return item_object_to_item_data(item) | {"assetid": str(item.new_id)}
+    try:
+        item_dict = item.to_dict() | {
+            "appid": int(item._app_id),
+            "classid": item.class_id,
+            "instanceid": item.instance_id,
+            "icon_url": icon_url,
+            "tradable": is_tradable,
+            "actions": actions,
+            "name": item.name,
+            "market_hash_name": item.market_hash_name,
+            "type": item.type,
+            "marketable": item._is_marketable,
+            "descriptions": [
+                {
+                    "type": i.type,
+                    "value": i.value,
+                    "color": i.color,
+                    "label": i.label,
+                }
+                for i in item.descriptions
+            ],
+            "tags": [
+                {
+                    "category": i.category,
+                    "internal_name": i.internal_name,
+                    "localized_category_name": i.localized_category_name,
+                    "localized_tag_name": i.localized_tag_name,
+                    "color": i.color,
+                }
+                for i in item.tags
+            ],
+        }
+    except AttributeError:
+        logging.warning("Failed to convert item")
+    finally:
+        return item_dict

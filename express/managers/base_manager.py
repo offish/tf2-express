@@ -14,5 +14,5 @@ class BaseManager:
         self.pricing_manager = client.pricing_manager
         self.discord_manager = client.discord_manager
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         pass

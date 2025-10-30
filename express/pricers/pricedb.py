@@ -125,3 +125,4 @@ class PriceDB(BasePriceDB, PricingProvider):
 
     async def close(self) -> None:
         await self.sio.disconnect()
+        await self.session.close()

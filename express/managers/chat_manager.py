@@ -9,14 +9,15 @@ from .base_manager import BaseManager
 
 
 class ChatManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
+        self.arbitrage = self.client.arbitrage_manager
+
         if not self.options.llm_chat_responses:
             return
 
         api_key = self.options.llm_api_key
         model = self.options.llm_model
         self.ai_manager = AIManager(api_key, model)
-        self.arbitrage = self.client.arbitrage_manager
 
     def is_owner(self, message: Message) -> bool:
         return str(message.author.id64) in self.options.owners

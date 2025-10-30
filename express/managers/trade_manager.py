@@ -26,7 +26,7 @@ from .base_manager import BaseManager
 
 
 class TradeManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
         self.owners = [str(steam_id) for steam_id in self.options.owners]
         self.blacklist = [str(steam_id) for steam_id in self.options.blacklist]
@@ -241,7 +241,7 @@ class TradeManager(BaseManager):
 
         for item in selected_inventory:
             if len(item_list) == 0:
-                logging.info("Found all items for offer")
+                logging.debug("Found all items for offer")
                 break
 
             asset_id = item["assetid"]
@@ -750,7 +750,14 @@ class TradeManager(BaseManager):
         }
 
         self.database.insert_trade(offer_data)
-        # await self._group.invite(trade.user)
+
+        # error, need to refetch inventory
+        if None in their_items or None in our_items:
+            logging.warning("Error converting items after offer was accepted")
+            self.inventory_manager.fetch_our_inventory()
+            self.inventory_manager.set_inventory_changed()
+            return
+
         logging.debug("Getting receipt...")
 
         receipt = await trade.receipt()

@@ -9,7 +9,7 @@ from .base_manager import BaseManager
 
 
 class InventoryManager(BaseManager, ExpressInventory):
-    def setup(self):
+    async def setup(self):
         ExpressInventory.__init__(
             self,
             self.client.steam_id,
@@ -40,6 +40,11 @@ class InventoryManager(BaseManager, ExpressInventory):
             self.options.inventory_provider,
             self.options.inventory_api_key,
         )
+
+    def set_inventory_changed(self) -> None:
+        # notify listing manager inventory has changed (stock needs to be updated)
+        if self.options.use_backpack_tf:
+            self.client.listing_manager.set_inventory_changed()
 
     async def update_inventory_with_receipt(
         self, their_items: list[dict], our_items: list[dict], receipt: TradeOfferReceipt
@@ -72,7 +77,4 @@ class InventoryManager(BaseManager, ExpressInventory):
         self.set_our_inventory(updated_inventory)
 
         logging.info("Inventory was updated")
-
-        # notify listing manager inventory has changed (stock needs to be updated)
-        if self.options.use_backpack_tf:
-            self.client.listing_manager.set_inventory_changed()
+        self.set_inventory_changed()

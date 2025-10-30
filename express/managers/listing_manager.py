@@ -25,7 +25,7 @@ from .base_manager import BaseManager
 
 
 class ListingManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
         self.can_list = False
         self._listings = {}
         self._has_updated_listings = True
@@ -373,7 +373,7 @@ class ListingManager(BaseManager):
         if asset_id:
             success = self.backpack_tf.delete_listing_by_asset_id(asset_id)
         else:
-            success = self.backpack_tf.delete_listing_by_sku(item_name)
+            success = self.backpack_tf.delete_listing_by_item_name(item_name)
 
         if success is not True:
             logging.error(f"Error when trying to delete {intent} listing for {sku}")

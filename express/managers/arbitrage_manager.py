@@ -14,7 +14,7 @@ except ImportError:
 
 
 class ArbitrageManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
         if not (
             self.options.enable_arbitrage
             or self.options.enable_quickbuy
@@ -26,6 +26,7 @@ class ArbitrageManager(BaseManager):
             raise NoArbitrageModuleFound("Arbitrage logic is not public")
 
         self.arbitrage = Arbitrage(self)
+        await self.arbitrage.setup()
 
     def is_arbitrage_offer(
         self, their_items: list[dict], our_items: list[dict]
@@ -53,9 +54,6 @@ class ArbitrageManager(BaseManager):
         self, trade: TradeOffer, their_items: list[Any], our_items: list[Any]
     ) -> None:
         return await self.arbitrage.process_offer_state(trade, their_items, our_items)
-
-    async def begin(self) -> None:
-        await self.arbitrage.setup()
 
     async def run(self) -> None:
         while True:

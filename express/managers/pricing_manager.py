@@ -11,7 +11,7 @@ from .base_manager import BaseManager
 
 
 class PricingManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
         self.autopriced_skus: list[str] = []
         self.autopriced_items: list[dict] = []
 

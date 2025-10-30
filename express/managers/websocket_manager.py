@@ -10,7 +10,7 @@ from .base_manager import BaseManager
 
 
 class WebSocketManager(BaseManager):
-    def setup(self) -> None:
+    async def setup(self) -> None:
         self.ws = None
         self._users_in_queue = set()
 

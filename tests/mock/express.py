@@ -4,10 +4,11 @@ class Express:
         self.options = options
         self.database = None
 
-        self.arbitrage_manager = None
         self.inventory_manager = None
+        self.arbitrage_manager = None
         self.listing_manager = None
         self.pricing_manager = None
+        self.discord_manager = None
         self.trade_manager = None
         self.chat_manager = None
         self.ws_manager = None

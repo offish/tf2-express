@@ -69,7 +69,7 @@ class Express(steam.Client):
         ]
 
         for manager in managers:
-            manager.setup()
+            await manager.setup()
 
         # delete listings on exit and disconnect from websocket
         atexit.register(self.cleanup)
@@ -96,13 +96,6 @@ class Express(steam.Client):
         if self.options.cancel_old_sent_offers:
             asyncio.create_task(self.trade_manager.run())
 
-        if (
-            self.options.enable_arbitrage
-            or self.options.enable_quickbuy
-            or self.options.enable_quicksell
-        ):
-            await self.arbitrage_manager.begin()
-
         if self.options.enable_arbitrage:
             asyncio.create_task(self.arbitrage_manager.run())
 
@@ -124,6 +117,9 @@ class Express(steam.Client):
 
         if self.options.llm_chat_responses and not self.options.llm_model:
             raise ExpressException("You need to set a model for AI chat responses")
+
+        if self.options.enable_discord and not self.options.discord_owner_ids:
+            raise ExpressException("Discord bot must have at least 1 owner")
 
         if self.options.enable_discord and not self.options.discord_token:
             raise ExpressException("Discord bot token is required")
