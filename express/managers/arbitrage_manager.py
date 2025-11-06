@@ -16,9 +16,9 @@ except ImportError:
 class ArbitrageManager(BaseManager):
     async def setup(self) -> None:
         if not (
-            self.options.enable_arbitrage
-            or self.options.enable_quickbuy
-            or self.options.enable_quicksell
+            self.options.arbitrage.enable
+            or self.options.arbitrage.quickbuy
+            or self.options.arbitrage.quicksell
         ):
             return
 
@@ -34,13 +34,13 @@ class ArbitrageManager(BaseManager):
         return self.arbitrage.is_arbitrage_offer(their_items, our_items)
 
     async def quickbuy(self, skus: list[str]) -> None:
-        if not self.options.enable_quickbuy:
+        if not self.options.arbitrage.quickbuy:
             return
 
         return await self.arbitrage.quickbuy(skus)
 
     async def quicksell(self, skus: list[str]) -> None:
-        if not self.options.enable_quicksell:
+        if not self.options.arbitrage.quicksell:
             return
 
         return await self.arbitrage.quicksell(skus)

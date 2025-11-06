@@ -5,7 +5,7 @@ from typing import Any
 from tf2_utils.utils import to_scrap
 
 from ..exceptions import NoKeyPrice, WrongPriceFormat
-from ..pricers.pricing_providers import get_pricing_provider
+from ..pricers.price_providers import get_price_provider
 from ..utils import filter_skus, has_invalid_price_format
 from .base_manager import BaseManager
 
@@ -15,8 +15,8 @@ class PricingManager(BaseManager):
         self.autopriced_skus: list[str] = []
         self.autopriced_items: list[dict] = []
 
-        self.provider = get_pricing_provider(
-            self.options.pricing_provider, self.on_price_update
+        self.provider = get_price_provider(
+            self.options.price_provider, self.on_price_update
         )
 
     @staticmethod
@@ -69,7 +69,7 @@ class PricingManager(BaseManager):
 
         self.database.update_price(sku, buy, sell)
 
-        if self.options.use_backpack_tf and notify_listing_manager:
+        if self.options.backpack_tf.enable and notify_listing_manager:
             self.listing_manager.set_price_changed(sku)
 
     def update_prices(
@@ -139,13 +139,13 @@ class PricingManager(BaseManager):
         return list(changed_skus)
 
     async def run(self) -> None:
-        if self.options.use_backpack_tf:
+        if self.options.backpack_tf.enable:
             await self.listing_manager.wait_until_ready()
 
         await self.update_pricelist()
         self.set_prices_updated()
 
-        if self.options.use_backpack_tf:
+        if self.options.backpack_tf.enable:
             self.listing_manager.create_listings()
 
         # fetches prices and checks for pricelist changes

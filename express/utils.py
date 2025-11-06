@@ -13,7 +13,17 @@ from tf2_utils import SchemaItemsUtils, sku_to_color
 from tf2_utils import __version__ as tf2_utils_version
 
 from . import __version__ as tf2_express_version
-from .exceptions import NoConfigFound
+from .options import (
+    ArbitrageOptions,
+    BackpackTFOptions,
+    ChatOptions,
+    DiscordOptions,
+    ExpressTFOptions,
+    InventoryOptions,
+    Messages,
+    OffersOptions,
+    Options,
+)
 
 schema_items_utils = SchemaItemsUtils()
 
@@ -101,13 +111,88 @@ def read_json_file(filename: str | Path) -> dict:
     return content
 
 
-def get_config() -> dict:
-    path = Path(__file__).parent.parent / "config.json"
+def get_and_read_json_file(filename: str, must_exist: bool = True) -> dict:
+    path = Path(filename)
 
-    if not path.exists():
-        raise NoConfigFound("No config.json file found!")
+    if not path.exists() and not must_exist:
+        logging.info(f"File {path} does not exist, using default...")
+        return {}
+
+    if not path.exists() and must_exist:
+        raise FileNotFoundError(f"No file found at path: {path}")
 
     return read_json_file(path)
+
+
+def get_mafile() -> Path | None:
+    path = Path(__file__).parent.parent
+
+    for file in path.iterdir():
+        if file.suffix == ".maFile":
+            logging.debug(f"Found maFile: {file.name}")
+            return file
+
+
+def get_config() -> dict:
+    config = get_and_read_json_file("config.json")
+
+    assert "password" in config, "Password is missing in config"
+    assert config["password"], "Password cannot be empty"
+
+    username = config.get("username")
+    identity_secret = config.get("identity_secret")
+    shared_secret = config.get("shared_secret")
+    mafile = get_mafile()
+
+    if mafile:
+        logging.info("Using maFile for authentication")
+        content = json.loads(mafile.read_text())
+        username = content["account_name"]
+        identity_secret = content["identity_secret"]
+        shared_secret = content["shared_secret"]
+    else:
+        logging.info("Using config for authentication")
+
+    assert username, "username is missing in config"
+    assert identity_secret, "identity_secret is missing in config"
+    assert shared_secret, "shared_secret is missing in config"
+
+    return {
+        "username": username,
+        "password": config["password"],
+        "identity_secret": identity_secret,
+        "shared_secret": shared_secret,
+    }
+
+
+def get_options(username: str) -> Options:
+    options = get_and_read_json_file("options.json")
+    messages = get_and_read_json_file("messages.json", must_exist=False)
+    backpack_tf = options.get("backpack_tf", {})
+    offers = options.get("offers", {})
+    inventory = options.get("inventory", {})
+    chat = options.get("chat", {})
+    discord = options.get("discord", {})
+    arbitrage = options.get("arbitrage", {})
+    express_tf = options.get("express_tf", {})
+
+    # remove all keys that are not part of Options
+    for key in options.copy():
+        if key not in ["owners", "blacklist", "groups"]:
+            del options[key]
+
+    return Options(
+        username=username,
+        **options,
+        messages=Messages(**messages),
+        backpack_tf=BackpackTFOptions(**backpack_tf),
+        offers=OffersOptions(**offers),
+        inventory=InventoryOptions(**inventory),
+        chat=ChatOptions(**chat),
+        discord=DiscordOptions(**discord),
+        arbitrage=ArbitrageOptions(**arbitrage),
+        express_tf=ExpressTFOptions(**express_tf),
+    )
 
 
 def get_version(repository: str, folder: str) -> str:

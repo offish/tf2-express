@@ -5,7 +5,7 @@ import aiohttp
 from socketio import AsyncClient
 from socketio.exceptions import ConnectionError
 
-from .pricing_provider import PricingProvider
+from .price_provider import PriceProvider
 
 # NOTE: prices are on the format we expect, so no need to format it
 # {
@@ -69,10 +69,10 @@ class BasePriceDB:
         return prices
 
 
-class PriceDB(BasePriceDB, PricingProvider):
+class PriceDB(BasePriceDB, PriceProvider):
     def __init__(self, callback: Callable[[dict], None]):
         super().__init__()
-        PricingProvider.__init__(self, callback)
+        PriceProvider.__init__(self, callback)
 
         self.sio = AsyncClient()
         self.sio.on("connect", self.on_connect)

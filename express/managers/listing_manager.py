@@ -32,10 +32,10 @@ class ListingManager(BaseManager):
         self._is_ready = False
 
         self.backpack_tf = BackpackTF(
-            token=self.options.backpack_tf_token,
+            token=self.options.backpack_tf.access_token,
             steam_id=self.client.steam_id,
-            api_key=self.options.backpack_tf_api_key,
-            user_agent=self.options.backpack_tf_user_agent,
+            api_key=self.options.backpack_tf.api_key,
+            user_agent=self.options.backpack_tf.user_agent,
         )
         self.backpack_tf._library = "tf2-express"
 
@@ -83,14 +83,14 @@ class ListingManager(BaseManager):
         logging.info(f"{intent} listing was created for {construct.sku}")
 
     def is_backpack_tf_banned(self, steam_id: str | int) -> bool:
-        return self.options.check_backpack_tf_bans and self.backpack_tf.is_banned(
+        return self.options.backpack_tf.check_bans and self.backpack_tf.is_banned(
             steam_id
         )
 
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         formatted_identifier = sku.replace(";", "_")
 
-        if not self.options.sku_in_listing_details:
+        if not self.options.backpack_tf.sku_in_listing_details:
             formatted_identifier = self.database.get_normalized_item_name(sku)
 
         keys = currencies["keys"]

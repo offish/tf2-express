@@ -1,9 +1,9 @@
 import pytest
 
-from express.database import Database
+from express.databases.database_providers import get_database_provider
 from express.exceptions import SKUNotFound
 
-database = Database("express")
+database = get_database_provider("mongodb", "express")
 database.items.delete_many({})
 
 

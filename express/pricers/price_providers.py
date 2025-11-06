@@ -1,15 +1,14 @@
 from typing import Callable
 
+from .price_provider import PriceProvider
 from .pricedb import PriceDB
-from .prices_tf import PricesTF
-from .pricing_provider import PricingProvider
 
-PROVIDERS = [PriceDB, PricesTF]
+PROVIDERS = [PriceDB]
 
 
-def get_pricing_provider(
+def get_price_provider(
     provider: str, callback: Callable[[dict], None]
-) -> PricingProvider:
+) -> PriceProvider:
     for i in PROVIDERS:
         if provider.lower() == i.__name__.lower():
             return i(callback)

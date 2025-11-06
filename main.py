@@ -2,13 +2,13 @@ import logging
 import sys
 
 from express.express import Express
-from express.options import Messages, Options
 from express.utils import (
     ExpressFileFormatter,
     ExpressFormatter,
     check_for_updates,
     create_and_get_log_file,
     get_config,
+    get_options,
 )
 
 log_file = create_and_get_log_file()
@@ -32,15 +32,16 @@ file_handler.setFormatter(ExpressFileFormatter())
 
 def main() -> None:
     config = get_config()
-    messages = Messages(**config["messages"])
-    options = Options(
-        username=config["username"], messages=messages, **config["options"]
-    )
+    username = config["username"]
+    options = get_options(username)
+
+    if options.check_updates:
+        check_for_updates()
+
     express = Express(options)
     express.start(**config)
 
 
 if __name__ == "__main__":
     logging.info("Starting tf2-express...")
-    check_for_updates()
     main()

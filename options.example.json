@@ -1,0 +1,39 @@
+{
+    "price_provider": "pricedb",
+    "database_provider": "mongodb",
+    "owners": [
+        "76561198253325712"
+    ],
+    "blacklist": [],
+    "backpack_tf": {
+        "enable": false,
+        "access_token": "token",
+        "api_key": "apikey",
+        "check_bans": false,
+        "sku_in_listing_details": false
+    },
+    "inventory": {
+        "provider": "steamcommunity",
+        "api_key": "",
+        "retries": 5
+    },
+    "offers": {
+        "accept_donations": true,
+        "decline_trade_hold": true,
+        "enable_craft_hats": false,
+        "save_trades": true,
+        "counter_wrong_values": false
+    },
+    "chat": {
+        "enable": true,
+        "llm_responses": false,
+        "llm_model": "groq/llama-3.3-70b-versatile",
+        "llm_api_key": "apikey"
+    },
+    "discord": {
+        "enable": false,
+        "token": "",
+        "channel_id": "",
+        "owner_ids": []
+    }
+}

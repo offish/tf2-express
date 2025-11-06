@@ -1,7 +1,7 @@
 from typing import Callable
 
 
-class PricingProvider:
+class PriceProvider:
     def __init__(self, callback: Callable[[dict], None]) -> None:
         """Callback has to get a dict with the following format:
 

@@ -174,5 +174,8 @@ cython_debug/
 .pypirc
 
 # Other
-express/arbitrage/
+files/
 config.json
+options.json
+messages.json
+*.maFile

@@ -2,8 +2,8 @@ from typing import Any
 
 import pytest
 
-from express.options import Messages, Options
-from express.utils import get_config, read_json_file
+from express.options import Options
+from express.utils import get_config, get_options, read_json_file
 from tests.mock.express import Express
 
 INVENTORY_ITEM = read_json_file("./tests/jsons/inventory_item.json")
@@ -11,10 +11,8 @@ RECEIPT_ITEM = read_json_file("./tests/jsons/receipt_item.json")
 
 bot_steam_id = "76561198828172881"  # replace with your own for testing
 config = get_config()
-messages = Messages(**config["messages"])
-bot_options = Options(
-    username=config["username"], messages=messages, **config["options"]
-)
+username = config["username"]
+bot_options = get_options(username)
 express = Express(bot_steam_id, bot_options)
 
 

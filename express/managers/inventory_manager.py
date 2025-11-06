@@ -13,8 +13,8 @@ class InventoryManager(BaseManager, ExpressInventory):
         ExpressInventory.__init__(
             self,
             self.client.steam_id,
-            self.options.inventory_provider,
-            self.options.inventory_api_key,
+            self.options.inventory.provider,
+            self.options.inventory.api_key,
         )
 
     @staticmethod
@@ -37,13 +37,13 @@ class InventoryManager(BaseManager, ExpressInventory):
     def get_inventory_instance(self) -> ExpressInventory:
         return ExpressInventory(
             str(self.client.user.id64),
-            self.options.inventory_provider,
-            self.options.inventory_api_key,
+            self.options.inventory.provider,
+            self.options.inventory.api_key,
         )
 
     def set_inventory_changed(self) -> None:
         # notify listing manager inventory has changed (stock needs to be updated)
-        if self.options.use_backpack_tf:
+        if self.options.backpack_tf.enable:
             self.client.listing_manager.set_inventory_changed()
 
     async def update_inventory_with_receipt(

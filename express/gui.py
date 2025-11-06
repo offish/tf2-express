@@ -5,33 +5,27 @@ from flask import Request, render_template
 from tf2_data import COLORS
 from tf2_utils import Item, SchemaItemsUtils, is_sku, to_refined
 
-from .database import Database
-from .utils import get_config, get_versions, sku_to_item_data
+from .databases.database_providers import get_database_provider
+from .utils import get_config, get_options, get_versions, sku_to_item_data
 
 
 class Panel:
     def __init__(self) -> None:
-        self._config = get_config()
+        config = get_config()
+        username = config["username"]
+        self.options = get_options(username)
+        self.usernames = [username]
         self._schema = SchemaItemsUtils()
-        self._database_names = []
-        self._set_database_names()
-
-        database_name = self._get_first_database_name()
-        self._database = Database(database_name)
-
-    def _set_database_names(self) -> None:
-        database_name = self._config["username"]
-        self._database_names.append(database_name)
-
-    def _get_first_database_name(self) -> str:
-        return self._database_names[0]
+        self._database = get_database_provider(self.options.database_provider, username)
 
     def _get_database(self, request: Request) -> str:
         default = self._get_first_database_name()
         database_name = request.args.get("db", default)
 
         if database_name != self._database.name:
-            self._database = Database(database_name)
+            self._database = get_database_provider(
+                self.options.database_provider, database_name
+            )
 
         return database_name
 
@@ -72,7 +66,7 @@ class Panel:
         return render_template(
             f"{page}.html",
             db_name=db_name,
-            database_names=self._database_names,
+            database_names=self.usernames,
             current_year=datetime.now().year,
             **kwargs,
         )

@@ -1,30 +1,54 @@
+import json
 import logging
 import time
-from os import getenv
+from pathlib import Path
 from typing import Any
 
-from pymongo import DESCENDING, MongoClient
 from tf2_utils import is_metal
 
-from .exceptions import SKUNotFound
-from .utils import has_buy_and_sell_price, normalize_item_name, sku_to_item_data
+from ..exceptions import SKUNotFound
+from ..utils import has_buy_and_sell_price, normalize_item_name, sku_to_item_data
+from .database_provider import DatabaseProvider
 
 
-class Database:
-    def __init__(self, database: str) -> None:
-        host = getenv("MONGO_HOST", "localhost")
-        client = MongoClient(host, 27017)
-        db = client[database]
+class JSON(DatabaseProvider):
+    def __init__(self, username: str) -> None:
+        self.name = username
 
-        self.name = database
-        self.trades = db["trades"]
-        self.items = db["items"]
-        self.arbitrage = db["arbitrage"]
-        self.quicksell = db["quicksell"]
+        self.data_dir = Path(__file__).parent.parent.parent / "files" / username
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.trades_file = self.data_dir / "trades.json"
+        self.items_file = self.data_dir / "items.json"
+        self.arbitrage_file = self.data_dir / "arbitrage.json"
+        self.quicksell_file = self.data_dir / "quicksell.json"
+
+        self._init_file(self.trades_file, [])
+        self._init_file(self.items_file, [])
+        self._init_file(self.arbitrage_file, [])
+        self._init_file(self.quicksell_file, [])
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
             self._add_key_for_first_time()
+
+    def _init_file(self, filepath: Path, default_data: Any) -> None:
+        """Initialize a JSON file with default data if it doesn't exist."""
+        if not filepath.exists():
+            self._write_json(filepath, default_data)
+
+    def _read_json(self, filepath: Path) -> Any:
+        """Read and parse a JSON file."""
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return [] if filepath != self.quicksell_file else []
+
+    def _write_json(self, filepath: Path, data: Any) -> None:
+        """Write data to a JSON file."""
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     def _add_key_for_first_time(self) -> None:
         self.add_item(**sku_to_item_data("5021;6"))
@@ -38,10 +62,11 @@ class Database:
         return has_buy_and_sell_price(data)
 
     def find_item_by_name(self, normalized_name: str) -> dict | None:
-        for item in self.items.find():
+        items = self._read_json(self.items_file)
+        for item in items:
             if normalized_name == normalize_item_name(item["name"]):
-                del item["_id"]
-                return item
+                return item.copy()
+        return None
 
     def get_normalized_item_name(self, sku: str) -> str | None:
         item = self.get_item(sku)
@@ -50,12 +75,16 @@ class Database:
             return normalize_item_name(item["name"])
 
     def insert_trade(self, data: dict) -> None:
-        self.trades.insert_one(data)
+        trades = self._read_json(self.trades_file)
+        trades.append(data)
+        self._write_json(self.trades_file, trades)
         logging.info("Offer was added to the database")
 
     def get_trades(self, start_index: int, amount: int) -> dict[str, Any]:
         # sort newest trades first
-        all_trades = list(self.trades.find().sort("timestamp", DESCENDING))
+        all_trades = self._read_json(self.trades_file)
+        all_trades.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+
         total_trades = len(all_trades)
         intended_end_index = start_index + amount
         trades = all_trades[start_index:intended_end_index]
@@ -92,30 +121,31 @@ class Database:
         return keys, metal
 
     def get_skus(self) -> list[str]:
-        return [item["sku"] for item in self.items.find()]
+        items = self._read_json(self.items_file)
+        return [item["sku"] for item in items]
 
     def get_autopriced(self) -> list[dict]:
+        items = self._read_json(self.items_file)
         return [
             item
-            for item in self.items.find({"autoprice": True})
-            if item["sku"] != "-100;6"
+            for item in items
+            if item.get("autoprice", False) and item["sku"] != "-100;6"
         ]
 
     def get_autopriced_skus(self) -> list[str]:
         return [item["sku"] for item in self.get_autopriced()]
 
     def get_item(self, sku: str) -> dict[str, Any]:
-        item = self.items.find_one({"sku": sku})
+        items = self._read_json(self.items_file)
 
-        if item is None:
-            # logging.debug(f"{sku} not found in database")
-            return {}
+        for item in items:
+            if item["sku"] == sku:
+                return item.copy()
 
-        del item["_id"]
-        return item
+        return {}
 
     def get_pricelist(self) -> list[dict]:
-        return list(self.items.find())
+        return self._read_json(self.items_file)
 
     def get_stock(self, sku: str) -> tuple[int, int]:
         """returns in_stock, max_stock"""
@@ -129,12 +159,20 @@ class Database:
         sku = data["sku"]
 
         logging.debug(f"Updating {sku} with {data=}")
-        self.items.replace_one({"sku": sku}, data)
+        items = self._read_json(self.items_file)
+
+        for i, item in enumerate(items):
+            if item["sku"] == sku:
+                items[i] = data
+                break
+
+        self._write_json(self.items_file, items)
 
     def update_stock(self, stock: dict) -> None:
-        all_items = self.items.find()
+        items = self._read_json(self.items_file)
+        updated = False
 
-        for item in all_items:
+        for item in items:
             sku = item["sku"]
 
             if sku not in stock:
@@ -147,9 +185,11 @@ class Database:
                 continue
 
             item["in_stock"] = in_stock
-            self.replace_item(item)
+            updated = True
 
-        logging.info("Updated stock for all items")
+        if updated:
+            self._write_json(self.items_file, items)
+            logging.info("Updated stock for all items")
 
     def add_item(
         self,
@@ -183,7 +223,9 @@ class Database:
             "image": image,
         }
 
-        self.items.insert_one(document)
+        items = self._read_json(self.items_file)
+        items.append(document)
+        self._write_json(self.items_file, items)
         logging.info(f"Added {sku} to database")
 
     def update_price(
@@ -214,24 +256,37 @@ class Database:
         data["max_stock"] = max_stock
         data["updated"] = time.time()
 
-        self.items.replace_one({"sku": sku}, data)
+        self.replace_item(data)
         logging.info(f"Updated price for {sku}")
 
     def update_autoprice(self, data: dict) -> None:
         self.update_price(data["sku"], data["buy"], data["sell"])
 
     def delete_item(self, sku: str) -> None:
-        self.items.delete_one({"sku": sku})
+        items = self._read_json(self.items_file)
+        items = [item for item in items if item["sku"] != sku]
+        self._write_json(self.items_file, items)
         logging.info(f"Removed {sku} from the database")
 
     def insert_arbitrage(self, data: dict) -> None:
-        self.arbitrage.insert_one(data)
+        arbitrages = self._read_json(self.arbitrage_file)
+        arbitrages.append(data)
+        self._write_json(self.arbitrage_file, arbitrages)
 
     def update_arbitrage(self, sku: str, data: dict) -> None:
-        self.arbitrage.replace_one({"sku": sku}, data)
+        arbitrages = self._read_json(self.arbitrage_file)
+
+        for i, arb in enumerate(arbitrages):
+            if arb["sku"] == sku:
+                arbitrages[i] = data
+                break
+
+        self._write_json(self.arbitrage_file, arbitrages)
 
     def delete_arbitrage(self, sku: str) -> None:
-        self.arbitrage.delete_one({"sku": sku})
+        arbitrages = self._read_json(self.arbitrage_file)
+        arbitrages = [arb for arb in arbitrages if arb["sku"] != sku]
+        self._write_json(self.arbitrage_file, arbitrages)
 
     def get_arbitrages(self) -> list[dict]:
-        return list(self.arbitrage.find())
+        return self._read_json(self.arbitrage_file)

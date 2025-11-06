@@ -58,7 +58,7 @@ class TradeManager(BaseManager):
         )
 
     async def send_message(self, user: steam.User, message: str) -> None:
-        if not self.options.send_messages:
+        if not self.options.chat.enable:
             return
 
         if not user.is_friend():
@@ -89,7 +89,7 @@ class TradeManager(BaseManager):
         if (
             not self.database.has_price(sku)
             and Item(item).is_craft_hat()
-            and self.options.enable_craft_hats
+            and self.options.offers.enable_craft_hats
         ):
             sku = "-100;6"
 
@@ -102,7 +102,7 @@ class TradeManager(BaseManager):
             item = Item(i)
             sku = get_sku(item)
 
-            if item.is_craft_hat() and self.options.enable_craft_hats:
+            if item.is_craft_hat() and self.options.offers.enable_craft_hats:
                 in_offer["-100;6"] += 1
 
             if sku not in in_offer:
@@ -166,7 +166,7 @@ class TradeManager(BaseManager):
             elif sku in all_skus:
                 keys, metal = self.database.get_price(sku, intent)
 
-            elif item.is_craft_hat() and self.options.enable_craft_hats:
+            elif item.is_craft_hat() and self.options.offers.enable_craft_hats:
                 keys, metal = self.database.get_price("-100;6", intent)
 
             value = keys * key_scrap_price + to_scrap(metal)
@@ -499,14 +499,17 @@ class TradeManager(BaseManager):
         if trade.is_gift():
             logging.info("User is trying to give items")
 
-            if self.options.accept_gift:
+            if self.options.offers.accept_donations:
                 await self.accept(trade)
             else:
                 logging.info("Ignoring gift offer")
             return
 
         # decline trade holds
-        if await partner.escrow() is not None and self.options.decline_trade_hold:
+        if (
+            await partner.escrow() is not None
+            and self.options.offers.decline_trade_hold
+        ):
             logging.info("User has a trade hold")
             await self.decline(trade)
             return
@@ -566,7 +569,7 @@ class TradeManager(BaseManager):
             await self.accept(trade)
             return
 
-        if self.options.counter_bad_offers:
+        if self.options.offers.counter_wrong_values:
             logging.info("Counter offering...")
             await self.counter_offer(trade, our_items, their_items)
             return
@@ -587,7 +590,7 @@ class TradeManager(BaseManager):
 
         delta = datetime.now(timezone.utc) - updated
         delta_seconds = round(delta.total_seconds(), 1)
-        expire_time = self.options.cancel_sent_offers_after_seconds
+        expire_time = self.options.offers.cancel_sent_after_seconds
         logging.debug(f"{trade.id=} updated {delta_seconds=} ago {expire_time=}")
 
         if delta_seconds < expire_time:
@@ -608,7 +611,7 @@ class TradeManager(BaseManager):
     def is_arbitrage_offer(
         self, their_items: list[dict], our_items: list[dict]
     ) -> bool:
-        if not self.options.enable_arbitrage:
+        if not self.options.arbitrage.enable:
             return False
 
         return self.arbitrage.is_arbitrage_offer(their_items, our_items)
@@ -719,12 +722,12 @@ class TradeManager(BaseManager):
         if trade.user.id64 in self.client.pending_offer_users:
             self.client.pending_offer_users.remove(trade.user.id64)
 
-        if self.options.enable_discord:
+        if self.options.discord.enable:
             await self.discord_manager.send_offer_state_changed(
                 trade, trade.receiving, trade.sending
             )
 
-        if self.options.enable_arbitrage:
+        if self.options.arbitrage.enable:
             await self.arbitrage.process_offer_state(
                 trade, trade.receiving, trade.sending
             )

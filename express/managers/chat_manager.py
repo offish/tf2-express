@@ -12,11 +12,11 @@ class ChatManager(BaseManager):
     async def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
 
-        if not self.options.llm_chat_responses:
+        if not self.options.chat.llm_responses:
             return
 
-        api_key = self.options.llm_api_key
-        model = self.options.llm_model
+        api_key = self.options.chat.llm_api_key
+        model = self.options.chat.llm_model
         self.ai_manager = AIManager(api_key, model)
 
     def is_owner(self, message: Message) -> bool:
@@ -54,7 +54,7 @@ class ChatManager(BaseManager):
             await self.arbitrage.quicksell([])
             return
 
-        if not self.options.llm_chat_responses:
+        if not self.options.chat.llm_responses:
             await message.channel.send(self.options.messages.invalid_command)
             return
 

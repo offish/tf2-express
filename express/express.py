@@ -4,7 +4,7 @@ import logging
 
 import steam
 
-from .database import Database
+from .databases.database_providers import get_database_provider
 from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
@@ -44,7 +44,9 @@ class Express(steam.Client):
             **options.client_options,
         )
 
-        self.database = Database(options.username)
+        self.database = get_database_provider(
+            options.database_provider, options.username
+        )
 
     async def setup(self) -> None:
         # set managers
@@ -87,45 +89,48 @@ class Express(steam.Client):
         asyncio.create_task(self.pricing_manager.provider.listen())
         asyncio.create_task(self.pricing_manager.run())
 
-        if self.options.use_backpack_tf:
+        if self.options.backpack_tf.enable:
             asyncio.create_task(self.listing_manager.run())
 
-        if self.options.is_express_tf_bot:
-            asyncio.create_task(self.ws_manager.listen())
-
-        if self.options.cancel_old_sent_offers:
+        if self.options.offers.cancel_old_sent:
             asyncio.create_task(self.trade_manager.run())
 
-        if self.options.enable_arbitrage:
-            asyncio.create_task(self.arbitrage_manager.run())
-
-        if self.options.enable_discord:
+        if self.options.discord.enable:
             asyncio.create_task(self.discord_manager.run())
 
+        if self.options.arbitrage.enable:
+            asyncio.create_task(self.arbitrage_manager.run())
+
+        if self.options.express_tf.enable:
+            asyncio.create_task(self.ws_manager.listen())
+
     def options_check(self) -> None:
-        if self.options.use_backpack_tf and not self.options.backpack_tf_token:
+        if (
+            self.options.backpack_tf.enable
+            and not self.options.backpack_tf.access_token
+        ):
             raise MissingBackpackTFToken("Backpack.TF token is required for listing")
 
-        if self.options.check_backpack_tf_bans and not self.options.backpack_tf_api_key:
+        if self.options.backpack_tf.check_bans and not self.options.backpack_tf.api_key:
             raise MissingAPIKey("Backpack.TF API key is needed for ban checks")
 
-        if self.options.enable_arbitrage and not self.options.stn_api_key:
-            raise MissingAPIKey("STN.TF API key is needed for arbitrage")
-
-        if self.options.llm_chat_responses and not self.options.llm_api_key:
-            raise MissingAPIKey("You need to set an API key for AI chat responses")
-
-        if self.options.llm_chat_responses and not self.options.llm_model:
-            raise ExpressException("You need to set a model for AI chat responses")
-
-        if self.options.enable_discord and not self.options.discord_owner_ids:
+        if self.options.discord.enable and not self.options.discord.owner_ids:
             raise ExpressException("Discord bot must have at least 1 owner")
 
-        if self.options.enable_discord and not self.options.discord_token:
+        if self.options.discord.enable and not self.options.discord.token:
             raise ExpressException("Discord bot token is required")
 
-        if self.options.enable_discord and not self.options.discord_channel_id:
+        if self.options.discord.enable and not self.options.discord.channel_id:
             raise ExpressException("Discord channel ID is required")
+
+        if self.options.chat.llm_responses and not self.options.chat.llm_api_key:
+            raise MissingAPIKey("You need to set an API key for AI chat responses")
+
+        if self.options.chat.llm_responses and not self.options.chat.llm_model:
+            raise ExpressException("You need to set a model for AI chat responses")
+
+        if self.options.arbitrage.enable and not self.options.arbitrage.stn_api_key:
+            raise MissingAPIKey("STN.TF API key is needed for arbitrage")
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:
@@ -150,7 +155,7 @@ class Express(steam.Client):
         await self.setup()
 
     async def on_message(self, message: steam.Message) -> None:
-        if not self.options.send_messages:
+        if not self.options.chat.enable:
             return
 
         # ignore our own messages
@@ -231,7 +236,7 @@ class Express(steam.Client):
         )
 
     def cleanup(self) -> None:
-        if self.options.use_backpack_tf:
+        if self.options.backpack_tf.enable:
             self.listing_manager.close()
 
         asyncio.run(self.pricing_manager.provider.close())
