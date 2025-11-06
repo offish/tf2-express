@@ -112,10 +112,10 @@ def read_json_file(filename: str | Path) -> dict:
 
 
 def get_and_read_json_file(filename: str, must_exist: bool = True) -> dict:
-    path = Path(filename)
+    path = Path(__file__).parent.parent / filename
 
     if not path.exists() and not must_exist:
-        logging.info(f"File {path} does not exist, using default...")
+        logging.info(f"File {filename} does not exist, using default...")
         return {}
 
     if not path.exists() and must_exist:
@@ -166,7 +166,7 @@ def get_config() -> dict:
 
 
 def get_options(username: str) -> Options:
-    options = get_and_read_json_file("options.json")
+    options = get_and_read_json_file("options.json", must_exist=False)
     messages = get_and_read_json_file("messages.json", must_exist=False)
     backpack_tf = options.get("backpack_tf", {})
     offers = options.get("offers", {})
@@ -178,7 +178,17 @@ def get_options(username: str) -> Options:
 
     # remove all keys that are not part of Options
     for key in options.copy():
-        if key not in ["owners", "blacklist", "groups"]:
+        if key in [
+            "username",
+            "messages",
+            "backpack_tf",
+            "offers",
+            "inventory",
+            "chat",
+            "discord",
+            "arbitrage",
+            "express_tf",
+        ]:
             del options[key]
 
     return Options(
