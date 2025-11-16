@@ -65,25 +65,29 @@ pip install -r requirements.txt
 Example config:
 ```json
 {
-    "username": "username",
-    "password": "password",
-    "shared_secret": "Aa11aA1+1aa1aAa1a=",
-    "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
-    "options": {
-        "use_backpack_tf": true,
-        "backpack_tf_token": "token",
-        "enable_arbitrage": false,
-        "inventory_provider": "steamsupply",
-        "inventory_api_key": "mySteamSupplyApiKey",
-        "accept_donations": true,
-        "decline_trade_hold": true,
-        "enable_craft_hats": true,
-        "save_trade_offers": true,
-        "owners": [
-            "76511111111111111",
-            "76522222222222222"
-        ]
+  "bots": [
+    {
+      "username": "username",
+      "password": "password",
+      "shared_secret": "Aa11aA1+1aa1aAa1a=",
+      "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
+      "options": {
+          "use_backpack_tf": true,
+          "backpack_tf_token": "token",
+          "enable_arbitrage": false,
+          "inventory_provider": "steamsupply",
+          "inventory_api_key": "mySteamSupplyApiKey",
+          "accept_donations": true,
+          "decline_trade_hold": true,
+          "enable_craft_hats": true,
+          "save_trade_offers": true,
+          "owners": [
+              "76511111111111111",
+              "76522222222222222"
+          ]
+      }
     }
+  ]
 }
 ```
 
@@ -143,6 +147,7 @@ First configure the bot like shown in [Setup](#setup).
 Then change the timezone in the `Dockerfile`, it is set to use Oslo time by default.
 
 ```bash
+make freeze # will generate fresh requirements.lock.txt
 make build # will build the tf2-express docker image and install dependencies
 make run # will start mongodb and tf2-express
 ```
