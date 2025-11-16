@@ -65,29 +65,25 @@ pip install -r requirements.txt
 Example config:
 ```json
 {
-  "bots": [
-    {
-      "username": "username",
-      "password": "password",
-      "shared_secret": "Aa11aA1+1aa1aAa1a=",
-      "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
-      "options": {
-          "use_backpack_tf": true,
-          "backpack_tf_token": "token",
-          "enable_arbitrage": false,
-          "inventory_provider": "steamsupply",
-          "inventory_api_key": "mySteamSupplyApiKey",
-          "accept_donations": true,
-          "decline_trade_hold": true,
-          "enable_craft_hats": true,
-          "save_trade_offers": true,
-          "owners": [
-              "76511111111111111",
-              "76522222222222222"
-          ]
-      }
+    "username": "username",
+    "password": "password",
+    "shared_secret": "Aa11aA1+1aa1aAa1a=",
+    "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
+    "options": {
+        "use_backpack_tf": true,
+        "backpack_tf_token": "token",
+        "enable_arbitrage": false,
+        "inventory_provider": "steamsupply",
+        "inventory_api_key": "mySteamSupplyApiKey",
+        "accept_donations": true,
+        "decline_trade_hold": true,
+        "enable_craft_hats": true,
+        "save_trade_offers": true,
+        "owners": [
+            "76511111111111111",
+            "76522222222222222"
+        ]
     }
-  ]
 }
 ```
 
