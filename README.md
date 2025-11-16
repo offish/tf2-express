@@ -143,6 +143,7 @@ First configure the bot like shown in [Setup](#setup).
 Then change the timezone in the `Dockerfile`, it is set to use Oslo time by default.
 
 ```bash
+make freeze # will generate fresh requirements.lock.txt
 make build # will build the tf2-express docker image and install dependencies
 make run # will start mongodb and tf2-express
 ```
