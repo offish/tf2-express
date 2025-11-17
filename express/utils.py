@@ -153,9 +153,9 @@ def get_config() -> dict:
     else:
         logging.info("Using config for authentication")
 
-    assert username, "username is missing in config"
-    assert identity_secret, "identity_secret is missing in config"
-    assert shared_secret, "shared_secret is missing in config"
+    assert username, "username is missing"
+    assert identity_secret, "identity_secret is missing"
+    assert shared_secret, "shared_secret is missing"
 
     return {
         "username": username,

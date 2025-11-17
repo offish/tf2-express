@@ -59,36 +59,32 @@ pip install -r requirements.txt
 > You need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify collections manually.
 
 ## Setup
-> [!NOTE]
-> Make a copy of `config.example.json` and name it `config.json`. Make sure it is in the same folder as the example file. Update credentials and set your preferred `options`.
+For all of the following files, make a copy of the `x.example.json` files and rename them to not include "example" (e.g. `config.json` instead of `config.example.json`).
 
-Example config:
+### `config.json`
 ```json
 {
-    "username": "username",
-    "password": "password",
-    "shared_secret": "Aa11aA1+1aa1aAa1a=",
-    "identity_secret": "aA11aaaa/aa11a/aAAa1a1=",
-    "options": {
-        "use_backpack_tf": true,
-        "backpack_tf_token": "token",
-        "enable_arbitrage": false,
-        "inventory_provider": "steamsupply",
-        "inventory_api_key": "mySteamSupplyApiKey",
-        "accept_donations": true,
-        "decline_trade_hold": true,
-        "enable_craft_hats": true,
-        "save_trade_offers": true,
-        "owners": [
-            "76511111111111111",
-            "76522222222222222"
-        ]
-    }
+    "password": "password"
 }
 ```
 
-### Options
-| Option | Description | Default |
+> [!IMPORTANT]
+> If you only provide your account's password you need to have an **unencrypted** `.maFile` in the same folder as the config is.
+
+If you don't have the maFile for the account you want to use you can specify your config as follows:
+
+```json
+{
+    "password": "password",
+    "username": "username",
+    "shared_secret": "shared_secret=",
+    "identity_secret": "identity_secret="
+}
+```
+
+### `options.json`
+TODO 
+<!-- | Option | Description | Default |
 | ------ | ----------- | ------- |
 | `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | - |
 | `use_backpack_tf` | Whether to list items on Backpack.TF or not. | - |
@@ -112,7 +108,10 @@ Example config:
 | `groups` | List of group IDs to join. | \[] |
 | `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
 | `blacklist` | List of blacklisted SteamID64s. Bot will decline offers from blacklisted users. | \[] |
-| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | \{} |
+| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | \{} | -->
+
+### `messages.json`
+TODO
 
 ## Running
 ```bash
@@ -143,6 +142,7 @@ First configure the bot like shown in [Setup](#setup).
 Then change the timezone in the `Dockerfile`, it is set to use Oslo time by default.
 
 ```bash
+make freeze # will generate fresh requirements.lock.txt
 make build # will build the tf2-express docker image and install dependencies
 make run # will start mongodb and tf2-express
 ```
