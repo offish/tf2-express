@@ -80,8 +80,10 @@ def swap_intent(intent: str) -> str:
     return "buy" if intent.lower() == "sell" else "sell"
 
 
-def normalize_item_name(name: str) -> str:
-    name = name.lower()
+def normalize_item_name(name: str, as_lower: bool = True) -> str:
+    if as_lower:
+        name = name.lower()
+
     name = re.sub(r"[^\w\s]", "", name)
     name = re.sub(r"\s+", "_", name)
     return name
@@ -254,16 +256,14 @@ def check_for_updates() -> None:
             continue
 
         current_version = current_versions[key]
-        newest_version = newest_versions[key]
+        new_version = newest_versions[key]
 
-        if current_version != newest_version:
+        if current_version != new_version:
             has_outdated = True
             name = key.replace("_version", "").replace("_", "-")
 
             logging.warning(f"{name} has a new version. You should probably upgrade.")
-            logging.warning(
-                f"Installed version: {current_version}, available: {newest_version}"
-            )
+            logging.warning(f"v{new_version} is available (v{current_version})")
 
     if not has_outdated:
         logging.info("All packages are up to date!")

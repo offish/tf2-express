@@ -1,9 +1,7 @@
 {
     "price_provider": "pricedb",
     "database_provider": "mongodb",
-    "owners": [
-        "76561198253325712"
-    ],
+    "owners": [],
     "blacklist": [],
     "backpack_tf": {
         "enable": false,

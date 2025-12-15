@@ -519,7 +519,9 @@ class TradeManager(BaseManager):
 
         if self.is_arbitrage_offer(their_items, our_items):
             logging.info("Offer is an arbitrage offer")
-            await self.arbitrage.process_offer(trade, their_items, our_items)
+            await self.arbitrage.process_offer(
+                trade, their_items, our_items, offer_data
+            )
             return
 
         # only items on our side
@@ -703,12 +705,9 @@ class TradeManager(BaseManager):
         if trade.state == steam.TradeOfferState.Active:
             return
 
-        if trade.state != steam.TradeOfferState.Accepted:
-            await self.send_message(trade.user, f"Your offer was {state_name}")
-
         if offer_id in self.client.pending_site_offers:
-            self.client.ws_manager.remove_user_from_queue(steam_id)
-            await self.client.ws_manager._send_ws_message(
+            self.client.site_manager.remove_user_from_queue(steam_id)
+            await self.client.site_manager._send_ws_message(
                 {
                     "success": was_accepted,
                     "steam_id": steam_id,
@@ -727,13 +726,8 @@ class TradeManager(BaseManager):
                 trade, trade.receiving, trade.sending
             )
 
-        if self.options.arbitrage.enable:
-            await self.arbitrage.process_offer_state(
-                trade, trade.receiving, trade.sending
-            )
-
         if not was_accepted:
-            return
+            return await self.send_message(trade.user, f"Your offer was {state_name}")
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
         our_items = [item_object_to_item_data(i) for i in trade.sending]
@@ -754,21 +748,23 @@ class TradeManager(BaseManager):
 
         self.database.insert_trade(offer_data)
 
-        # error, need to refetch inventory
-        if None in their_items or None in our_items:
-            logging.warning("Error converting items after offer was accepted")
-            self.inventory_manager.fetch_our_inventory()
-            self.inventory_manager.set_inventory_changed()
-            return
+        self.inventory_manager.fetch_our_inventory()
+        self.inventory_manager.set_inventory_changed()
 
-        logging.debug("Getting receipt...")
+        logging.info("Inventory was updated")
 
-        receipt = await trade.receipt()
-        await self.client.inventory_manager.update_inventory_with_receipt(
-            their_items, our_items, receipt
-        )
+        # NOTE: this fails randomly due to keys missing. steam.py or steam issue
+        # logging.debug("Getting receipt...")
 
-        logging.debug("Inventory was updated after receipt")
+        # receipt = await trade.receipt()
+        # await self.client.inventory_manager.update_inventory_with_receipt(
+        #     their_items, our_items, receipt
+        # )
+
+        # logging.debug("Inventory was updated after receipt")
+
+        if self.options.arbitrage.enable and was_accepted:
+            await self.arbitrage.after_offer_accepted(their_items, our_items)
 
     async def run(self) -> None:
         # checks for stale offers

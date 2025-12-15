@@ -9,7 +9,7 @@ from ..utils import swap_intent
 from .base_manager import BaseManager
 
 
-class WebSocketManager(BaseManager):
+class SiteManager(BaseManager):
     async def setup(self) -> None:
         self.ws = None
         self._users_in_queue = set()

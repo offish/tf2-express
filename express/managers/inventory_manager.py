@@ -1,7 +1,4 @@
-import logging
-
-from steam import MovedItem, TradeOfferReceipt
-from tf2_utils import get_sku
+from steam import MovedItem
 
 from ..inventory import ExpressInventory
 from ..utils import is_same_item
@@ -46,35 +43,36 @@ class InventoryManager(BaseManager, ExpressInventory):
         if self.options.backpack_tf.enable:
             self.client.listing_manager.set_inventory_changed()
 
-    async def update_inventory_with_receipt(
-        self, their_items: list[dict], our_items: list[dict], receipt: TradeOfferReceipt
-    ) -> None:
-        logging.debug(f"{receipt=}")
-        updated_inventory = self.our_inventory.copy()
+    # NOTE: this fails randomly due to keys missing. steam.py or steam issue
+    # async def update_inventory_with_receipt(
+    #     self, their_items: list[dict], our_items: list[dict], receipt: TradeOfferReceipt
+    # ) -> None:
+    #     logging.debug(f"{receipt=}")
+    #     updated_inventory = self.our_inventory.copy()
 
-        for item in our_items:
-            for old_item in updated_inventory.copy():
-                if not is_same_item(item, old_item):
-                    continue
+    #     for item in our_items:
+    #         for old_item in updated_inventory.copy():
+    #             if not is_same_item(item, old_item):
+    #                 continue
 
-                index = updated_inventory.index(old_item)
-                del updated_inventory[index]
-                break
+    #             index = updated_inventory.index(old_item)
+    #             del updated_inventory[index]
+    #             break
 
-        for item in their_items:
-            asset_id = self._get_new_asset_id(item, receipt.received)
-            sku = get_sku(item)
+    #     for item in their_items:
+    #         asset_id = self._get_new_asset_id(item, receipt.received)
+    #         sku = get_sku(item)
 
-            logging.debug(f"{item=}")
-            logging.debug(f"{sku=}")
-            logging.debug(f"{asset_id=}")
+    #         logging.debug(f"{item=}")
+    #         logging.debug(f"{sku=}")
+    #         logging.debug(f"{asset_id=}")
 
-            item["sku"] = get_sku(item)
-            item["assetid"] = str(asset_id)
+    #         item["sku"] = get_sku(item)
+    #         item["assetid"] = str(asset_id)
 
-            updated_inventory.append(item)
+    #         updated_inventory.append(item)
 
-        self.set_our_inventory(updated_inventory)
+    #     self.set_our_inventory(updated_inventory)
 
-        logging.info("Inventory was updated")
-        self.set_inventory_changed()
+    #     logging.info("Inventory was updated")
+    #     self.set_inventory_changed()

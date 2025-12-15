@@ -51,7 +51,6 @@ class DiscordOptions:
 class ArbitrageOptions:
     enable: bool = False
     minimum_profit: float = 0.11
-    check_interval_seconds: int = 300
     stn_api_key: str = ""
     quicksell: bool = False
     quickbuy: bool = False

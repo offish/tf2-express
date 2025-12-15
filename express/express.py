@@ -13,8 +13,8 @@ from .managers.discord_manager import DiscordManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
 from .managers.pricing_manager import PricingManager
+from .managers.site_manager import SiteManager
 from .managers.trade_manager import TradeManager
-from .managers.websocket_manager import WebSocketManager
 from .options import Options
 
 
@@ -35,7 +35,7 @@ class Express(steam.Client):
         self.discord_manager = None
         self.trade_manager = None
         self.chat_manager = None
-        self.ws_manager = None
+        self.site_manager = None
 
         super().__init__(
             app=steam.TF2,
@@ -57,7 +57,7 @@ class Express(steam.Client):
         self.discord_manager = DiscordManager(self)
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
-        self.ws_manager = WebSocketManager(self)
+        self.site_manager = SiteManager(self)
 
         managers: list[BaseManager] = [
             self.inventory_manager,
@@ -67,7 +67,7 @@ class Express(steam.Client):
             self.discord_manager,
             self.trade_manager,
             self.chat_manager,
-            self.ws_manager,
+            self.site_manager,
         ]
 
         for manager in managers:
@@ -102,7 +102,7 @@ class Express(steam.Client):
             asyncio.create_task(self.arbitrage_manager.run())
 
         if self.options.express_tf.enable:
-            asyncio.create_task(self.ws_manager.listen())
+            asyncio.create_task(self.site_manager.listen())
 
     def options_check(self) -> None:
         if (
@@ -143,10 +143,7 @@ class Express(steam.Client):
             await asyncio.sleep(1)
 
     def add_offer_data(self, offer_id: int | str, offer_data: dict) -> None:
-        if isinstance(offer_id, int):
-            offer_id = str(offer_id)
-
-        self.processed_offers[offer_id] = offer_data
+        self.processed_offers[str(offer_id)] = offer_data
 
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")

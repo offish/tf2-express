@@ -3,7 +3,7 @@ from typing import Callable
 from .price_provider import PriceProvider
 from .pricedb import PriceDB
 
-PROVIDERS = [PriceDB]
+PROVIDERS: list[PriceProvider] = [PriceDB]
 
 
 def get_price_provider(

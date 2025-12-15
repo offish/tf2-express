@@ -11,4 +11,4 @@ class Express:
         self.discord_manager = None
         self.trade_manager = None
         self.chat_manager = None
-        self.ws_manager = None
+        self.site_manager = None

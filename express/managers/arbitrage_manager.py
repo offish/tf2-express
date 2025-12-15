@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Any
 
 from steam import TradeOffer
 
@@ -46,19 +45,25 @@ class ArbitrageManager(BaseManager):
         return await self.arbitrage.quicksell(skus)
 
     async def process_offer(
-        self, trade: TradeOffer, their_items: list[dict], our_items: list[dict]
+        self,
+        trade: TradeOffer,
+        their_items: list[dict],
+        our_items: list[dict],
+        offer_data: dict,
     ) -> None:
-        return await self.arbitrage.process_offer(trade, their_items, our_items)
+        return await self.arbitrage.process_offer(
+            trade, their_items, our_items, offer_data
+        )
 
-    async def process_offer_state(
-        self, trade: TradeOffer, their_items: list[Any], our_items: list[Any]
+    async def after_offer_accepted(
+        self, their_items: list[dict], our_items: list[dict]
     ) -> None:
-        return await self.arbitrage.process_offer_state(trade, their_items, our_items)
+        return await self.arbitrage.after_offer_accepted(their_items, our_items)
 
     async def run(self) -> None:
         while True:
-            logging.info("Looking for arbitrage deals...")
-            await self.arbitrage.find()
-            logging.info("Done looking for deals")
+            logging.info("Looking for arbitrages...")
+            await self.arbitrage.find_arbitrages()
+            logging.info("Done looking for arbitrages")
 
             await asyncio.sleep(60)
