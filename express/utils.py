@@ -9,8 +9,8 @@ from backpack_tf import __version__ as backpack_tf_version
 from steam import __version__ as steam_py_version
 from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
-from tf2_utils import SchemaItemsUtils, sku_to_color
 from tf2_utils import __version__ as tf2_utils_version
+from tf2_utils import sku_to_color
 
 from . import __version__ as tf2_express_version
 from .options import (
@@ -24,8 +24,7 @@ from .options import (
     OffersOptions,
     Options,
 )
-
-schema_items_utils = SchemaItemsUtils()
+from .schema import schema
 
 
 def has_correct_price_format(data: dict) -> bool:
@@ -98,9 +97,9 @@ def is_two_sided_offer(their_items_amount: int, our_items_amount: int) -> bool:
 
 
 def sku_to_item_data(sku: str) -> dict:
-    name = schema_items_utils.sku_to_name(sku)
+    name = schema.sku_to_name(sku)
     color = sku_to_color(sku)
-    image = schema_items_utils.sku_to_image_url(sku)
+    image = schema.sku_to_image_url(sku)
     return {"sku": sku, "name": name, "image": image, "color": color}
 
 
@@ -244,12 +243,12 @@ def get_newest_versions() -> dict[str, str]:
     }
 
 
-def check_for_updates() -> None:
+def check_new_version() -> None:
     logging.info("Checking for updates...")
 
     current_versions = get_versions()
     newest_versions = get_newest_versions()
-    has_outdated = False
+    is_outdated = False
 
     for key in current_versions:
         if key not in newest_versions:
@@ -259,13 +258,13 @@ def check_for_updates() -> None:
         new_version = newest_versions[key]
 
         if current_version != new_version:
-            has_outdated = True
+            is_outdated = True
             name = key.replace("_version", "").replace("_", "-")
 
             logging.warning(f"{name} has a new version. You should probably upgrade.")
             logging.warning(f"v{new_version} is available (v{current_version})")
 
-    if not has_outdated:
+    if not is_outdated:
         logging.info("All packages are up to date!")
 
 

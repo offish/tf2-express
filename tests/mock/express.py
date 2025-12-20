@@ -12,3 +12,4 @@ class Express:
         self.trade_manager = None
         self.chat_manager = None
         self.site_manager = None
+        self.api_manager = None

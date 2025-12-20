@@ -1,23 +1,45 @@
 import logging
+import os
 
-from steam import Message
+from litellm import completion
+from steam import Channel, Message, User
 
 from ..command import parse_command, try_parse_sku
 from ..utils import swap_intent
-from .ai_manager import AIManager
 from .base_manager import BaseManager
+
+
+class LLM:
+    def __init__(self, api_key: str, model: str) -> None:
+        provider = model.split("/")[0]
+        provider_key = f"{provider}_API_KEY".upper()
+        os.environ[provider_key] = api_key
+        self.model = model
+
+    def prompt(self, system_prompt: str, text: str) -> str:
+        response = completion(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text},
+            ],
+        )
+        return response.choices[0].message.content
 
 
 class ChatManager(BaseManager):
     async def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
+        self.trade = self.client.trade_manager
 
         if not self.options.chat.llm_responses:
             return
 
         api_key = self.options.chat.llm_api_key
         model = self.options.chat.llm_model
-        self.ai_manager = AIManager(api_key, model)
+
+        self.system_prompt = self.options.messages.system_prompt
+        self.llm = LLM(api_key, model)
 
     def is_owner(self, message: Message) -> bool:
         return str(message.author.id64) in self.options.owners
@@ -26,50 +48,56 @@ class ChatManager(BaseManager):
         items = message.replace(command, "").split(",")
         return [item.strip() for item in items]
 
-    async def process_message(self, message: Message, msg: str) -> None:
-        if msg == "help":
-            await self.handle_help_command(message)
+    async def send_message(self, recipient: User | Channel, message: str) -> None:
+        if not self.options.chat.send_messages:
+            logging.debug(f"sending messages is disabled, not sending {message}")
             return
 
+        await recipient.send(message)
+
+    async def process_message(self, message: Message, msg: str) -> None:
+        if msg == "help":
+            return await self.handle_help_command(message)
+
         if msg.startswith("buy") or msg.startswith("sell"):
-            await self.handle_buy_sell_command(message, msg)
-            return
+            return await self.handle_buy_sell_command(message, msg)
 
         if (
             msg.startswith("price")
             or msg.startswith("check")
             or msg.startswith("stock")
         ):
-            await self.handle_price_command(message, msg)
-            return
+            return await self.handle_price_command(message, msg)
 
         if msg.startswith("quickbuy") and self.is_owner(message):
             items = self.get_items(msg, "quickbuy")
-            await message.channel.send(f"Processing quickbuy for items: {items}")
-            await self.arbitrage.quickbuy(items)
-            return
+            content = f"Processing quickbuy for items: {items}"
+            await self.send_message(message.channel, content)
+            return await self.arbitrage.quickbuy(items)
 
         if msg.startswith("quicksell") and self.is_owner(message):
-            await message.channel.send("Going to quicksell all items")
-            await self.arbitrage.quicksell([])
-            return
+            content = "Going to quicksell all items"
+            await self.send_message(message.channel, content)
+            return await self.arbitrage.quicksell([])
 
         if not self.options.chat.llm_responses:
-            await message.channel.send(self.options.messages.invalid_command)
-            return
+            return await self.send_message(
+                message.channel, self.options.messages.invalid_command
+            )
 
-        response = self.ai_manager.prompt(msg)
-        await message.channel.send(response)
+        response = self.llm.prompt(self.system_prompt, msg)
+        await self.send_message(message.channel, response)
 
     async def handle_help_command(self, message: Message) -> None:
-        await message.channel.send(self.options.messages.help_command)
+        content = self.options.messages.help_command
+        await self.send_message(message.channel, content)
 
     async def handle_buy_sell_command(self, message: Message, msg: str) -> None:
         data = parse_command(msg)
 
         if data is None:
-            await message.channel.send(self.options.messages.invalid_command)
-            return
+            content = self.options.messages.invalid_command
+            return await self.send_message(message.channel, content)
 
         # parse message
         intent = data["intent"]
@@ -84,8 +112,8 @@ class ChatManager(BaseManager):
             item = self.database.find_item_by_name(item_name)
 
             if item is None:
-                await message.channel.send(f"Error. No item with name '{item_name}'")
-                return
+                content = f"Error. No item with name '{item_name}'"
+                return await self.send_message(message.channel, content)
 
             sku = item["sku"]
 
@@ -94,25 +122,27 @@ class ChatManager(BaseManager):
         )
 
         if amount < 1:
-            await message.channel.send("You must trade at least 1 item")
+            content = "You must trade at least 1 item"
+            await self.send_message(message.channel, content)
             return
 
         if amount > 10:
-            await message.channel.send("You can only trade up to 10 items at a time")
+            content = "You can only trade up to 10 items at a time"
+            await self.send_message(message.channel, content)
             amount = 10
 
         # swap intents
         intent = swap_intent(intent)
 
-        await message.channel.send(f"Processing your trade for {amount} of {sku}...")
+        content = f"Processing your trade for {amount} of {sku}..."
+        await self.send_message(message.channel, content)
 
         if message.author.id64 in self.client.pending_offer_users:
-            await message.channel.send(self.options.messages.user_pending_offer)
-            return
+            content = self.options.messages.user_pending_offer
+            return await self.send_message(message.channel, content)
 
-        offer_id = await self.client.trade_manager.send_offer(
-            message.author, intent, [sku] * amount, "sku"
-        )
+        items = [sku] * amount
+        offer_id = await self.trade.send_offer(message.author, intent, items, "sku")
 
         if offer_id:
             self.client.pending_offer_users.add(message.author.id64)
@@ -130,8 +160,8 @@ class ChatManager(BaseManager):
             item = self.database.find_item_by_name(item_name)
 
             if item is None:
-                await message.channel.send(f"Error. No item with name '{item_name}'")
-                return
+                content = f"Error. No item with name '{item_name}'"
+                return await self.send_message(message.channel, content)
 
             sku = item["sku"]
 
@@ -140,8 +170,8 @@ class ChatManager(BaseManager):
         data = self.client.pricing_manager.get_item(sku)
 
         if not data:
-            await message.channel.send("Could not find information for this item")
-            return
+            content = "Could not find information for this item"
+            return await self.send_message(message.channel, content)
 
         buy_price: dict = data["buy"]
         sell_price: dict = data["sell"]
@@ -155,7 +185,7 @@ class ChatManager(BaseManager):
         if max_stock == -1:
             max_stock = "∞"
 
-        text = self.options.messages.price_command.format(
+        content = self.options.messages.price_command.format(
             sku=sku,
             buy_keys=buy_keys,
             buy_metal=buy_metal,
@@ -164,4 +194,4 @@ class ChatManager(BaseManager):
             in_stock=in_stock,
             max_stock=max_stock,
         )
-        await message.channel.send(text)
+        await self.send_message(message.channel, content)

@@ -1,11 +1,14 @@
 import asyncio
 import atexit
 import logging
+import time
 
 import steam
+from tf2_utils import to_scrap
 
 from .databases.database_providers import get_database_provider
 from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
+from .managers.api_manager import APIManager
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
@@ -20,6 +23,8 @@ from .options import Options
 
 class Express(steam.Client):
     def __init__(self, options: Options) -> None:
+        self.started_at = time.time()
+
         self.options = options
         self.options_check()
         self.are_prices_updated = False
@@ -36,6 +41,7 @@ class Express(steam.Client):
         self.trade_manager = None
         self.chat_manager = None
         self.site_manager = None
+        self.api_manager = None
 
         super().__init__(
             app=steam.TF2,
@@ -58,6 +64,7 @@ class Express(steam.Client):
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
         self.site_manager = SiteManager(self)
+        self.api_manager = APIManager(self)
 
         managers: list[BaseManager] = [
             self.inventory_manager,
@@ -68,6 +75,7 @@ class Express(steam.Client):
             self.trade_manager,
             self.chat_manager,
             self.site_manager,
+            self.api_manager,
         ]
 
         for manager in managers:
@@ -88,6 +96,7 @@ class Express(steam.Client):
 
         asyncio.create_task(self.pricing_manager.provider.listen())
         asyncio.create_task(self.pricing_manager.run())
+        asyncio.create_task(self.api_manager.run())
 
         if self.options.backpack_tf.enable:
             asyncio.create_task(self.listing_manager.run())
@@ -142,9 +151,6 @@ class Express(steam.Client):
         while not self.are_prices_updated:
             await asyncio.sleep(1)
 
-    def add_offer_data(self, offer_id: int | str, offer_data: dict) -> None:
-        self.processed_offers[str(offer_id)] = offer_data
-
     async def on_ready(self) -> None:
         logging.info(f"Logged into Steam as {self.username}")
 
@@ -152,6 +158,7 @@ class Express(steam.Client):
         await self.setup()
 
     async def on_message(self, message: steam.Message) -> None:
+        # dont process messages if chat is disabled
         if not self.options.chat.enable:
             return
 
@@ -177,6 +184,10 @@ class Express(steam.Client):
         await invite.accept()
 
     async def on_friend_add(self, friend: steam.Friend) -> None:
+        # dont send welcome message if disabled
+        if not self.options.chat.send_messages:
+            return
+
         message = self.options.messages.friend_accept.format(username=friend.name)
         await friend.send(message)
 
@@ -203,6 +214,14 @@ class Express(steam.Client):
         if offer_id in self.processed_offers:
             del self.processed_offers[offer_id]
 
+    def get_key_price(self, intent: str) -> int:
+        item = self.database.get_item("5021;6")
+        metal = item[intent]["metal"]
+        return to_scrap(metal)
+
+    def add_offer_data(self, offer_id: int | str, offer_data: dict) -> None:
+        self.processed_offers[str(offer_id)] = offer_data
+
     async def join_groups(self) -> None:
         groups = [103582791463210863, *self.options.groups]
 
@@ -213,6 +232,12 @@ class Express(steam.Client):
                 continue
 
             await group.join()
+
+    async def test(self) -> None:
+        await self.setup()
+
+        while True:
+            await asyncio.sleep(10)
 
     def start(
         self,

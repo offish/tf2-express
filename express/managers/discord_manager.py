@@ -28,7 +28,7 @@ class DiscordManager(BaseManager, discord.Client):
     async def on_ready(self):
         logging.info(f"Logged on as {self.user}!")
 
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
 

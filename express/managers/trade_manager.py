@@ -58,10 +58,12 @@ class TradeManager(BaseManager):
         )
 
     async def send_message(self, user: steam.User, message: str) -> None:
-        if not self.options.chat.enable:
+        if not self.options.chat.send_messages:
+            logging.debug(f"sending messages is disabled, not sending {message}")
             return
 
         if not user.is_friend():
+            logging.debug(f"User {user.id64} is not a friend, not sending {message}")
             return
 
         await user.send(message)

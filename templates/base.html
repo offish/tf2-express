@@ -13,17 +13,10 @@
     <nav class="bg-darkbg text-white p-4 flex items-center shadow-lg">
         <a class="text-primary text-2xl font-bold ml-5 mr-8" href="/">tf2-express</a>
         <ul class="flex space-x-6 text-lg">
-            <li><a class="hover:text-primary transition-colors" href="/?db={{ db_name }}">Home</a></li>
-            <li><a class="hover:text-primary transition-colors" href="/items?db={{ db_name }}">Items</a></li>
-            <li><a class="hover:text-primary transition-colors" href="/trades?db={{ db_name }}">Trades</a></li>
-            <li class="relative group">
-                <a class="hover:text-primary transition-colors cursor-pointer">Database ({{ db_name }})</a>
-                <div class="absolute left-0 mt-0.5 w-44 bg-darkcard text-white py-2 shadow-lg rounded-md border border-jet opacity-0 invisible scale-95 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:scale-100">
-                    {% for db in database_names %}
-                    <a class="block px-4 py-2 hover:bg-primary hover:text-black transition-colors" href="?db={{ db }}">{{ db }}</a>
-                    {% endfor %}
-                </div>
-            </li>
+            <li><a class="hover:text-primary transition-colors" href="/">Home</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/items">Items</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/inventory">Inventory</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/trades">Trades</a></li>
         </ul>
     </nav>
 </header>

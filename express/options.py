@@ -33,8 +33,9 @@ class OffersOptions:
 
 @dataclass
 class ChatOptions:
-    enable: bool = True
-    llm_responses: bool = False  #  for chat commands which are not recognized
+    enable: bool = True  # wheter to process chats
+    send_messages: bool = False  # allow bot to send messages in chat
+    llm_responses: bool = False  # for chat commands which are not recognized
     llm_model: str = "groq/llama-3.3-70b-versatile"
     llm_api_key: str = ""
 

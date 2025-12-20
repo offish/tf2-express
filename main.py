@@ -5,7 +5,7 @@ from express.express import Express
 from express.utils import (
     ExpressFileFormatter,
     ExpressFormatter,
-    check_for_updates,
+    check_new_version,
     create_and_get_log_file,
     get_config,
     get_options,
@@ -36,7 +36,7 @@ def main() -> None:
     options = get_options(username)
 
     if options.check_updates:
-        check_for_updates()
+        check_new_version()
 
     express = Express(options)
     express.start(**config)

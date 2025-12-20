@@ -1,7 +1,15 @@
 import logging
 import time
 
-from tf2_utils import InvalidInventory, Inventory, Item, get_sku, is_pure, map_inventory
+from tf2_utils import (
+    InvalidInventory,
+    Inventory,
+    get_metal,
+    get_sku,
+    is_key,
+    is_pure,
+    map_inventory,
+)
 
 
 class ExpressInventory(Inventory):
@@ -12,6 +20,8 @@ class ExpressInventory(Inventory):
         api_key: str = "",
     ) -> None:
         self.steam_id = our_steam_id
+        self.our_inventory: list[dict] = []
+        self.their_inventory: list[dict] = []
 
         super().__init__(provider_name, api_key)
 
@@ -49,83 +59,6 @@ class ExpressInventory(Inventory):
     def get_their_inventory(self) -> list[dict]:
         return self.their_inventory.copy()
 
-    def get_stock(self) -> dict[str, int]:
-        stock = {"-100;6": 0}
-
-        if self.our_inventory is None:
-            logging.warning("Inventory was not fetched")
-            return stock
-
-        for item in self.our_inventory:
-            item_util = Item(item)
-            sku = item["sku"]
-
-            if item_util.is_craft_hat():
-                stock["-100;6"] += 1
-
-            if sku not in stock:
-                stock[sku] = 1
-            else:
-                stock[sku] += 1
-
-        logging.debug(f"Stock: {stock}")
-
-        return stock
-
-    def get_non_pure_items(self) -> list[str]:
-        non_pure_items = []
-
-        if self.our_inventory is None:
-            logging.warning("Inventory was not fetched")
-            return non_pure_items
-
-        for item in self.our_inventory:
-            sku = item["sku"]
-
-            if not is_pure(sku):
-                non_pure_items.append(sku)
-
-        logging.debug(f"Non-pure items: {non_pure_items}")
-
-        return non_pure_items
-
-    def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
-        inventory = self.our_inventory if who == "us" else self.their_inventory
-
-        for item in inventory:
-            if item["sku"] == sku:
-                return True
-
-        return False
-
-    def has_sku_in_their_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "them")
-
-    def has_sku_in_our_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "us")
-
-    def get_last_item(self, sku: str, who: str = "us") -> dict:
-        inventory = self.our_inventory if who == "us" else self.their_inventory
-        last_item = {}
-
-        for item in inventory:
-            if item["sku"] == sku:
-                last_item = item
-
-        return last_item
-
-    def get_last_item_in_their_inventory(self, sku: str) -> dict:
-        return self.get_last_item(sku, "them")
-
-    def get_last_item_in_our_inventory(self, sku: str) -> dict:
-        return self.get_last_item(sku, "us")
-
-    def remove_item(self, item: dict) -> None:
-        self.our_inventory.remove(item)
-
-    def add_item(self, item: dict) -> None:
-        self.our_inventory.append(item)
-
 
 def get_non_pure_skus(items: list[dict]) -> list[str]:
     skus = []
@@ -137,3 +70,21 @@ def get_non_pure_skus(items: list[dict]) -> list[str]:
             skus.append(sku)
 
     return skus
+
+
+def get_keys_and_scrap(inventory: list[dict]) -> tuple[int, int]:
+    keys = 0
+    scrap = 0
+
+    for i in inventory:
+        sku = i["sku"]
+
+        if is_key(sku):
+            keys += 1
+            continue
+
+        if is_pure(sku):
+            scrap += get_metal(sku)
+            continue
+
+    return keys, scrap

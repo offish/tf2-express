@@ -79,3 +79,4 @@ class Messages:
     user_banned: str = USER_BANNED
     user_blacklisted: str = USER_BLACKLISTED
     user_pending_offer: str = USER_PENDING_OFFER
+    system_prompt: str = SYSTEM_PROMPT

@@ -24,6 +24,7 @@
     },
     "chat": {
         "enable": true,
+        "send_messages": false,
         "llm_responses": false,
         "llm_model": "groq/llama-3.3-70b-versatile",
         "llm_api_key": "apikey"

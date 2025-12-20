@@ -8,46 +8,56 @@ panel = Panel()
 
 @app.route("/")
 def overview():
-    return panel.get_overview(request)
+    return panel.get_overview()
 
 
 @app.route("/items")
 def items():
-    return panel.get_items(request)
+    return panel.get_items()
 
 
 @app.route("/item/<sku>")
 def item_info(sku: str):
-    return panel.get_item_info(request, sku)
+    return panel.get_item_info(sku)
 
 
 @app.route("/add", methods=["POST"])
 def add():
-    database_name = panel.add_item(request)
-    return redirect(f"/items?db={database_name}")
+    panel.add_item(request)
+    return redirect("/items")
 
 
 @app.route("/autoprice/<sku>")
 def autoprice(sku: str):
-    database_name = panel.autoprice_item(request, sku)
-    return redirect(f"/items?db={database_name}")
+    panel.autoprice_item(sku)
+    return redirect("/items")
 
 
 @app.route("/edit", methods=["POST"])
 def edit():
-    database_name = panel.edit_item(request)
-    return redirect(f"/items?db={database_name}")
+    panel.edit_item(request)
+    return redirect("/items")
 
 
 @app.route("/delete/<sku>")
 def delete(sku: str):
-    database_name = panel.delete_item(request, sku)
-    return redirect(f"/items?db={database_name}")
+    panel.database.delete_item(sku)
+    return redirect("/items")
 
 
 @app.route("/trades")
 def trades():
     return panel.get_trades(request)
+
+
+@app.route("/inventory")
+def get_inventory():
+    return panel.get_inventory()
+
+
+@app.route("/prices/<sku>")
+def get_prices(sku: str):
+    return panel.get_prices(sku)
 
 
 if __name__ == "__main__":
