@@ -49,6 +49,9 @@ class TradeManager(BaseManager):
         for i in range(tries):
             try:
                 return await action_func()
+            except ValueError as e:
+                logging.debug(f"Error {action_name.lower()}: {e}")
+                return
             except steam.errors.HTTPException as e:
                 logging.debug(f"Error {action_name.lower()}: {e}")
                 await asyncio.sleep(2**i)
@@ -56,17 +59,6 @@ class TradeManager(BaseManager):
         logging.warning(
             f"Failed when {action_name.lower()} offer #{trade.id} after {tries} attempts"
         )
-
-    async def send_message(self, user: steam.User, message: str) -> None:
-        if not self.options.chat.send_messages:
-            logging.debug(f"sending messages is disabled, not sending {message}")
-            return
-
-        if not user.is_friend():
-            logging.debug(f"User {user.id64} is not a friend, not sending {message}")
-            return
-
-        await user.send(message)
 
     def is_owner(self, steam_id: str | int) -> bool:
         return str(steam_id) in self.owners
@@ -221,7 +213,6 @@ class TradeManager(BaseManager):
 
     async def _get_selected_items(
         self,
-        partner: steam.User,
         intent: str,
         items: list[str],
         item_type: str,
@@ -235,7 +226,6 @@ class TradeManager(BaseManager):
         item_list = items.copy()
         selected_items = []
         total_scrap_value = 0
-        message = ""
 
         logging.debug(f"{key_scrap_price=} with {swapped_intent=} ({scrap_value=})")
 
@@ -262,13 +252,11 @@ class TradeManager(BaseManager):
 
             if not scrap_value and sku not in all_skus:
                 logging.warning(f"We are not banking {sku}!")
-                message = f"Sorry, I'm not banking {sku}"
-                break
+                return
 
             if not scrap_value and not self.database.has_price(sku):
                 logging.warning(f"Item {sku} does not have a price")
-                message = f"Sorry, I do not have a price for {sku}"
-                break
+                return
 
             scrap = 0
 
@@ -286,25 +274,14 @@ class TradeManager(BaseManager):
 
         logging.debug(f"{len(selected_items)=} {len(items)=}")
 
-        if not message and len(selected_items) != len(items):
+        if len(selected_items) != len(items):
             logging.warning("Not all items were found")
+            return
 
-            if intent == "buy":
-                message = "Sorry, one or more items you requested was not found in your inventory"
-            else:
-                message = "Sorry, one or more items you requested has already been traded away"
-
-        logging.debug(f"{message=}")
-
-        # if a message was set, an error occured
-        if not message:
-            return (selected_items, total_scrap_value)
-
-        await self.send_message(partner, message)
+        return (selected_items, total_scrap_value)
 
     async def _get_offer_items(
         self,
-        partner: steam.User,
         intent: str,
         items: list[str],
         item_type: str,
@@ -316,7 +293,7 @@ class TradeManager(BaseManager):
         selected_inventory = their_inventory if intent == "buy" else our_inventory
 
         data = await self._get_selected_items(
-            partner, intent, items, item_type, selected_inventory, scrap_value
+            intent, items, item_type, selected_inventory, scrap_value
         )
 
         if data is None:
@@ -339,10 +316,6 @@ class TradeManager(BaseManager):
 
         if not currencies.is_possible:
             logging.warning("Currencies does not add up for trade")
-            await self.send_message(
-                partner,
-                "Sorry, metal did not add up for this trade. Do you have enough metal?",
-            )
             return
 
         their_metal, our_metal = currencies.get_currencies()
@@ -367,21 +340,14 @@ class TradeManager(BaseManager):
 
         # get fresh instance of inventory (stores both our and theirs)
         inventory = self.inventory_manager.get_inventory_instance()
-        our_inventory = self.inventory_manager.our_inventory
-        their_inventory = inventory.fetch_their_inventory(partner_steam_id)
+        our_inventory = self.inventory_manager.get_our_inventory()
+        their_inventory = await inventory.fetch_their_inventory(partner_steam_id)
         data = await self._get_offer_items(
-            partner,
-            intent,
-            items,
-            item_type,
-            their_inventory,
-            our_inventory,
-            scrap_value,
+            intent, items, item_type, their_inventory, our_inventory, scrap_value
         )
 
         if data is None:
             logging.warning("Error, could not get items for offer")
-            await self.send_message(partner, self.options.messages.sending_offer_error)
             return
 
         their_items, our_items = data
@@ -392,7 +358,6 @@ class TradeManager(BaseManager):
 
         if not is_adding_up:
             logging.warning("Error, values in offer did not add up!")
-            await self.send_message(partner, self.options.messages.sending_offer_error)
             return
 
         logging.debug(f"Value for trade was equal {their_value=} {our_value=}")
@@ -609,7 +574,6 @@ class TradeManager(BaseManager):
     async def process_offer(self, trade: steam.TradeOffer) -> dict[str, Any]:
         offer_data = {}
         await self._process_offer(trade, offer_data)
-
         return offer_data
 
     def is_arbitrage_offer(
@@ -639,12 +603,10 @@ class TradeManager(BaseManager):
 
         if self.is_blacklisted(steam_id):
             logging.info("User is blacklisted, not sending offer")
-            await self.send_message(partner, self.options.messages.user_blacklisted)
             return 0
 
         if self.listing_manager.is_backpack_tf_banned(steam_id):
             logging.info("User is banned on Backpack.TF, not sending offer")
-            await self.send_message(partner, self.options.messages.user_banned)
             return 0
 
         await self.client.bot_is_ready_and_prices_updated()
@@ -658,13 +620,10 @@ class TradeManager(BaseManager):
         offer, offer_data = data
         logging.info(f"Sending offer to {partner.name}...")
 
-        await self.send_message(partner, self.options.messages.sending_offer)
-
         try:
             await partner.send(trade=offer)
         except steam.errors.HTTPException:
             logging.warning(f"There was an error while sending offer to {partner.name}")
-            await self.send_message(partner, self.options.messages.sending_offer_error)
             return 0
 
         self.client.add_offer_data(offer.id, offer_data)
@@ -729,12 +688,10 @@ class TradeManager(BaseManager):
             )
 
         if not was_accepted:
-            return await self.send_message(trade.user, f"Your offer was {state_name}")
+            return
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
         our_items = [item_object_to_item_data(i) for i in trade.sending]
-
-        await self.send_message(trade.user, self.options.messages.offer_accepted)
 
         offer_data |= {
             "offer_id": offer_id,
@@ -750,20 +707,10 @@ class TradeManager(BaseManager):
 
         self.database.insert_trade(offer_data)
 
-        self.inventory_manager.fetch_our_inventory()
+        await self.inventory_manager.fetch_our_inventory()
         self.inventory_manager.set_inventory_changed()
 
         logging.info("Inventory was updated")
-
-        # NOTE: this fails randomly due to keys missing. steam.py or steam issue
-        # logging.debug("Getting receipt...")
-
-        # receipt = await trade.receipt()
-        # await self.client.inventory_manager.update_inventory_with_receipt(
-        #     their_items, our_items, receipt
-        # )
-
-        # logging.debug("Inventory was updated after receipt")
 
         if self.options.arbitrage.enable and was_accepted:
             await self.arbitrage.after_offer_accepted(their_items, our_items)

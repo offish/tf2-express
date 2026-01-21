@@ -21,8 +21,6 @@ class MongoDB(DatabaseProvider):
         self.trades = db["trades"]
         self.items = db["items"]
         self.arbitrage = db["arbitrage"]
-        self.quicksell = db["quicksell"]
-
         # bot needs key price to work
         if not self.get_item("5021;6"):
             self._add_key_for_first_time()

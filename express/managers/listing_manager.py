@@ -90,7 +90,7 @@ class ListingManager(BaseManager):
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         formatted_identifier = sku.replace(";", "_")
 
-        if not self.options.backpack_tf.sku_in_listing_details:
+        if self.options.backpack_tf.use_item_name:
             formatted_identifier = self.database.get_normalized_item_name(sku)
 
         keys = currencies["keys"]

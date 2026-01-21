@@ -8,7 +8,7 @@
         "access_token": "token",
         "api_key": "apikey",
         "check_bans": false,
-        "sku_in_listing_details": false
+        "use_item_name": true
     },
     "inventory": {
         "provider": "steamcommunity",
@@ -23,11 +23,8 @@
         "counter_wrong_values": false
     },
     "chat": {
-        "enable": true,
-        "send_messages": false,
-        "llm_responses": false,
-        "llm_model": "groq/llama-3.3-70b-versatile",
-        "llm_api_key": "apikey"
+        "enable": false,
+        "accept_friends": false
     },
     "discord": {
         "enable": false,

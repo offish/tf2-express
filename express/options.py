@@ -10,7 +10,7 @@ class BackpackTFOptions:
     api_key: str = ""
     user_agent: str = "Listing goin' up!"
     check_bans: bool = False
-    sku_in_listing_details: bool = False  # disable for item name instead
+    use_item_name: bool = True  # false for sku instead
 
 
 @dataclass
@@ -33,11 +33,8 @@ class OffersOptions:
 
 @dataclass
 class ChatOptions:
-    enable: bool = True  # wheter to process chats
-    send_messages: bool = False  # allow bot to send messages in chat
-    llm_responses: bool = False  # for chat commands which are not recognized
-    llm_model: str = "groq/llama-3.3-70b-versatile"
-    llm_api_key: str = ""
+    enable: bool = False  # wheter to process chats
+    accept_friends: bool = False  # auto accept friend requests
 
 
 @dataclass
@@ -53,9 +50,6 @@ class ArbitrageOptions:
     enable: bool = False
     minimum_profit: float = 0.11
     stn_api_key: str = ""
-    quicksell: bool = False
-    quickbuy: bool = False
-    quicksell_on_startup: bool = False
 
 
 @dataclass

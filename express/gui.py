@@ -174,7 +174,7 @@ class Panel:
     def get_prices(self, sku: str) -> str:
         sku = unquote(sku)
         prices = self.request("GET", "prices", params={"sku": sku})
-        return self._render("prices", prices=prices)
+        return self._render("prices", sku=sku, prices=prices)
 
 
 def summarize_items(items: list[dict]) -> dict:

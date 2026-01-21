@@ -36,12 +36,6 @@ class DiscordManager(BaseManager, discord.Client):
             return
 
         logging.info(f"Message from {message.author}: {message.content}")
-
-        if message.content.startswith("quicksell") and self.options.arbitrage.quicksell:
-            await message.channel.send("Going to quicksell all items")
-            await self.client.arbitrage_manager.quicksell([])
-            return
-
         await message.channel.send("Invalid command")
 
     async def send_offer_state_changed(

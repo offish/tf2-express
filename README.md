@@ -20,14 +20,13 @@ Automated TF2 trading bot with automatic pricing and GUI support, built with Pyt
 * Supports 3rd party pricing providers
 * Creates, modifies and deletes listings on [Backpack.TF](https://backpack.tf)
 * Accepts incoming friend requests
-* Supports buy/sell message commands (`sell_1x_5021_6` or `sell_mann_co_supply_crate_key`)
+* Supports buy/sell message commands (`sell_5021_6` or `sell_mann_co_supply_crate_key`)
 * AI specialized chat message for unrecognized commands
 * Sends counter offer when user is trying to take items for free
 * Sends counter offer when values are incorrect
 * Supports Random Craft Hats [[?]](#random-craft-hats)
 * Bank as many items as you want
 * Uses MongoDB for saving items, prices and trades
-* Limited inventory fetching to mitigate rate-limits
 * Supports 3rd party inventory providers [[?]](#3rd-party-inventory-providers)
 * Supports arbitraging items from different trading sites [[?]](#arbitrage)
 * Blacklist certain SteamIDs from trading
@@ -56,7 +55,7 @@ pip install -r requirements.txt
 ```
 
 > [!NOTE]
-> You need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify collections manually.
+> If you want to use MongoDB as a database provider you need to host a MongoDB server for the bot to work. Download the free community version [here](https://www.mongodb.com/try/download/community). You may also want to install [MongoDB Compass](https://www.mongodb.com/products/tools/compass) to access/modify collections manually. If you are going to use JSON files as a database provider instead, skip this step.
 
 ## Setup
 For all of the following files, make a copy of the `x.example.json` files and rename them to not include "example" (e.g. `config.json` instead of `config.example.json`).
@@ -69,9 +68,7 @@ For all of the following files, make a copy of the `x.example.json` files and re
 ```
 
 > [!IMPORTANT]
-> If you only provide your account's password you need to have an **unencrypted** `.maFile` in the same folder as the config is.
-
-If you don't have the maFile for the account you want to use you can specify your config as follows:
+> If you only provide your account's password you need to have an **unencrypted** `.maFile` in the same folder as the config is. If you don't want to use the maFile for whatever reason, you need to provide your config as shown below.
 
 ```json
 {
@@ -83,35 +80,112 @@ If you don't have the maFile for the account you want to use you can specify you
 ```
 
 ### `options.json`
-TODO 
-<!-- | Option | Description | Default |
-| ------ | ----------- | ------- |
-| `username` | Username for the Steam account to use the bot with. Also used as the MongoDB database name. | - |
-| `use_backpack_tf` | Whether to list items on Backpack.TF or not. | - |
-| `backpack_tf_token`| Access token for [Backpack.TF API access](https://next.backpack.tf/account/api-access). | - |
-| `pricing_provider` | Provider for item pricing. | `pricedb` |
-| `inventory_provider` | Provider for inventory. Default is Steam Community, can use third-party like Steam.Supply or Express-Load. | `steamcommunity` |
-| `inventory_api_key`| API key for inventory provider. Not needed if using default Steam provider.| - |
-| `backpack_tf_user_agent` | User agent shown on next.backpack.tf. | `Listing goin' up!` |
-| `accept_donations` | Whether to accept donations or not. | true |
-| `counter_bad_offers` | Whether to counter offers with wrong values or not. | false |
-| `decline_trade_hold` | Whether to decline trades that have trade hold. | true |
-| `cancel_old_sent_offers` | Whether to automatically cancel sent offers after some time. | false |
-| `cancel_sent_offers_after_seconds` | Time (in seconds) to wait before auto-cancelling sent offers. | 300 |
-| `enable_arbitrage` | Whether to enable arbitrage or not. [\[?\]](#arbitrage) | false |
-| `enable_craft_hats`| Whether to enable Random Craft Hats or not. [\[?\]](#random-craft-hats) | false |
-| `save_trade_offers`| Whether to save trade offers in the MongoDB database. | true |
-| `sku_in_listing_details` | To use SKU in listing details (e.g. `buy_263_6` instead of `buy_ellis_cap`) | false |
-| `llm_chat_responses` | Whether the bot should have an AI response when a command is not recognized or not.  | false |
-| `llm_model` | Which model to run. Look at [LiteLLM docs](https://docs.litellm.ai/docs/providers) for other models.  | `groq/llama-3.3-70b-versatile` |
-| `llm_api_key` | API key for a provider. Groq has a free tier [here](https://console.groq.com/keys). Has to match the provider in `llm_model`. | - |
-| `groups` | List of group IDs to join. | \[] |
-| `owners` | List of owner SteamID64s. Bot will accept offers from owners regardless of other conditions. | \[] |
-| `blacklist` | List of blacklisted SteamID64s. Bot will decline offers from blacklisted users. | \[] |
-| `client_options` | Additional [steam.py](https://github.com/gobot1234/steam.py) client kwargs. | \{} | -->
+Your config should be structured like the example shown below. Options which are not present will be set to use their default. All the defaults are specified [here](express/options.py).
+
+```json
+{
+    "price_provider": "pricedb",
+    "database_provider": "mongodb",
+    "owners": [],
+    "blacklist": [],
+    "backpack_tf": {
+        "enable": false,
+        "access_token": "token",
+        "api_key": "apikey",
+        "check_bans": false,
+        "use_item_name": true
+    },
+    "inventory": {
+        "provider": "steamcommunity",
+        "api_key": "",
+        "retries": 5
+    },
+    "offers": {
+        "accept_donations": true,
+        "decline_trade_hold": true,
+        "enable_craft_hats": false,
+        "save_trades": true,
+        "counter_wrong_values": false
+    },
+    "chat": {
+        "enable": false,
+        "accept_friends": false
+    },
+    "discord": {
+        "enable": false,
+        "token": "",
+        "channel_id": "",
+        "owner_ids": []
+    }
+}
+```
+
+#### General options
+| Option | Default | Description |
+|--------|---------|-------------|
+|`price_provider`| `"pricedb"` | Pricing provider to use. If you want to use your own custom pricer, read [this](). |
+|`database_provider`| `"mongodb"` | `MongoDB` or `JSON`, JSON will use local JSON files instead of a database. MongoDB is the default when using Docker. |
+|`owners`| \[] | List of SteamID64s of owners. Bot will accept offers from owners regardless of other conditions. |
+|`blacklist`| \[] | List of SteamID64s of blacklisted users. Bot will decline offers from users who are blacklisted, and will not send offers to these users either. |
+|`check_updates`| `True` | Wheter to check for new versions of tf2-express on  on startup or not. |
+|`groups`| \[] | List of group IDs for the bot to join. |
+|`client_options`| \{} | Optional kwargs dictionary for [steam.py](https://github.com/gobot1234/steam.py) client options to override. |
+
+
+#### `backpack_tf` options
+| Option | Default | Description |
+| --------------- | --------------------- | ----------------------------------- |
+| `enable`        | `False`               | Enable Backpack.tf integration      |
+| `access_token`  | `""`                  | Backpack.tf OAuth access token      |
+| `api_key`       | `""`                  | Backpack.tf API key                 |
+| `user_agent`    | `"Listing goin' up!"` | User-Agent string used for requests |
+| `check_bans`    | `False`               | Check Backpack.tf user ban status   |
+| `use_item_name` | `True`                | Use item name instead of SKU        |
+
+
+#### `inventory` options
+| Option     | Default            | Description |
+| ---------- | ------------------ |------------ |
+| `provider` | `"steamcommunity"` | Inventory provider (e.g. `steamcommunity`, `steamsupply`, `expressload`) |
+| `api_key`  | `""`               | API key for the inventory provider |
+| `retries`  | `5`                | Number of retries when fetching inventory |
+
+
+#### `offers` options
+| Option                      | Default | Description                                                      |
+| --------------------------- | ------- | ---------------------------------------------------------------- |
+| `enable_craft_hats`         | `False` | Enable random craft hats in offers                               |
+| `accept_donations`          | `False` | Automatically accept donation offers                             |
+| `counter_wrong_values`      | `False` | Counter offers with incorrect values                             |
+| `decline_trade_hold`        | `True`  | Decline offers with trade holds                                  |
+| `cancel_old_sent`           | `False` | Cancel sent offers after a delay                                 |
+| `cancel_sent_after_seconds` | `300`   | Time before canceling sent offers (requires auto-cancel enabled) |
+| `save_trades`               | `True`  | Save trade offers to the database                                |
+
+
+#### `chat` options
+| Option           | Default | Description                          |
+| ---------------- | ------- | ------------------------------------ |
+| `enable`         | `False` | Enable processing of chat messages   |
+| `accept_friends` | `False` | Automatically accept friend requests |
+
+
+
+#### `discord` options
+| Option       | Default | Description                                     |
+| ------------ | ------- | ----------------------------------------------- |
+| `enable`     | `False` | Enable Discord integration                      |
+| `token`      | `""`    | Discord bot token                               |
+| `channel_id` | `""`    | Discord channel ID for messages                 |
+| `owner_ids`  | `[]`    | List of Discord user IDs with owner permissions |
+
 
 ### `messages.json`
-TODO
+| Key | Description |
+|-----|-------------|
+|`send_offer`| Offer message when sending an offer. |
+|`counter_offer`| Offer message when counter offering. |
+
 
 ## Running
 ```bash
@@ -128,13 +202,17 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 > [!WARNING]
 > Do NOT share your logs or config files with anyone before removing sensitive information. This might leak your `API_KEY` and more.
 
+## Hosting
+If you want to run the bot 24/7, even when your computer is off, you can use [DigitalOcean](https://www.digitalocean.com/?refcode=ae1a707c1d2e&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=CopyPaste) or another VPS cloud provider. DigitalOcean offers $200 in free credit for trying their products.
+
+[![DigitalOcean Logo](https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg)](https://www.digitalocean.com/?refcode=ae1a707c1d2e&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge)
+
 ## Updating
 ```bash
 # tf2-express/
 git pull
 pip install --upgrade -r requirements.txt
-# update packages like bptf, tf2-utils, tf2-data and tf2-sku
-# which the bot is dependant on
+# update packages like bptf, tf2-utils, tf2-data and tf2-sku which the bot is dependant on
 ```
 
 ## Using Docker
@@ -168,7 +246,7 @@ Simply open the GUI and add "Random Craft Hat" or `-100;6` to the pricelist. Set
 The bot supports adding items via the GUI by using either item names or SKUs. Example: `Uncraftable Tour of Duty Ticket` or `725;6;uncraftable` would add the same item (`725;6;uncraftable`).
 
 > [!IMPORTANT]
-> Adding by name is sometimes bugged. For items like `Strange Wrench` it would get the SKU `7;6`, this is wrong and applies to other "default" items aswell. The correct SKU would be `197;11`. This issue stems from how defindexes are handled in `tf2-data` and `tf2-utils`. If an added item has the wrong SKU - delete the item and add it again using the SKU and not the item name. To check if a SKU is correct you can go to the GUI, click on the item and open it on [Marketplace.TF](https://marketplace.tf). If the item has 0 previous sales, it is most likely wrong.
+> Adding by name is sometimes bugged. For items like `Strange Wrench` it would get the SKU `7;6`, this is wrong and applies to other default weapons aswell. The correct SKU would be `197;11`. This issue stems from how defindexes are handled in `tf2-data` and `tf2-utils`. If an added item has the wrong SKU - delete the item and add it again using the SKU and not the item name. To check if a SKU is correct you can go to the GUI, click on the item and open it on [Marketplace.TF](https://marketplace.tf). If the item has 0 previous sales, it is most likely wrong.
 
 ### Arbitrage
 "Arbitraging is the process of taking advantage of a price difference between two or more markets". Prior to v3.0.0 this bot used to support arbitraging of items via  [`tf2-arbitrage`](https://github.com/offish/tf2-arbitrage). This support has now been removed. The bot still supports arbitraging of items, but the code and logic for this remains private for the time being.

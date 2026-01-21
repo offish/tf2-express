@@ -5,15 +5,15 @@ from fastapi import APIRouter, FastAPI
 
 from .base_manager import BaseManager
 
-# LOGGING_CONFIG = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "loggers": {
-#         "uvicorn": {"level": "CRITICAL"},
-#         "uvicorn.error": {"level": "CRITICAL"},
-#         "uvicorn.access": {"level": "CRITICAL"},
-#     },
-# }
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "loggers": {
+        "uvicorn": {"level": "CRITICAL"},
+        "uvicorn.error": {"level": "CRITICAL"},
+        "uvicorn.access": {"level": "CRITICAL"},
+    },
+}
 
 
 class APIManager(BaseManager):
@@ -82,8 +82,8 @@ class APIManager(BaseManager):
             self.app,
             host="0.0.0.0",
             port=8000,
-            # log_config=LOGGING_CONFIG,
-            # access_log=False,
+            log_config=LOGGING_CONFIG,
+            # access_log=False
         )
         server = uvicorn.Server(config)
         await server.serve()

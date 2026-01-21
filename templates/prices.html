@@ -5,8 +5,93 @@ Prices
 {% endblock %}
 
 {% block contents %}
-<h1 class="text-3xl font-bold text-white">Prices</h1>
+<h1 class="text-3xl font-bold text-white mb-6">Prices for {{ sku }}</h1>
 
-<p>{{ prices }}</p>
+{% if prices.success %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% if prices.prices.backpack_tf %}
+    <div class="bg-secondary rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-semibold text-white mb-4">Backpack.tf</h2>
 
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-black/20 rounded p-4">
+                <h3 class="text-lg font-semibold text-green-400 mb-2">Buy Price</h3>
+                <p class="text-gray-300">
+                    {{ prices.prices.backpack_tf.buy["keys"] }} keys,
+                    <b class="text-white">{{ prices.prices.backpack_tf.buy.metal }}</b> ref
+                </p>
+            </div>
+            <div class="bg-black/20 rounded p-4">
+                <h3 class="text-lg font-semibold text-red-400 mb-2">Sell Price</h3>
+                <p class="text-gray-300">
+                    {{ prices.prices.backpack_tf.sell["keys"] }} keys,
+                    <b class="text-white">{{ prices.prices.backpack_tf.sell.metal }}</b> ref
+                </p>
+            </div>
+        </div>
+
+        <div class="flex space-x-4 mt-6">
+            <a href="{{ prices.prices.backpack_tf.buy_trade_url }}"
+                class="flex-1 text-center bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-semibold transition">
+                Buy Trade
+            </a>
+            <a href="{{ prices.prices.backpack_tf.sell_trade_url }}"
+                class="flex-1 text-center bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded font-semibold transition">
+                Sell Trade
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if prices.prices.stn_tf %}
+    <div class="bg-secondary rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-semibold text-white mb-4">STN.tf</h2>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-black/20 rounded p-4">
+                <h3 class="text-lg font-semibold text-green-400 mb-2">Buy Price</h3>
+                <p class="text-gray-300">
+                    {{ prices.prices.stn_tf.buy["keys"] }} keys,
+                    <b class="text-white">{{ prices.prices.stn_tf.buy.metal }}</b> ref
+                </p>
+            </div>
+            <div class="bg-black/20 rounded p-4">
+                <h3 class="text-lg font-semibold text-red-400 mb-2">Sell Price</h3>
+                <p class="text-gray-300">
+                    {{ prices.prices.stn_tf.sell["keys"] }} keys,
+                    <b class="text-white">{{ prices.prices.stn_tf.sell.metal }}</b> ref
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-6 text-sm text-gray-400 space-y-1">
+            <p>
+                Can Buy:
+                {% if prices.prices.stn_tf.stock.can_buy %}
+                <span class="text-green-400 font-semibold">Yes</span>
+                {% else %}
+                <span class="text-red-400 font-semibold">No</span>
+                {% endif %}
+            </p>
+            <p>
+                Can Sell:
+                {% if prices.prices.stn_tf.stock.can_sell %}
+                <span class="text-green-400 font-semibold">Yes</span>
+                {% else %}
+                <span class="text-red-400 font-semibold">No</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% else %}
+<div class="bg-red-900/30 border border-red-700 rounded p-4">
+    <p class="text-red-400 font-semibold">
+        Failed to load prices.
+    </p>
+</div>
+{% endif %}
 {% endblock %}

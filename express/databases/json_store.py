@@ -21,12 +21,10 @@ class JSON(DatabaseProvider):
         self.trades_file = self.data_dir / "trades.json"
         self.items_file = self.data_dir / "items.json"
         self.arbitrage_file = self.data_dir / "arbitrage.json"
-        self.quicksell_file = self.data_dir / "quicksell.json"
 
         self._init_file(self.trades_file, [])
         self._init_file(self.items_file, [])
         self._init_file(self.arbitrage_file, [])
-        self._init_file(self.quicksell_file, [])
 
         # bot needs key price to work
         if not self.get_item("5021;6"):
@@ -43,7 +41,7 @@ class JSON(DatabaseProvider):
             with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
-            return [] if filepath != self.quicksell_file else []
+            return []
 
     def _write_json(self, filepath: Path, data: Any) -> None:
         """Write data to a JSON file."""

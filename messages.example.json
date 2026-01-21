@@ -1,3 +1,4 @@
 {
-    "send_offer": "Here is your offer. Thank you for using tf2-express!"
+    "send_offer": "Thank you for using tf2-express!",
+    "counter_offer": "Your offer contained wrong values. Here is a corrected one!"
 }

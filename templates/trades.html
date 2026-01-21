@@ -8,15 +8,15 @@ Trades
 <h1 class="text-3xl font-bold text-white">Trades</h1>
 
 <div class="flex space-x-4 my-4">
-    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="window.location.href='?db={{ db_name }}&start={{ start - amount }}'">Previous Page</button>
-    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="window.location.href='?db={{ db_name }}&start={{ start + amount }}'">Next Page</button>
+    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="window.location.href='?start={{ start - amount }}'">Previous Page</button>
+    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="window.location.href='?start={{ start + amount }}'">Next Page</button>
 </div>
 
 <p class="text-gray-300">Showing {{ start_index }}-{{ end_index }} ({{ end_index - start_index }}) of {{ total_trades }} total trades.</p>
 
 <div class="flex space-x-4 my-4">
-    <button class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded" onclick="window.location.href='?db={{ db_name }}&start=0&amount={{ total_trades }}'">View all trades</button>
-    <button class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded" onclick="window.location.href='?db={{ db_name }}&start=0'">Reset</button>
+    <button class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded" onclick="window.location.href='?start=0&amount={{ total_trades }}'">View all trades</button>
+    <button class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded" onclick="window.location.href='?start=0'">Reset</button>
 </div>
 
 {% for trade in trades %}

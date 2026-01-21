@@ -85,7 +85,7 @@ class Express(steam.Client):
         atexit.register(self.cleanup)
 
         # set inventory
-        self.inventory_manager.fetch_our_inventory()
+        await self.inventory_manager.fetch_our_inventory()
 
         # get inventory stock and update database
         stock = self.inventory_manager.get_stock()
@@ -166,7 +166,7 @@ class Express(steam.Client):
         if message.author == self.user:
             return
 
-        # user has sent a trade offer
+        # ignore trade offer messages
         if "tradeoffer" in message.content:
             return
 
@@ -180,16 +180,12 @@ class Express(steam.Client):
         if not isinstance(invite, steam.UserInvite):
             return
 
-        # accept the friend invite
-        await invite.accept()
-
-    async def on_friend_add(self, friend: steam.Friend) -> None:
-        # dont send welcome message if disabled
-        if not self.options.chat.send_messages:
+        if not self.options.chat.accept_friends:
+            logging.info(f"Ignoring friend invite from {invite.author.name}")
             return
 
-        message = self.options.messages.friend_accept.format(username=friend.name)
-        await friend.send(message)
+        # accept the friend invite
+        await invite.accept()
 
     async def on_trade(self, trade: steam.TradeOffer) -> None:
         if trade.is_our_offer():
@@ -232,12 +228,6 @@ class Express(steam.Client):
                 continue
 
             await group.join()
-
-    async def test(self) -> None:
-        await self.setup()
-
-        while True:
-            await asyncio.sleep(10)
 
     def start(
         self,
