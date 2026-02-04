@@ -7,9 +7,9 @@ import requests
 from flask import Request, render_template
 from tf2_data import COLORS
 from tf2_utils import Item, is_metal, is_sku, to_refined
+from tf2_utils.instances import schema
 
 from .databases.database_providers import get_database_provider
-from .schema import schema
 from .utils import get_config, get_options, get_versions, sku_to_item_data
 
 
@@ -29,7 +29,8 @@ class Panel:
 
         return response.json()
 
-    def _get_item_data(self, item: str, skus: list[str]) -> dict | None:
+    @staticmethod
+    def get_item_data(item: str, skus: list[str]) -> dict | None:
         # check if first char is whitespace
         if item.find(" ") == 0:
             item = item[1:]
@@ -51,24 +52,24 @@ class Panel:
 
         return item_data
 
-    def _add_items_to_database(self, items: list[str]) -> None:
+    def add_items_to_database(self, items: list[str]) -> None:
         skus = self.database.get_skus()
 
         for item in items:
-            item_data = self._get_item_data(item, skus)
+            item_data = self.get_item_data(item, skus)
 
             if item_data is None:
                 continue
 
             self.database.add_item(**item_data)
 
-    def _render(self, page: str, **kwargs) -> str:
+    def render(self, page: str, **kwargs) -> str:
         return render_template(
             f"{page}.html", current_year=datetime.now().year, **kwargs
         )
 
     def get_overview(self) -> str:
-        return self._render("home", name=self.username, **get_versions())
+        return self.render("home", name=self.username, **get_versions())
 
     def get_trades(self, request: Request) -> str:
         start = request.args.get("start", 0)
@@ -83,7 +84,7 @@ class Panel:
         data = self.database.get_trades(start, amount)
         summarized_trades = summarize_trades(data["trades"])
 
-        return self._render(
+        return self.render(
             "trades",
             trades=summarized_trades,
             total_trades=data["total_trades"],
@@ -100,12 +101,12 @@ class Panel:
         updated = datetime.fromtimestamp(time_updated).strftime("%c")
         passed_time = int((time.time() - time_updated) / 60)
 
-        return self._render("item", item=item, updated=updated, passed_time=passed_time)
+        return self.render("item", item=item, updated=updated, passed_time=passed_time)
 
     def get_items(self) -> str:
         items = self.database.get_pricelist()
 
-        return self._render("items", items=items)
+        return self.render("items", items=items)
 
     def autoprice_item(self, sku: str) -> str:
         if sku in ["-50;6", "-100;6"]:
@@ -117,7 +118,7 @@ class Panel:
     def add_item(self, request: Request) -> str:
         data = dict(request.form.items())
         items = data["items"].split(",")
-        self._add_items_to_database(items)
+        self.add_items_to_database(items)
 
     def edit_item(self, request: Request) -> None:
         data = dict(request.form.items())
@@ -159,7 +160,7 @@ class Panel:
             override_max_stock=int(max_stock),
         )
 
-    def get_inventory(self) -> str:
+    def get_filtered_inventory(self) -> dict:
         inventory = self.request("GET", "inventory")
         filtered_inventory = {"inventory": []}
 
@@ -169,12 +170,23 @@ class Panel:
             if not is_metal(sku):
                 filtered_inventory["inventory"].append(item)
 
-        return self._render("inventory", inventory=filtered_inventory)
+        return filtered_inventory
+
+    def get_inventory(self) -> str:
+        filtered_inventory = self.get_filtered_inventory()
+        return self.render("inventory", inventory=filtered_inventory)
 
     def get_prices(self, sku: str) -> str:
         sku = unquote(sku)
         prices = self.request("GET", "prices", params={"sku": sku})
-        return self._render("prices", sku=sku, prices=prices)
+        return self.render("prices", sku=sku, prices=prices)
+
+    def get_dump(self) -> str:
+        return self.render("dump")
+
+    def get_wishlist(self) -> str:
+        filtered_inventory = self.get_filtered_inventory()
+        return self.render("wishlist", inventory=filtered_inventory)
 
 
 def summarize_items(items: list[dict]) -> dict:

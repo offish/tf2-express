@@ -11,6 +11,7 @@ from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
 from tf2_utils import __version__ as tf2_utils_version
 from tf2_utils import sku_to_color
+from tf2_utils.instances import schema
 
 from . import __version__ as tf2_express_version
 from .options import (
@@ -24,7 +25,6 @@ from .options import (
     OffersOptions,
     Options,
 )
-from .schema import schema
 
 
 def has_correct_price_format(data: dict) -> bool:

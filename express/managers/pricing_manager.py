@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Any
 
+import aiohttp
 from tf2_utils.utils import to_scrap
 
 from ..exceptions import NoKeyPrice, WrongPriceFormat
@@ -14,9 +15,10 @@ class PricingManager(BaseManager):
     async def setup(self) -> None:
         self.autopriced_skus: list[str] = []
         self.autopriced_items: list[dict] = []
+        self.session = aiohttp.ClientSession()
 
         self.provider = get_price_provider(
-            self.options.price_provider, self.on_price_update
+            self.options.price_provider, self.session, self.on_price_update
         )
 
     @staticmethod
@@ -58,7 +60,9 @@ class PricingManager(BaseManager):
         keys, metal = self.database.get_price(sku, intent)
         return keys * key_price + to_scrap(metal)
 
-    def update_price(self, sku: str, data: dict, notify_listing_manager: bool) -> None:
+    async def update_price(
+        self, sku: str, data: dict, notify_listing_manager: bool
+    ) -> None:
         price = {"sku": sku} | data
 
         if has_invalid_price_format(price):
@@ -70,20 +74,20 @@ class PricingManager(BaseManager):
         self.database.update_price(sku, buy, sell)
 
         if self.options.backpack_tf.enable and notify_listing_manager:
-            self.listing_manager.set_price_changed(sku)
+            await self.listing_manager.set_price_changed(sku)
 
-    def update_prices(
+    async def update_prices(
         self, prices: dict[str, dict], notify_listing_manager: bool = True
     ) -> None:
         for sku in prices:
             price = prices[sku]
-            self.update_price(sku, price, notify_listing_manager)
+            await self.update_price(sku, price, notify_listing_manager)
 
         logging.info(f"Updated prices for {len(prices)} items")
 
     async def get_and_update_price(self, sku: str) -> None:
         price = await self.provider.get_price(sku)
-        self.update_price(sku, price, notify_listing_manager=True)
+        await self.update_price(sku, price, notify_listing_manager=True)
 
     async def get_and_update_prices(self, skus: list[str]) -> None:
         if len(skus) == 1:
@@ -96,7 +100,7 @@ class PricingManager(BaseManager):
             logging.warning(f"No price data received for {skus} ({prices})")
             return
 
-        self.update_prices(prices)
+        await self.update_prices(prices)
 
     async def update_pricelist(self) -> None:
         logging.info("Updating autopriced items...")
@@ -111,7 +115,7 @@ class PricingManager(BaseManager):
         prices = await self.provider.get_multiple_prices(skus)
         logging.debug(f"Got prices for {len(prices)} out of {len(skus)} items")
         # dont notify listing manager, we will create listings after this
-        self.update_prices(prices, notify_listing_manager=False)
+        await self.update_prices(prices, notify_listing_manager=False)
 
         self.autopriced_items = autopriced_items
         self.autopriced_skus = skus
@@ -146,7 +150,7 @@ class PricingManager(BaseManager):
         self.set_prices_updated()
 
         if self.options.backpack_tf.enable:
-            self.listing_manager.create_listings()
+            await self.listing_manager.create_listings()
 
         # fetches prices and checks for pricelist changes
         while True:

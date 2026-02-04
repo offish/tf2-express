@@ -2,7 +2,8 @@ import asyncio
 import logging
 from dataclasses import asdict
 
-from backpack_tf import BackpackTF, Listing
+from aiohttp import ClientSession
+from backpack_tf import AsyncBackpackTF, Listing
 from tf2_utils import (
     get_metal,
     get_sku,
@@ -31,20 +32,21 @@ class ListingManager(BaseManager):
         self._has_updated_listings = True
         self._is_ready = False
 
-        self.backpack_tf = BackpackTF(
+        self.session = ClientSession()
+        self.backpack_tf = AsyncBackpackTF(
+            self.session,
             token=self.options.backpack_tf.access_token,
             steam_id=self.client.steam_id,
             api_key=self.options.backpack_tf.api_key,
             user_agent=self.options.backpack_tf.user_agent,
         )
-        self.backpack_tf._library = "tf2-express"
 
     async def wait_until_ready(self) -> None:
         while not self._is_ready:
             await asyncio.sleep(0.1)
 
-    def set_user_agent(self) -> bool:
-        user_agent = self.backpack_tf.register_user_agent()
+    async def set_user_agent(self) -> bool:
+        user_agent = await self.backpack_tf.register_user_agent()
         logging.debug(f"User agent: {user_agent}")
 
         if user_agent.get("status") != "active":
@@ -58,14 +60,14 @@ class ListingManager(BaseManager):
         logging.debug("Inventory changed")
         self._has_updated_listings = False
 
-    def set_price_changed(self, sku: str) -> None:
+    async def set_price_changed(self, sku: str) -> None:
         logging.debug(f"Updating listing for {sku}...")
 
         for intent in ["buy", "sell"]:
             if self.is_listed(sku, intent):
-                self.delete_listing(sku, intent)
+                await self.delete_listing(sku, intent)
 
-            self.create_listing(sku, intent)
+            await self.create_listing(sku, intent)
 
     def set_listing(self, listing: Listing, construct: ListingConstruct) -> None:
         listing_key = get_listing_key(construct.intent, construct.sku)
@@ -82,10 +84,11 @@ class ListingManager(BaseManager):
         intent = construct.intent.capitalize()
         logging.info(f"{intent} listing was created for {construct.sku}")
 
-    def is_backpack_tf_banned(self, steam_id: str | int) -> bool:
-        return self.options.backpack_tf.check_bans and self.backpack_tf.is_banned(
-            steam_id
-        )
+    async def is_backpack_tf_banned(self, steam_id: str | int) -> bool:
+        if not self.options.backpack_tf.check_bans:
+            return False
+
+        return await self.backpack_tf.is_banned(steam_id)
 
     def _get_listing_variables(self, sku: str, currencies: dict) -> dict:
         formatted_identifier = sku.replace(";", "_")
@@ -142,7 +145,7 @@ class ListingManager(BaseManager):
 
         return False
 
-    def _update_listing(self, listing: dict) -> None:
+    async def _update_listing(self, listing: dict) -> None:
         logging.debug(f"Updating listing {listing=}")
 
         sku = listing["sku"]
@@ -160,28 +163,25 @@ class ListingManager(BaseManager):
 
         # not enough pure anymore
         if intent == "buy" and not self.has_enough_pure(keys, metal):
-            self.delete_listing(sku, intent)
-            return
+            return await self.delete_listing(sku, intent)
 
         # we dont have the item anymore
         if not has_enough_stock(intent, in_stock):
-            self.delete_listing(sku, intent)
-            return
+            return await self.delete_listing(sku, intent)
 
         # remove listing if max stock has been reached
         if surpasses_max_stock(intent, in_stock, max_stock):
-            self.delete_listing(sku, intent)
-            return
+            return await self.delete_listing(sku, intent)
 
         asset_id = listing.get("asset_id", 0)
 
         if intent == "sell" and not self._is_asset_id_in_inventory(asset_id):
-            self.delete_listing(sku, intent)
-            self.create_listing(sku, intent)
+            await self.delete_listing(sku, intent)
+            await self.create_listing(sku, intent)
             return
 
         # stock was most likely changed
-        self.create_listing(sku, intent)
+        await self.create_listing(sku, intent)
 
     def is_listed(self, sku: str, intent: str) -> bool:
         key = get_listing_key(intent, sku)
@@ -310,13 +310,13 @@ class ListingManager(BaseManager):
 
         return listings
 
-    def create_listing(self, sku: str, intent: str) -> bool:
+    async def create_listing(self, sku: str, intent: str) -> bool:
         data = self.create_listing_construct(sku, intent)
 
         if data is None:
             return False
 
-        listing = self.backpack_tf.create_listing(**data.listing)
+        listing = await self.backpack_tf.create_listing(**data.listing)
         logging.debug(f"{asdict(listing)}")
 
         if listing.id:
@@ -327,13 +327,13 @@ class ListingManager(BaseManager):
 
         return False
 
-    def create_listings(self) -> None:
+    async def create_listings(self) -> None:
         logging.info("Creating listings...")
 
         created_listings = 0
         listings = self.create_sell_constructs() + self.create_buy_constructs()
 
-        listings_created = self.backpack_tf.create_listings(
+        listings_created = await self.backpack_tf.create_listings(
             [i.listing for i in listings]
         )
         logging.debug(f"{[asdict(i) for i in listings_created]}")
@@ -358,7 +358,7 @@ class ListingManager(BaseManager):
 
         logging.info("Done with creating listings")
 
-    def delete_listing(self, sku: str, intent: str) -> None:
+    async def delete_listing(self, sku: str, intent: str) -> None:
         logging.debug(f"Removing {intent} listing for {sku}")
 
         if not self.is_listed(sku, intent):
@@ -371,9 +371,9 @@ class ListingManager(BaseManager):
         assert item_name is not None, "Item name is None"
 
         if asset_id:
-            success = self.backpack_tf.delete_listing_by_asset_id(asset_id)
+            success = await self.backpack_tf.delete_listing_by_asset_id(asset_id)
         else:
-            success = self.backpack_tf.delete_listing_by_item_name(item_name)
+            success = await self.backpack_tf.delete_listing_by_item_name(item_name)
 
         if success is not True:
             logging.error(f"Error when trying to delete {intent} listing for {sku}")
@@ -384,10 +384,10 @@ class ListingManager(BaseManager):
         logging.info(f"Deleted {intent} listing for {sku}")
 
     async def run(self) -> None:
-        if not self.set_user_agent():
+        if not await self.set_user_agent():
             return
 
-        self.backpack_tf.delete_all_listings()
+        await self.backpack_tf.delete_all_listings()
         self._is_ready = True
         logging.info("Deleted all listings")
 
@@ -400,15 +400,15 @@ class ListingManager(BaseManager):
 
             for i in self._listings:
                 listing = self._listings[i]
-                self._update_listing(listing)
+                await self._update_listing(listing)
 
             logging.info("All listings were updated!")
 
             self._has_updated_listings = True
 
-    def close(self):
-        self.backpack_tf.delete_all_listings()
+    async def close(self):
+        await self.backpack_tf.delete_all_listings()
         logging.info("Deleted all listings")
         self._listings.clear()
-        self.backpack_tf.stop_user_agent()
+        await self.backpack_tf.stop_user_agent()
         logging.info("Stopped Backpack.TF user agent")

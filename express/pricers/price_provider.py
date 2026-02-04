@@ -1,8 +1,12 @@
 from typing import Callable
 
+from aiohttp import ClientSession
+
 
 class PriceProvider:
-    def __init__(self, callback: Callable[[dict], None]) -> None:
+    def __init__(
+        self, session: ClientSession, callback: Callable[[dict], None]
+    ) -> None:
         """Callback has to get a dict with the following format:
 
         .. code-block:: json
@@ -18,6 +22,7 @@ class PriceProvider:
                 }
             }
         """
+        self.session = session
         self.callback = callback
 
     async def get_price(self, sku: str) -> dict:

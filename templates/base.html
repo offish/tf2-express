@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,10 +17,13 @@
             <li><a class="hover:text-primary transition-colors" href="/">Home</a></li>
             <li><a class="hover:text-primary transition-colors" href="/items">Items</a></li>
             <li><a class="hover:text-primary transition-colors" href="/inventory">Inventory</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/dump">Dump</a></li>
+            <li><a class="hover:text-primary transition-colors" href="/wishlist">Wishlist</a></li>
             <li><a class="hover:text-primary transition-colors" href="/trades">Trades</a></li>
         </ul>
     </nav>
 </header>
+
 <body class="bg-darkbg text-white min-h-screen flex flex-col">
     <div class="container mx-auto p-6 flex-grow">
         {% block contents %}
@@ -27,8 +31,10 @@
     </div>
 </body>
 <footer class="text-center p-4 bg-darkcard text-gray-300 mt-6 border-t border-jet">
-    <a class="text-primary" href="https://github.com/offish/tf2-express">tf2-express</a> &copy; 2020-{{ current_year }} by 
-    <a class="text-primary" href="https://github.com/offish">offish</a> 
-    (<a class="text-primary" href="https://steamcommunity.com/id/confern">confern</a>)
+    <a class="text-primary" href="https://github.com/offish/tf2-express">tf2-express</a> &copy; 2020-{{ current_year }}
+    by
+    <a class="text-primary" href="https://github.com/offish">offish</a>/<a class="text-primary"
+        href="https://steamcommunity.com/id/confern">confern</a>
 </footer>
+
 </html>

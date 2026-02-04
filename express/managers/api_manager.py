@@ -75,6 +75,22 @@ class APIManager(BaseManager):
             result = self.arbitrage.sell_item(sku, site)
             return {"success": True, "result": result}
 
+        @router.post("/api/v1/dump")
+        async def dump(skus: list[str]) -> dict:
+            if not enable_arbitrage:
+                return {"success": False}
+
+            result = await self.arbitrage.dump(skus)
+            return {"success": True, "result": result}
+
+        @router.post("/api/v1/wishlist")
+        async def wishlist(skus: list[str]) -> dict:
+            if not enable_arbitrage:
+                return {"success": False}
+
+            result = await self.arbitrage.wishlist(skus)
+            return {"success": True, "result": result}
+
         self.app.include_router(router)
 
     async def run(self) -> None:

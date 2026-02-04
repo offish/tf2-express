@@ -1,10 +1,7 @@
-import pytest
-
 from express.pricers.pricedb import BasePriceDB
 from express.utils import has_correct_price_format
 
 
-@pytest.mark.asyncio
 async def test_get_items_bulk():
     price_db = BasePriceDB()
 
@@ -18,7 +15,6 @@ async def test_get_items_bulk():
         assert has_correct_price_format(price)
 
 
-@pytest.mark.asyncio
 async def test_get_prices_by_schema():
     price_db = BasePriceDB()
 

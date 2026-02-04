@@ -457,7 +457,7 @@ class TradeManager(BaseManager):
             await self.accept(trade)
             return
 
-        if self.listing_manager.is_backpack_tf_banned(partner_id):
+        if await self.listing_manager.is_backpack_tf_banned(partner_id):
             logging.info("User is banned on Backpack.TF")
             await self.decline(trade)
             return
@@ -605,7 +605,7 @@ class TradeManager(BaseManager):
             logging.info("User is blacklisted, not sending offer")
             return 0
 
-        if self.listing_manager.is_backpack_tf_banned(steam_id):
+        if await self.listing_manager.is_backpack_tf_banned(steam_id):
             logging.info("User is banned on Backpack.TF, not sending offer")
             return 0
 

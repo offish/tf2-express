@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dump Items
+{% endblock %}
+
+{% block contents %}
+<h1 class="text-3xl font-bold text-white mb-6">Dump Items</h1>
+
+<p class="text-gray-400 mb-4">
+    Showing {{ inventory.inventory | length }} items in your inventory.
+</p>
+
+<div class="flex items-center justify-between mb-6">
+    <label class="flex items-center space-x-2 text-white cursor-pointer">
+        <input type="checkbox" id="selectAll" class="h-5 w-5 accent-primary">
+        <span>Select All</span>
+    </label>
+
+    <button id="dumpButton" class="px-6 py-2 bg-primary text-white font-semibold rounded hover:opacity-90 transition">
+        Dump Selected
+    </button>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for item in inventory.inventory %}
+    <label
+        class="bg-secondary rounded-lg shadow-lg p-4 flex items-start space-x-4 cursor-pointer hover:ring-2 hover:ring-primary transition">
+
+        <!-- Checkbox -->
+        <input type="checkbox" class="mt-1 h-5 w-5 accent-primary sku-checkbox" value="{{ item.sku }}">
+
+        <!-- Item content -->
+        <div class="flex items-center space-x-4">
+            <img src="https://community.fastly.steamstatic.com/economy/image/{{ item.icon_url }}"
+                class="w-16 h-16 rounded bg-black/20 p-1" alt="{{ item.market_hash_name }}">
+            <div>
+                <h3 class="text-lg font-semibold text-white leading-tight">
+                    {{ item.market_hash_name }}
+                </h3>
+                <p class="text-sm text-gray-400">
+                    SKU: <span class="text-gray-200 font-medium">{{ item.sku }}</span>
+                </p>
+            </div>
+        </div>
+    </label>
+    {% endfor %}
+</div>
+
+<script>
+    const checkboxes = Array.from(document.querySelectorAll(".sku-checkbox"));
+    const selectAll = document.getElementById("selectAll");
+    const dumpButton = document.getElementById("dumpButton");
+
+    let lastCheckedIndex = null;
+
+    /* Select all */
+    selectAll.addEventListener("change", () => {
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    });
+
+    /* Shift-click range selection */
+    checkboxes.forEach((checkbox, index) => {
+        checkbox.addEventListener("click", (e) => {
+            if (e.shiftKey && lastCheckedIndex !== null) {
+                const start = Math.min(lastCheckedIndex, index);
+                const end = Math.max(lastCheckedIndex, index);
+
+                for (let i = start; i <= end; i++) {
+                    checkboxes[i].checked = checkbox.checked;
+                }
+            }
+
+            lastCheckedIndex = index;
+
+            // Keep select-all in sync
+            selectAll.checked = checkboxes.every(cb => cb.checked);
+        });
+    });
+
+    /* Dump selected */
+    dumpButton.addEventListener("click", async () => {
+        const skus = checkboxes
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+
+        if (skus.length === 0) {
+            alert("Select at least one item to dump.");
+            return;
+        }
+
+        try {
+            const url = "http://127.0.0.1:8000/api/v1/dump";
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+            });
+
+            if (!response.ok) throw new Error("Dump failed");
+
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("Error dumping items.");
+        }
+    });
+</script>
+{% endblock %}

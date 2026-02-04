@@ -1,7 +1,7 @@
 tf2-sku>=2.0.1
 tf2-data>=1.0.7
-tf2-utils>=2.3.5
-bptf>=0.1.5
+tf2-utils>=2.4.0
+bptf>=0.2.0
 steamio>=1.1.3
 python-socketio
 websockets
@@ -10,4 +10,3 @@ flask
 pytest
 pytest-asyncio
 discord.py
-litellm

@@ -249,7 +249,7 @@ class Express(steam.Client):
 
     def cleanup(self) -> None:
         if self.options.backpack_tf.enable:
-            self.listing_manager.close()
+            asyncio.run(self.listing_manager.close())
 
         asyncio.run(self.pricing_manager.provider.close())
 

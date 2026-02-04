@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from aiohttp import ClientSession
 
 from express.options import Options
 from express.utils import get_config, get_options, read_json_file
@@ -39,3 +40,9 @@ def options() -> Options:
 @pytest.fixture
 def client() -> Express:
     return express
+
+
+@pytest.fixture
+async def aiohttp_session():
+    async with ClientSession() as session:
+        yield session

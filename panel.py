@@ -60,5 +60,15 @@ def get_prices(sku: str):
     return panel.get_prices(sku)
 
 
+@app.route("/dump")
+def dump():
+    return panel.get_dump()
+
+
+@app.route("/wishlist")
+def wishlist():
+    return panel.get_wishlist()
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

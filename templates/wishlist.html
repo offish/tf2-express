@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}
+Wishlist
+{% endblock %}
+
+{% block contents %}
+<h1 class="text-3xl font-bold text-white mb-6">Dump SKUs</h1>
+
+<p class="text-gray-400 mb-6">
+    Paste one SKU per line. All valid SKUs will be submitted together.
+</p>
+
+<form id="skuForm" class="space-y-6">
+    <textarea id="skuInput"
+        class="w-full h-64 p-4 rounded-lg bg-secondary text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:outline-none resize-none"
+        placeholder="12345;6&#10;98765;1&#10;55555;3"></textarea>
+
+    <button type="submit" class="px-6 py-2 bg-primary text-white font-semibold rounded hover:opacity-90 transition">
+        Submit
+    </button>
+</form>
+
+<script>
+    document.getElementById("skuForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const raw = document.getElementById("skuInput").value;
+
+        const skus = raw
+            .split("\n")
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        if (skus.length === 0) {
+            alert("Please enter at least one SKU.");
+            return;
+        }
+
+        try {
+            const url = "http://127.0.0.1:8000/api/v1/wishlist";
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skus }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Dump failed");
+            }
+
+            document.getElementById("skuInput").value = "";
+            alert("SKUs added successfully.");
+        } catch (err) {
+            console.error(err);
+            alert("Error adding SKUs.");
+        }
+    });
+</script>
+{% endblock %}

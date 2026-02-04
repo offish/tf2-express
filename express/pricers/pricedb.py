@@ -1,7 +1,7 @@
 import logging
 from typing import Callable
 
-import aiohttp
+from aiohttp import ClientSession
 from socketio import AsyncClient
 from socketio.exceptions import ConnectionError
 
@@ -19,9 +19,9 @@ from .price_provider import PriceProvider
 
 
 class BasePriceDB:
-    def __init__(self):
+    def __init__(self, session: ClientSession) -> None:
+        self.session = session
         self.api_url = "https://pricedb.io/api"
-        self.session = aiohttp.ClientSession()
 
     async def request(self, method: str, endpoint: str, **kwargs) -> dict:
         url = f"{self.api_url}/{endpoint}"
@@ -70,9 +70,9 @@ class BasePriceDB:
 
 
 class PriceDB(BasePriceDB, PriceProvider):
-    def __init__(self, callback: Callable[[dict], None]):
-        super().__init__()
-        PriceProvider.__init__(self, callback)
+    def __init__(self, session: ClientSession, callback: Callable[[dict], None]):
+        super().__init__(session)
+        PriceProvider.__init__(self, session, callback)
 
         self.sio = AsyncClient()
         self.sio.on("connect", self.on_connect)
