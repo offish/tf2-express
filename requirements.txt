@@ -9,4 +9,6 @@ pymongo
 flask
 pytest
 pytest-asyncio
+aiohttp
 discord.py
+fastapi[standard]

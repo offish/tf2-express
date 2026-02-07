@@ -5,7 +5,7 @@ def try_parse_int(value: str) -> int | None:
     try:
         return int(value)
     except ValueError:
-        return None
+        return
 
 
 def get_amount(amount_part: str) -> int | None:

@@ -1,6 +1,10 @@
 from dataclasses import dataclass, field
 
-from .messages import Messages
+
+@dataclass
+class Messages:
+    send_offer: str = ""
+    counter_offer: str = ""
 
 
 @dataclass
@@ -26,7 +30,7 @@ class OffersOptions:
     accept_donations: bool = False
     counter_wrong_values: bool = False  # counter offers with wrong values
     decline_trade_hold: bool = True
-    cancel_old_sent: bool = False  # cancel offers sent by us after some time
+    cancel_sent: bool = False  # cancel offers sent by us after some time
     cancel_sent_after_seconds: int = 300  # auto cancel has to be enabled
     save_trades: bool = True  # save trade offers in database
 
@@ -50,6 +54,7 @@ class ArbitrageOptions:
     enable: bool = False
     minimum_profit: float = 0.11
     stn_api_key: str = ""
+    look_for_deals: bool = False
 
 
 @dataclass

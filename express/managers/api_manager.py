@@ -2,6 +2,7 @@ import time
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .base_manager import BaseManager
 
@@ -26,6 +27,12 @@ class APIManager(BaseManager):
             self.arbitrage = self.client.arbitrage_manager.arbitrage
 
         self.app = FastAPI()
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["http://127.0.0.1:5010"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         router = APIRouter()
 
         @router.get("/api/v1/stats")
@@ -96,10 +103,9 @@ class APIManager(BaseManager):
     async def run(self) -> None:
         config = uvicorn.Config(
             self.app,
-            host="0.0.0.0",
-            port=8000,
-            log_config=LOGGING_CONFIG,
-            # access_log=False
+            host="127.0.0.1",
+            port=8010,
+            # log_config=LOGGING_CONFIG,
         )
         server = uvicorn.Server(config)
         await server.serve()

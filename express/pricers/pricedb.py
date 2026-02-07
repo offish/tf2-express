@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Any, Callable, Coroutine
 
 from aiohttp import ClientSession
 from socketio import AsyncClient
@@ -70,7 +70,11 @@ class BasePriceDB:
 
 
 class PriceDB(BasePriceDB, PriceProvider):
-    def __init__(self, session: ClientSession, callback: Callable[[dict], None]):
+    def __init__(
+        self,
+        session: ClientSession,
+        callback: Callable[[dict], Coroutine[Any, Any, None]],
+    ):
         super().__init__(session)
         PriceProvider.__init__(self, session, callback)
 
@@ -107,7 +111,7 @@ class PriceDB(BasePriceDB, PriceProvider):
         if data.get("success") is not True:
             return
 
-        self.callback(data)
+        await self.callback(data)
 
     async def listen(self) -> None:
         logging.info("Connecting to PriceDB socket...")

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-import aiohttp
+from aiohttp import ClientSession
 from tf2_utils import get_metal, get_sku, is_key, is_pure, map_inventory
 from tf2_utils.exceptions import InvalidInventory
 from tf2_utils.providers.providers import PROVIDERS
@@ -18,7 +18,7 @@ class Inventory:
         self.steam_id = our_steam_id
         self.our_inventory: list[dict] = []
         self.their_inventory: list[dict] = []
-        self.session = aiohttp.ClientSession()
+        self.session = ClientSession()
 
         # default to steamcommunity
         self.provider = SteamCommunity()
@@ -42,8 +42,9 @@ class Inventory:
         try:
             async with self.session.get(
                 url, params=params, headers=self.provider.headers
-            ) as response:
-                return await response.json()
+            ) as resp:
+                resp.raise_for_status()
+                return await resp.json()
         except Exception as e:
             return {"success": False, "error": str(e)}
 

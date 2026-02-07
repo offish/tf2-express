@@ -53,22 +53,22 @@ class ListingConstruct:
 
 def get_matching_listing(
     listing_construct: ListingConstruct, listings: list[Listing]
-) -> Listing:
+) -> Listing | None:
     for listing in listings:
         if listing.status != "active":
-            continue
-
-        sku = listing_construct.sku
-
-        if listing.item.get("defindex") != sku_to_defindex(sku):
-            continue
-
-        if listing.item.get("quality", {}).get("id") != sku_to_quality(sku):
             continue
 
         if listing.intent != listing_construct.intent:
             continue
 
-        return listing
+        sku = listing_construct.sku
+        defindex = listing.item.get("defindex")
+        quality_id = listing.item.get("quality", {}).get("id")
 
-    return None
+        if defindex != sku_to_defindex(sku):
+            continue
+
+        if quality_id != sku_to_quality(sku):
+            continue
+
+        return listing

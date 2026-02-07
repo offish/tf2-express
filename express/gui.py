@@ -23,10 +23,9 @@ class Panel:
         self.database = get_database_provider(self.options.database_provider, username)
 
     def request(self, method: str, endpoint: str, **kwargs) -> Any:
-        url = "http://localhost:8000/api/v1/" + endpoint
+        url = "http://127.0.0.1:8010/api/v1/" + endpoint
         response = requests.request(method, url, **kwargs)
         response.raise_for_status()
-
         return response.json()
 
     @staticmethod
@@ -182,7 +181,8 @@ class Panel:
         return self.render("prices", sku=sku, prices=prices)
 
     def get_dump(self) -> str:
-        return self.render("dump")
+        filtered_inventory = self.get_filtered_inventory()
+        return self.render("dump", inventory=filtered_inventory)
 
     def get_wishlist(self) -> str:
         filtered_inventory = self.get_filtered_inventory()

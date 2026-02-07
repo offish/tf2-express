@@ -101,13 +101,13 @@ class Express(steam.Client):
         if self.options.backpack_tf.enable:
             asyncio.create_task(self.listing_manager.run())
 
-        if self.options.offers.cancel_old_sent:
+        if self.options.offers.cancel_sent:
             asyncio.create_task(self.trade_manager.run())
 
         if self.options.discord.enable:
             asyncio.create_task(self.discord_manager.run())
 
-        if self.options.arbitrage.enable:
+        if self.options.arbitrage.enable and self.options.arbitrage.look_for_deals:
             asyncio.create_task(self.arbitrage_manager.run())
 
         if self.options.express_tf.enable:
@@ -132,14 +132,8 @@ class Express(steam.Client):
         if self.options.discord.enable and not self.options.discord.channel_id:
             raise ExpressException("Discord channel ID is required")
 
-        if self.options.chat.llm_responses and not self.options.chat.llm_api_key:
-            raise MissingAPIKey("You need to set an API key for AI chat responses")
-
-        if self.options.chat.llm_responses and not self.options.chat.llm_model:
-            raise ExpressException("You need to set a model for AI chat responses")
-
         if self.options.arbitrage.enable and not self.options.arbitrage.stn_api_key:
-            raise MissingAPIKey("STN.TF API key is needed for arbitrage")
+            raise MissingAPIKey("STN.tf API key is needed for arbitrage")
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:
@@ -224,10 +218,8 @@ class Express(steam.Client):
         for i in groups:
             group = await self.fetch_clan(i)
 
-            if group is None:
-                continue
-
-            await group.join()
+            if group:
+                await group.join()
 
     def start(
         self,

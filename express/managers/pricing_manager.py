@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Any
 
-import aiohttp
+from aiohttp import ClientSession
 from tf2_utils.utils import to_scrap
 
 from ..exceptions import NoKeyPrice, WrongPriceFormat
@@ -15,7 +15,7 @@ class PricingManager(BaseManager):
     async def setup(self) -> None:
         self.autopriced_skus: list[str] = []
         self.autopriced_items: list[dict] = []
-        self.session = aiohttp.ClientSession()
+        self.session = ClientSession()
 
         self.provider = get_price_provider(
             self.options.price_provider, self.session, self.on_price_update
@@ -26,7 +26,7 @@ class PricingManager(BaseManager):
         # must be autopriced items
         return {item["sku"]: item for item in item_list if item.get("autoprice", False)}
 
-    def on_price_update(self, data: dict) -> None:
+    async def on_price_update(self, data: dict) -> None:
         sku = data.get("sku")
 
         if not sku:
@@ -35,7 +35,7 @@ class PricingManager(BaseManager):
         if sku not in self.autopriced_skus:
             return
 
-        self.update_price(sku, data, notify_listing_manager=True)
+        await self.update_price(sku, data, notify_listing_manager=True)
 
     def set_prices_updated(self) -> None:
         assert self.client.are_prices_updated is False
@@ -91,8 +91,7 @@ class PricingManager(BaseManager):
 
     async def get_and_update_prices(self, skus: list[str]) -> None:
         if len(skus) == 1:
-            await self.get_and_update_price(skus[0])
-            return
+            return await self.get_and_update_price(skus[0])
 
         prices = await self.provider.get_multiple_prices(skus)
 
@@ -160,7 +159,6 @@ class PricingManager(BaseManager):
 
             # no changes to pricelist
             if not skus:
-                logging.debug("No changes to pricelist")
                 continue
 
             logging.info("Pricelist has changed, updating prices and listings...")

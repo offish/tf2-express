@@ -64,7 +64,6 @@ class JSON(DatabaseProvider):
         for item in items:
             if normalized_name == normalize_item_name(item["name"]):
                 return item.copy()
-        return None
 
     def get_normalized_item_name(self, sku: str) -> str | None:
         item = self.get_item(sku)

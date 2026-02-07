@@ -1,3 +1,6 @@
-[submodule "express/arbitrage"]
+[submodule "arbitrage"]
 	path = express/ext/arbitrage
 	url = git@github.com:offish/arbitrage-tf.git
+[submodule "copy-trade"]
+	path = express/ext/copy_trade
+	url = git@github.com:offish/copy-trade.git

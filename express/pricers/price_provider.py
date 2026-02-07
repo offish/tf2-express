@@ -1,11 +1,13 @@
-from typing import Callable
+from typing import Any, Callable, Coroutine
 
 from aiohttp import ClientSession
 
 
 class PriceProvider:
     def __init__(
-        self, session: ClientSession, callback: Callable[[dict], None]
+        self,
+        session: ClientSession,
+        callback: Callable[[dict], Coroutine[Any, Any, None]],
     ) -> None:
         """Callback has to get a dict with the following format:
 

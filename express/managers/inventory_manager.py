@@ -77,12 +77,7 @@ class InventoryManager(BaseManager, Inventory):
 
     def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
         inventory = self.our_inventory if who == "us" else self.their_inventory
-
-        for item in inventory:
-            if item["sku"] == sku:
-                return True
-
-        return False
+        return any(item["sku"] == sku for item in inventory)
 
     def has_sku_in_their_inventory(self, sku: str) -> bool:
         return self.has_sku_in_inventory(sku, "them")

@@ -449,18 +449,15 @@ class TradeManager(BaseManager):
 
         if self.is_blacklisted(partner_id):
             logging.info(f"Offer is from blacklisted user ({partner.name})")
-            await self.decline(trade)
-            return
+            return await self.decline(trade)
 
         if self.is_owner(partner_id):
             logging.info(f"Offer is from owner ({partner.name})")
-            await self.accept(trade)
-            return
+            return await self.accept(trade)
 
         if await self.listing_manager.is_backpack_tf_banned(partner_id):
             logging.info("User is banned on Backpack.TF")
-            await self.decline(trade)
-            return
+            return await self.decline(trade)
 
         # nothing on our side
         if trade.is_gift():
@@ -478,24 +475,21 @@ class TradeManager(BaseManager):
             and self.options.offers.decline_trade_hold
         ):
             logging.info("User has a trade hold")
-            await self.decline(trade)
-            return
+            return await self.decline(trade)
 
         their_items = [item_object_to_item_data(i) for i in trade.receiving]
         our_items = [item_object_to_item_data(i) for i in trade.sending]
 
         if self.is_arbitrage_offer(their_items, our_items):
             logging.info("Offer is an arbitrage offer")
-            await self.arbitrage.process_offer(
+            return await self.arbitrage.process_offer(
                 trade, their_items, our_items, offer_data
             )
-            return
 
         # only items on our side
         if is_only_taking_items(their_items_amount, our_items_amount):
             logging.info("User is trying to take items")
-            await self.counter_taking_offer(trade, our_items)
-            return
+            return await self.counter_taking_offer(trade, our_items)
 
         # should never not be a two sided offer here
         if not is_two_sided_offer(their_items_amount, our_items_amount):
@@ -535,13 +529,11 @@ class TradeManager(BaseManager):
             return
 
         if their_value >= our_value:
-            await self.accept(trade)
-            return
+            return await self.accept(trade)
 
         if self.options.offers.counter_wrong_values:
             logging.info("Counter offering...")
-            await self.counter_offer(trade, our_items, their_items)
-            return
+            return await self.counter_offer(trade, our_items, their_items)
 
         logging.info("Ignoring offer as automatic decline is disabled")
 

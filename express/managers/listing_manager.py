@@ -48,13 +48,7 @@ class ListingManager(BaseManager):
     async def set_user_agent(self) -> bool:
         user_agent = await self.backpack_tf.register_user_agent()
         logging.debug(f"User agent: {user_agent}")
-
-        if user_agent.get("status") != "active":
-            logging.error("Could not register Backpack.TF user agent")
-            return False
-
-        logging.info("Backpack.TF user agent is now active")
-        return True
+        return user_agent.get("status") == "active"
 
     def set_inventory_changed(self) -> None:
         logging.debug("Inventory changed")
@@ -205,7 +199,6 @@ class ListingManager(BaseManager):
 
         key_scrap_price = self.client.pricing_manager.get_key_scrap_price("buy")
         scrap_total = keys_amount * key_scrap_price + scrap_amount
-
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
 
     def get_priced_skus(self) -> list[str]:
@@ -385,8 +378,10 @@ class ListingManager(BaseManager):
 
     async def run(self) -> None:
         if not await self.set_user_agent():
+            logging.error("Error when trying to register Backpack.TF user agent")
             return
 
+        logging.info("Backpack.TF user agent is now active")
         await self.backpack_tf.delete_all_listings()
         self._is_ready = True
         logging.info("Deleted all listings")

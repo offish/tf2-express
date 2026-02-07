@@ -90,11 +90,11 @@ Dump Items
         }
 
         try {
-            const url = "http://127.0.0.1:8000/api/v1/dump";
+            const url = "http://127.0.0.1:8010/api/v1/dump";
             const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ skus }),
+                body: JSON.stringify(skus),
             });
 
             if (!response.ok) throw new Error("Dump failed");

@@ -7,7 +7,7 @@ from ..exceptions import NoArbitrageModuleFound
 from .base_manager import BaseManager
 
 try:
-    from ..arbitrage.arbitrage import Arbitrage
+    from ..ext.arbitrage.arbitrage import Arbitrage
 except ImportError:
     Arbitrage = None
 
@@ -35,14 +35,12 @@ class ArbitrageManager(BaseManager):
         our_items: list[dict],
         offer_data: dict,
     ) -> None:
-        return await self.arbitrage.process_offer(
-            trade, their_items, our_items, offer_data
-        )
+        await self.arbitrage.process_offer(trade, their_items, our_items, offer_data)
 
     async def after_offer_accepted(
         self, their_items: list[dict], our_items: list[dict]
     ) -> None:
-        return await self.arbitrage.after_offer_accepted(their_items, our_items)
+        await self.arbitrage.after_offer_accepted(their_items, our_items)
 
     async def run(self) -> None:
         while True:

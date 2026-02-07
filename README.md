@@ -140,7 +140,7 @@ Your config should be structured like the example shown below. Options which are
 | `api_key`       | `""`                  | Backpack.tf API key                 |
 | `user_agent`    | `"Listing goin' up!"` | User-Agent string used for requests |
 | `check_bans`    | `False`               | Check Backpack.tf user ban status   |
-| `use_item_name` | `True`                | Use item name instead of SKU        |
+| `use_item_name` | `True`                | Use item name instead of SKU in listing details |
 
 
 #### `inventory` options
@@ -148,7 +148,7 @@ Your config should be structured like the example shown below. Options which are
 | ---------- | ------------------ |------------ |
 | `provider` | `"steamcommunity"` | Inventory provider (e.g. `steamcommunity`, `steamsupply`, `expressload`) |
 | `api_key`  | `""`               | API key for the inventory provider |
-| `retries`  | `5`                | Number of retries when fetching inventory |
+| `retries`  | `5`                | Number of max retries when fetching inventory |
 
 
 #### `offers` options
@@ -158,15 +158,15 @@ Your config should be structured like the example shown below. Options which are
 | `accept_donations`          | `False` | Automatically accept donation offers                             |
 | `counter_wrong_values`      | `False` | Counter offers with incorrect values                             |
 | `decline_trade_hold`        | `True`  | Decline offers with trade holds                                  |
-| `cancel_old_sent`           | `False` | Cancel sent offers after a delay                                 |
-| `cancel_sent_after_seconds` | `300`   | Time before canceling sent offers (requires auto-cancel enabled) |
-| `save_trades`               | `True`  | Save trade offers to the database                                |
+| `cancel_sent`           | `False` | Cancel sent offers after a delay                                 |
+| `cancel_sent_after_seconds` | `300`   | Time before canceling sent offers (requires `cancel_sent` enabled) |
+| `save_trades`               | `True`  | Save trade offers to database |
 
 
 #### `chat` options
 | Option           | Default | Description                          |
 | ---------------- | ------- | ------------------------------------ |
-| `enable`         | `False` | Enable processing of chat messages   |
+| `enable`         | `False` | Enable processing of chat messages (the bot will never send messages over Steam no matter if this is on or off)  |
 | `accept_friends` | `False` | Automatically accept friend requests |
 
 
@@ -203,9 +203,9 @@ Level is set to DEBUG, so here you will be able to see every request etc. and mo
 > Do NOT share your logs or config files with anyone before removing sensitive information. This might leak your `API_KEY` and more.
 
 ## Hosting
-If you want to run the bot 24/7, even when your computer is off, you can use [DigitalOcean](https://www.digitalocean.com/?refcode=ae1a707c1d2e&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=CopyPaste) or another VPS cloud provider. DigitalOcean offers $200 in free credit for trying their products.
+If you want to run the bot 24/7, even when your computer is off, you can use [DigitalOcean](https://www.digitalocean.com/?refcode=602c0165acd8&utm_campaign=Referral_Invite&utm_medium=Referral_Program) or another VPS cloud provider. DigitalOcean offers $200 in free credit for trying their products.
 
-[![DigitalOcean Logo](https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg)](https://www.digitalocean.com/?refcode=ae1a707c1d2e&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge)
+[![DigitalOcean Logo](https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg)](https://www.digitalocean.com/?refcode=602c0165acd8&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge)
 
 ## Updating
 ```bash
