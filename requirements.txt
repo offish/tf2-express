@@ -12,3 +12,4 @@ pytest-asyncio
 aiohttp
 discord.py
 fastapi[standard]
+offish>=0.0.2

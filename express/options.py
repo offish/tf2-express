@@ -58,6 +58,12 @@ class ArbitrageOptions:
 
 
 @dataclass
+class CopyTradeOptions:
+    enable: bool = False
+    steam_id: str = ""  # steam id to copy trade
+
+
+@dataclass
 class ExpressTFOptions:
     enable: bool = False
     uri: str = ""
@@ -72,8 +78,9 @@ class Options:
     inventory: InventoryOptions
     offers: OffersOptions
     discord: DiscordOptions
-    arbitrage: ArbitrageOptions
     chat: ChatOptions
+    arbitrage: ArbitrageOptions
+    copy_trade: CopyTradeOptions
     express_tf: ExpressTFOptions
     price_provider: str = "pricedb"
     database_provider: str = "mongodb"

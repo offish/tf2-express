@@ -9,6 +9,7 @@ from tf2_utils import (
     CurrencyExchange,
     Item,
     get_metal,
+    get_non_pure_skus,
     get_sku,
     get_steam_id_from_trade_url,
     get_token_from_trade_url,
@@ -20,7 +21,6 @@ from tf2_utils import (
 )
 
 from ..conversion import item_data_to_item_object, item_object_to_item_data
-from ..inventory import get_non_pure_skus
 from ..utils import is_only_taking_items, is_two_sided_offer, swap_intent
 from .base_manager import BaseManager
 
@@ -338,10 +338,10 @@ class TradeManager(BaseManager):
         partner_steam_id = str(partner.id64)
         offer_data = {}
 
-        # get fresh instance of inventory (stores both our and theirs)
-        inventory = self.inventory_manager.get_inventory_instance()
         our_inventory = self.inventory_manager.get_our_inventory()
-        their_inventory = await inventory.fetch_their_inventory(partner_steam_id)
+        their_inventory = await self.inventory_manager.fetch_their_inventory(
+            partner_steam_id
+        )
         data = await self._get_offer_items(
             intent, items, item_type, their_inventory, our_inventory, scrap_value
         )

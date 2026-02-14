@@ -202,7 +202,7 @@ class ListingManager(BaseManager):
         return scrap_total >= keys * key_scrap_price + to_scrap(metal)
 
     def get_priced_skus(self) -> list[str]:
-        pricelist = self.database.get_pricelist()
+        pricelist = self.database.get_items()
         return [item["sku"] for item in pricelist if has_buy_and_sell_price(item)]
 
     def create_listing_construct(
@@ -210,7 +210,7 @@ class ListingManager(BaseManager):
     ) -> ListingConstruct | None:
         logging.debug(f"Creating construct for listing {intent=} {sku=}")
 
-        # listing random craft hats and weps not supported yet
+        # listing random craft hats and weps not supported
         if sku in ["-50;6", "-100;6"]:
             return
 
@@ -402,6 +402,7 @@ class ListingManager(BaseManager):
             self._has_updated_listings = True
 
     async def close(self):
+        await self.session.close()
         await self.backpack_tf.delete_all_listings()
         logging.info("Deleted all listings")
         self._listings.clear()

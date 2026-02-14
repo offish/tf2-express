@@ -7,11 +7,12 @@ import steam
 from tf2_utils import to_scrap
 
 from .databases.database_providers import get_database_provider
-from .exceptions import ExpressException, MissingAPIKey, MissingBackpackTFToken
+from .exceptions import MissingAPIKey, MissingBackpackTFToken, OptionsError
 from .managers.api_manager import APIManager
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
 from .managers.chat_manager import ChatManager
+from .managers.copy_trade_manager import CopyTradeManager
 from .managers.discord_manager import DiscordManager
 from .managers.inventory_manager import InventoryManager
 from .managers.listing_manager import ListingManager
@@ -33,6 +34,8 @@ class Express(steam.Client):
         self.processed_offers = {}
         self.is_bot_ready = False
 
+        # managers
+        self.copy_trade_manager = None
         self.inventory_manager = None
         self.arbitrage_manager = None
         self.listing_manager = None
@@ -57,28 +60,23 @@ class Express(steam.Client):
     async def setup(self) -> None:
         # set managers
         self.inventory_manager = InventoryManager(self)
-        self.arbitrage_manager = ArbitrageManager(self)
-        self.listing_manager = ListingManager(self)
         self.pricing_manager = PricingManager(self)
-        self.discord_manager = DiscordManager(self)
         self.trade_manager = TradeManager(self)
         self.chat_manager = ChatManager(self)
-        self.site_manager = SiteManager(self)
         self.api_manager = APIManager(self)
 
-        managers: list[BaseManager] = [
+        self.managers: list[BaseManager] = [
             self.inventory_manager,
-            self.arbitrage_manager,
-            self.listing_manager,
             self.pricing_manager,
-            self.discord_manager,
             self.trade_manager,
             self.chat_manager,
-            self.site_manager,
             self.api_manager,
         ]
 
-        for manager in managers:
+        # add additional managers based on options
+        self.append_additional_managers()
+
+        for manager in self.managers:
             await manager.setup()
 
         # delete listings on exit and disconnect from websocket
@@ -91,27 +89,26 @@ class Express(steam.Client):
         stock = self.inventory_manager.get_stock()
         self.database.update_stock(stock)
 
-        # we are now ready (other events can now fire)
+        # bot is now ready (other events can fire)
         self.is_bot_ready = True
 
-        asyncio.create_task(self.pricing_manager.provider.listen())
-        asyncio.create_task(self.pricing_manager.run())
-        asyncio.create_task(self.api_manager.run())
+        # we dont want to listen for price updates when copy trading
+        if not self.options.copy_trade.enable:
+            asyncio.create_task(self.pricing_manager.provider.listen())
 
-        if self.options.backpack_tf.enable:
-            asyncio.create_task(self.listing_manager.run())
+        # start managers
+        for manager in self.managers:
+            if self.should_start_task(manager.name):
+                asyncio.create_task(manager.run())
 
-        if self.options.offers.cancel_sent:
-            asyncio.create_task(self.trade_manager.run())
+    def should_start_task(self, name: str) -> bool:
+        if name == "trademanager" and not self.options.offers.cancel_sent:
+            return False
 
-        if self.options.discord.enable:
-            asyncio.create_task(self.discord_manager.run())
+        if name == "arbitragemanager" and not self.options.arbitrage.look_for_deals:
+            return False
 
-        if self.options.arbitrage.enable and self.options.arbitrage.look_for_deals:
-            asyncio.create_task(self.arbitrage_manager.run())
-
-        if self.options.express_tf.enable:
-            asyncio.create_task(self.site_manager.listen())
+        return True
 
     def options_check(self) -> None:
         if (
@@ -124,16 +121,40 @@ class Express(steam.Client):
             raise MissingAPIKey("Backpack.TF API key is needed for ban checks")
 
         if self.options.discord.enable and not self.options.discord.owner_ids:
-            raise ExpressException("Discord bot must have at least 1 owner")
+            raise OptionsError("Discord bot must have at least 1 owner")
 
         if self.options.discord.enable and not self.options.discord.token:
-            raise ExpressException("Discord bot token is required")
+            raise OptionsError("Discord bot token is required")
 
         if self.options.discord.enable and not self.options.discord.channel_id:
-            raise ExpressException("Discord channel ID is required")
+            raise OptionsError("Discord channel ID is required")
 
         if self.options.arbitrage.enable and not self.options.arbitrage.stn_api_key:
             raise MissingAPIKey("STN.tf API key is needed for arbitrage")
+
+        if self.options.copy_trade.enable and not self.options.copy_trade.steam_id:
+            raise OptionsError("A Steam ID is required to copy trade")
+
+    def append_additional_managers(self) -> None:
+        if self.options.backpack_tf.enable:
+            self.listing_manager = ListingManager(self)
+            self.managers.append(self.listing_manager)
+
+        if self.options.discord.enable:
+            self.discord_manager = DiscordManager(self)
+            self.managers.append(self.discord_manager)
+
+        if self.options.arbitrage.enable:
+            self.arbitrage_manager = ArbitrageManager(self)
+            self.managers.append(self.arbitrage_manager)
+
+        if self.options.copy_trade.enable:
+            self.copy_trade_manager = CopyTradeManager(self)
+            self.managers.append(self.copy_trade_manager)
+
+        if self.options.express_tf.enable:
+            self.site_manager = SiteManager(self)
+            self.managers.append(self.site_manager)
 
     async def bot_is_ready(self) -> None:
         while not self.is_bot_ready:
@@ -240,10 +261,8 @@ class Express(steam.Client):
         )
 
     def cleanup(self) -> None:
-        if self.options.backpack_tf.enable:
-            asyncio.run(self.listing_manager.close())
-
-        asyncio.run(self.pricing_manager.provider.close())
+        for manager in self.managers:
+            asyncio.run(manager.close())
 
     @property
     def steam_id(self) -> str:

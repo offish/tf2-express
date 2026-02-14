@@ -26,5 +26,9 @@ class WrongPriceFormat(ExpressException):
     pass
 
 
-class NoArbitrageModuleFound(ExpressException):
+class NoModuleFound(ExpressException):
+    pass
+
+
+class OptionsError(ExpressException):
     pass

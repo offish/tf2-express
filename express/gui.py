@@ -103,8 +103,7 @@ class Panel:
         return self.render("item", item=item, updated=updated, passed_time=passed_time)
 
     def get_items(self) -> str:
-        items = self.database.get_pricelist()
-
+        items = self.database.get_items()
         return self.render("items", items=items)
 
     def autoprice_item(self, sku: str) -> str:

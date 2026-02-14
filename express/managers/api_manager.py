@@ -38,7 +38,7 @@ class APIManager(BaseManager):
         @router.get("/api/v1/stats")
         async def get_stats() -> dict:
             inventory = self.inventory_manager.get_our_inventory()
-            pricelist = self.database.get_pricelist()
+            pricelist = self.database.get_items()
 
             return {
                 "stats": {

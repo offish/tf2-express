@@ -52,3 +52,6 @@ class DiscordManager(BaseManager, discord.Client):
 
     async def run(self) -> None:
         await self.start(self.token)
+
+    async def close(self) -> None:
+        await discord.Client.close(self)

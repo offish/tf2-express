@@ -1,35 +1,80 @@
+import asyncio
 import logging
 
-from tf2_utils import Item, is_pure
+from aiohttp import ClientSession
+from tf2_utils import InvalidInventory, Item, get_keys_and_scrap, map_inventory
+from tf2_utils.providers.providers import PROVIDERS
+from tf2_utils.providers.steamcommunity import SteamCommunity
 
-from ..inventory import Inventory, get_keys_and_scrap
 from .base_manager import BaseManager
 
 
-class InventoryManager(BaseManager, Inventory):
+class InventoryManager(BaseManager):
     async def setup(self):
-        Inventory.__init__(
-            self,
-            self.client.steam_id,
-            self.options.inventory.provider,
-            self.options.inventory.api_key,
-        )
+        inventory_provider = self.options.inventory.provider
+        api_key = self.options.inventory.api_key
 
-    def get_in_stock(self, sku: str) -> int:
-        stock = self.get_stock()
-        return stock.get(sku, 0)
+        self.steam_id = self.client.steam_id
+        self.our_inventory: list[dict] = []
+        self.their_inventory: list[dict] = []
+        self.session = ClientSession()
 
-    def get_inventory_instance(self) -> Inventory:
-        return Inventory(
-            str(self.client.user.id64),
-            self.options.inventory.provider,
-            self.options.inventory.api_key,
-        )
+        # default to steamcommunity
+        self.provider = SteamCommunity()
+
+        # default to steam if no api_key is given
+        if not api_key:
+            return
+
+        provider_name = inventory_provider.lower()
+
+        # loop through providers create object
+        for i in PROVIDERS:
+            if provider_name == i.__name__.lower():
+                # set the first found provider and then stop
+                self.provider = i(api_key)
+                return
 
     def set_inventory_changed(self) -> None:
         # notify listing manager inventory has changed (stock needs to be updated)
         if self.options.backpack_tf.enable:
             self.client.listing_manager.set_inventory_changed()
+
+    async def fetch(self, steam_id: str) -> dict:
+        url, params = self.provider.get_url_and_params(steam_id, 440, 2)
+
+        try:
+            async with self.session.get(
+                url, params=params, headers=self.provider.headers
+            ) as resp:
+                resp.raise_for_status()
+                return await resp.json()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    async def fetch_inventory(self, steam_id: str) -> list[dict] | None:
+        for i in range(5):
+            try:
+                inventory = await self.fetch(steam_id)
+                return map_inventory(inventory, add_skus=True, skip_untradable=True)
+            except InvalidInventory:
+                logging.debug(f"Failed to fetch inventory for {steam_id}. Retrying...")
+                await asyncio.sleep(2**i)
+
+        logging.warning(f"Failed to fetch inventory for {steam_id}")
+
+    async def fetch_our_inventory(self) -> list[dict]:
+        inventory = await self.fetch_inventory(self.steam_id)
+        assert inventory is not None, "Inventory could not be loaded"
+        self.our_inventory = inventory
+        logging.info("Fetched our inventory")
+        return self.our_inventory
+
+    def get_our_inventory(self) -> list[dict]:
+        return self.our_inventory.copy()
+
+    async def fetch_their_inventory(self, steam_id: str) -> list[dict]:
+        return await self.fetch_inventory(steam_id)
 
     def get_stock(self) -> dict[str, int]:
         stock = {"-100;6": 0}
@@ -54,49 +99,24 @@ class InventoryManager(BaseManager, Inventory):
 
         return stock
 
+    def get_in_stock(self, sku: str) -> int:
+        stock = self.get_stock()
+        return stock.get(sku, 0)
+
     def get_keys_scrap_in_inventory(self) -> tuple[int, int]:
         inventory = self.our_inventory
         return get_keys_and_scrap(inventory)
 
-    def get_non_pure_items(self) -> list[str]:
-        non_pure_items = []
-
-        if self.our_inventory is None:
-            logging.warning("Inventory was not fetched")
-            return non_pure_items
-
-        for item in self.our_inventory:
-            sku = item["sku"]
-
-            if not is_pure(sku):
-                non_pure_items.append(sku)
-
-        logging.debug(f"Non-pure items: {non_pure_items}")
-
-        return non_pure_items
-
-    def has_sku_in_inventory(self, sku: str, who: str = "us") -> bool:
-        inventory = self.our_inventory if who == "us" else self.their_inventory
-        return any(item["sku"] == sku for item in inventory)
-
-    def has_sku_in_their_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "them")
-
     def has_sku_in_our_inventory(self, sku: str) -> bool:
-        return self.has_sku_in_inventory(sku, "us")
+        return any(item["sku"] == sku for item in self.our_inventory)
 
-    def get_last_item(self, sku: str, who: str = "us") -> dict:
-        inventory = self.our_inventory if who == "us" else self.their_inventory
-        last_item = {}
+    def get_last_item_in_our_inventory(self, sku: str) -> dict | None:
+        inventory = self.get_our_inventory()
+        inventory.reverse()
 
         for item in inventory:
             if item["sku"] == sku:
-                last_item = item
+                return item
 
-        return last_item
-
-    def get_last_item_in_their_inventory(self, sku: str) -> dict:
-        return self.get_last_item(sku, "them")
-
-    def get_last_item_in_our_inventory(self, sku: str) -> dict:
-        return self.get_last_item(sku, "us")
+    async def close(self) -> None:
+        await self.session.close()

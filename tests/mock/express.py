@@ -4,6 +4,7 @@ class Express:
         self.options = options
         self.database = None
 
+        self.copy_trade_manager = None
         self.inventory_manager = None
         self.arbitrage_manager = None
         self.listing_manager = None

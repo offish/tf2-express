@@ -1,11 +1,10 @@
 import json
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 
-import requests
 from backpack_tf import __version__ as backpack_tf_version
+from offish import get_version
 from steam import __version__ as steam_py_version
 from tf2_data import __version__ as tf2_data_version
 from tf2_sku import __version__ as tf2_sku_version
@@ -18,6 +17,7 @@ from .options import (
     ArbitrageOptions,
     BackpackTFOptions,
     ChatOptions,
+    CopyTradeOptions,
     DiscordOptions,
     ExpressTFOptions,
     InventoryOptions,
@@ -35,18 +35,21 @@ def has_correct_price_format(data: dict) -> bool:
         if key not in data:
             return False
 
-    if not isinstance(data["buy"], dict) or not isinstance(data["sell"], dict):
+    buy = data["buy"]
+    sell = data["sell"]
+
+    if not isinstance(buy, dict) or not isinstance(sell, dict):
         return False
 
-    for price in [data["buy"], data["sell"]]:
+    for price in [buy, sell]:
         if len(price) < 1 or len(price) > 2:
             return False
 
         if "keys" not in price and "metal" not in price:
             return False
 
-        keys = price.get("keys", 0)
-        metal = price.get("metal", 0.0)
+        keys = price.get("keys") or 0
+        metal = price.get("metal") or 0.0
 
         if not (isinstance(keys, int) and keys >= 0):
             return False
@@ -73,19 +76,6 @@ def is_same_item(a: dict, b: dict) -> bool:
 
 def filter_skus(item_list: list[dict]) -> list[str]:
     return [item["sku"] for item in item_list]
-
-
-def swap_intent(intent: str) -> str:
-    return "buy" if intent.lower() == "sell" else "sell"
-
-
-def normalize_item_name(name: str, as_lower: bool = True) -> str:
-    if as_lower:
-        name = name.lower()
-
-    name = re.sub(r"[^\w\s]", "", name)
-    name = re.sub(r"\s+", "_", name)
-    return name
 
 
 def is_only_taking_items(their_items_amount: int, our_items_amount: int) -> bool:
@@ -175,6 +165,7 @@ def get_options(username: str) -> Options:
     chat = options.get("chat", {})
     discord = options.get("discord", {})
     arbitrage = options.get("arbitrage", {})
+    copy_trade = options.get("copy_trade", {})
     express_tf = options.get("express_tf", {})
 
     # remove all keys that are not part of Options
@@ -188,6 +179,7 @@ def get_options(username: str) -> Options:
             "chat",
             "discord",
             "arbitrage",
+            "copy_trade",
             "express_tf",
         ]:
             del options[key]
@@ -201,25 +193,10 @@ def get_options(username: str) -> Options:
         inventory=InventoryOptions(**inventory),
         chat=ChatOptions(**chat),
         discord=DiscordOptions(**discord),
+        copy_trade=CopyTradeOptions(**copy_trade),
         arbitrage=ArbitrageOptions(**arbitrage),
         express_tf=ExpressTFOptions(**express_tf),
     )
-
-
-def get_version(repository: str, folder: str) -> str:
-    url = "https://raw.githubusercontent.com/offish/{}/master/{}/__init__.py".format(
-        repository, folder
-    )
-
-    r = requests.get(url)
-    data = r.text
-
-    version_index = data.index("__version__")
-    start_quotation_mark = data.index('"', version_index) + 1
-    end_quotation_mark = data.index('"', start_quotation_mark)
-
-    # get rid of first "
-    return data[start_quotation_mark:end_quotation_mark]
 
 
 def get_versions() -> dict[str, str]:
@@ -235,11 +212,11 @@ def get_versions() -> dict[str, str]:
 
 def get_newest_versions() -> dict[str, str]:
     return {
-        "tf2_express_version": get_version("tf2-express", "express"),
-        "tf2_data_version": get_version("tf2-data", "src/tf2_data"),
-        "tf2_sku_version": get_version("tf2-sku", "src/tf2_sku"),
-        "tf2_utils_version": get_version("tf2-utils", "src/tf2_utils"),
-        "backpack_tf_version": get_version("backpack-tf", "src/backpack_tf"),
+        "tf2_express_version": get_version("offish", "tf2-express", "express"),
+        "tf2_data_version": get_version("offish", "tf2-data", "src/tf2_data"),
+        "tf2_sku_version": get_version("offish", "tf2-sku", "src/tf2_sku"),
+        "tf2_utils_version": get_version("offish", "tf2-utils", "src/tf2_utils"),
+        "backpack_tf_version": get_version("offish", "backpack-tf", "src/backpack_tf"),
     }
 
 

@@ -14,5 +14,15 @@ class BaseManager:
         self.pricing_manager = client.pricing_manager
         self.discord_manager = client.discord_manager
 
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__.lower()
+
     async def setup(self) -> None:
+        pass
+
+    async def run(self) -> None:
+        pass
+
+    async def close(self) -> None:
         pass

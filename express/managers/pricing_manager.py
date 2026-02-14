@@ -167,3 +167,7 @@ class PricingManager(BaseManager):
             autopriced_items = self.database.get_autopriced()
             self.autopriced_items = autopriced_items
             self.autopriced_skus = filter_skus(autopriced_items)
+
+    async def close(self) -> None:
+        await self.provider.close()
+        await self.session.close()

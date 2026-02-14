@@ -13,6 +13,16 @@ def get_amount(amount_part: str) -> int | None:
     return try_parse_int(amount_part)
 
 
+def clamp_amount(amount: int) -> int:
+    if amount < 1:
+        return 1
+
+    if amount > 10:
+        return 10
+
+    return amount
+
+
 def try_parse_sku(parts: list[str]) -> bool:
     defindex = try_parse_int(parts[0])
     quality = try_parse_int(parts[1])
@@ -29,7 +39,6 @@ def parse_command(command: str) -> dict[str, Any] | None:
     intent = parts[0]
     amount_part = parts[1]
     has_amount_part = False
-
     amount = 1
 
     if "x" in amount_part:

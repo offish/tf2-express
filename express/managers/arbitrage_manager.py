@@ -7,7 +7,7 @@ from ..exceptions import NoArbitrageModuleFound
 from .base_manager import BaseManager
 
 try:
-    from ..ext.arbitrage.arbitrage import Arbitrage
+    from ..ext.arbitrage import Arbitrage
 except ImportError:
     Arbitrage = None
 
@@ -49,3 +49,6 @@ class ArbitrageManager(BaseManager):
             logging.info("Done looking for arbitrages")
 
             await asyncio.sleep(60)
+
+    async def close(self) -> None:
+        await self.arbitrage.close()

@@ -108,7 +108,7 @@ class SiteManager(BaseManager):
 
                 await self._on_incoming_site_trade(data)
 
-    async def listen(self) -> None:
+    async def run(self) -> None:
         token = self.options.express_tf.token
         uri = self.options.express_tf.uri + token
 
