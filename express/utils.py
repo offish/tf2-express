@@ -13,18 +13,6 @@ from tf2_utils import sku_to_color
 from tf2_utils.instances import schema
 
 from . import __version__ as tf2_express_version
-from .options import (
-    ArbitrageOptions,
-    BackpackTFOptions,
-    ChatOptions,
-    CopyTradeOptions,
-    DiscordOptions,
-    ExpressTFOptions,
-    InventoryOptions,
-    Messages,
-    OffersOptions,
-    Options,
-)
 
 
 def has_correct_price_format(data: dict) -> bool:
@@ -154,49 +142,6 @@ def get_config() -> dict:
         "identity_secret": identity_secret,
         "shared_secret": shared_secret,
     }
-
-
-def get_options(username: str) -> Options:
-    options = get_and_read_json_file("options.json", must_exist=False)
-    messages = get_and_read_json_file("messages.json", must_exist=False)
-    backpack_tf = options.get("backpack_tf", {})
-    offers = options.get("offers", {})
-    inventory = options.get("inventory", {})
-    chat = options.get("chat", {})
-    discord = options.get("discord", {})
-    arbitrage = options.get("arbitrage", {})
-    copy_trade = options.get("copy_trade", {})
-    express_tf = options.get("express_tf", {})
-
-    # remove all keys that are not part of Options
-    for key in options.copy():
-        if key in [
-            "username",
-            "messages",
-            "backpack_tf",
-            "offers",
-            "inventory",
-            "chat",
-            "discord",
-            "arbitrage",
-            "copy_trade",
-            "express_tf",
-        ]:
-            del options[key]
-
-    return Options(
-        username=username,
-        **options,
-        messages=Messages(**messages),
-        backpack_tf=BackpackTFOptions(**backpack_tf),
-        offers=OffersOptions(**offers),
-        inventory=InventoryOptions(**inventory),
-        chat=ChatOptions(**chat),
-        discord=DiscordOptions(**discord),
-        copy_trade=CopyTradeOptions(**copy_trade),
-        arbitrage=ArbitrageOptions(**arbitrage),
-        express_tf=ExpressTFOptions(**express_tf),
-    )
 
 
 def get_versions() -> dict[str, str]:

@@ -10,7 +10,8 @@ from tf2_utils import Item, is_metal, is_sku, to_refined
 from tf2_utils.instances import schema
 
 from .databases.database_providers import get_database_provider
-from .utils import get_config, get_options, get_versions, sku_to_item_data
+from .options import get_options
+from .utils import get_config, get_versions, sku_to_item_data
 
 
 class Panel:
@@ -20,7 +21,9 @@ class Panel:
 
         self.username = username
         self.options = get_options(username)
-        self.database = get_database_provider(self.options.database_provider, username)
+        self.database = get_database_provider(
+            self.options.general.database_provider, username
+        )
 
     def request(self, method: str, endpoint: str, **kwargs) -> Any:
         url = "http://127.0.0.1:8010/api/v1/" + endpoint

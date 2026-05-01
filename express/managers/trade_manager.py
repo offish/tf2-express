@@ -28,8 +28,8 @@ from .base_manager import BaseManager
 class TradeManager(BaseManager):
     async def setup(self) -> None:
         self.arbitrage = self.client.arbitrage_manager
-        self.owners = [str(steam_id) for steam_id in self.options.owners]
-        self.blacklist = [str(steam_id) for steam_id in self.options.blacklist]
+        self.owners = [str(steam_id) for steam_id in self.options.general.owners]
+        self.blacklist = [str(steam_id) for steam_id in self.options.general.blacklist]
 
     @staticmethod
     def _is_offer_active(trade: steam.TradeOffer) -> bool:

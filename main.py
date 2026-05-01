@@ -2,13 +2,13 @@ import logging
 import sys
 
 from express.express import Express
+from express.options import check_options, get_options
 from express.utils import (
     ExpressFileFormatter,
     ExpressFormatter,
     check_new_version,
     create_and_get_log_file,
     get_config,
-    get_options,
 )
 
 log_file = create_and_get_log_file()
@@ -33,6 +33,7 @@ def main() -> None:
     config = get_config()
     username = config["username"]
     options = get_options(username)
+    check_options(options)
 
     if options.check_updates:
         check_new_version()

@@ -1,8 +1,10 @@
 {
-    "price_provider": "pricedb",
-    "database_provider": "mongodb",
-    "owners": [],
-    "blacklist": [],
+    "general": {
+        "price_provider": "pricedb",
+        "database_provider": "mongodb",
+        "owners": [],
+        "blacklist": []
+    },
     "backpack_tf": {
         "enable": false,
         "access_token": "token",
@@ -22,9 +24,9 @@
         "save_trades": true,
         "counter_wrong_values": false
     },
-    "chat": {
-        "enable": false,
-        "accept_friends": false
+    "friends": {
+        "accept_friends": false,
+        "enable_chat": false
     },
     "discord": {
         "enable": false,

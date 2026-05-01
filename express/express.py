@@ -7,7 +7,6 @@ import steam
 from tf2_utils import to_scrap
 
 from .databases.database_providers import get_database_provider
-from .exceptions import MissingAPIKey, MissingBackpackTFToken, OptionsError
 from .managers.api_manager import APIManager
 from .managers.arbitrage_manager import ArbitrageManager
 from .managers.base_manager import BaseManager
@@ -27,7 +26,6 @@ class Express(steam.Client):
         self.started_at = time.time()
 
         self.options = options
-        self.options_check()
         self.are_prices_updated = False
         self.pending_offer_users = set()
         self.pending_site_offers = {}
@@ -50,11 +48,11 @@ class Express(steam.Client):
             app=steam.TF2,
             state=steam.PersonaState.LookingToTrade,
             language=steam.Language.English,
-            **options.client_options,
+            **options.general.client_options,
         )
 
         self.database = get_database_provider(
-            options.database_provider, options.username
+            options.general.database_provider, options.username
         )
 
     async def setup(self) -> None:
@@ -110,31 +108,6 @@ class Express(steam.Client):
 
         return True
 
-    def options_check(self) -> None:
-        if (
-            self.options.backpack_tf.enable
-            and not self.options.backpack_tf.access_token
-        ):
-            raise MissingBackpackTFToken("Backpack.TF token is required for listing")
-
-        if self.options.backpack_tf.check_bans and not self.options.backpack_tf.api_key:
-            raise MissingAPIKey("Backpack.TF API key is needed for ban checks")
-
-        if self.options.discord.enable and not self.options.discord.owner_ids:
-            raise OptionsError("Discord bot must have at least 1 owner")
-
-        if self.options.discord.enable and not self.options.discord.token:
-            raise OptionsError("Discord bot token is required")
-
-        if self.options.discord.enable and not self.options.discord.channel_id:
-            raise OptionsError("Discord channel ID is required")
-
-        if self.options.arbitrage.enable and not self.options.arbitrage.stn_api_key:
-            raise MissingAPIKey("STN.tf API key is needed for arbitrage")
-
-        if self.options.copy_trade.enable and not self.options.copy_trade.steam_id:
-            raise OptionsError("A Steam ID is required to copy trade")
-
     def append_additional_managers(self) -> None:
         if self.options.backpack_tf.enable:
             self.listing_manager = ListingManager(self)
@@ -174,7 +147,7 @@ class Express(steam.Client):
 
     async def on_message(self, message: steam.Message) -> None:
         # dont process messages if chat is disabled
-        if not self.options.chat.enable:
+        if not self.options.friends.enable_chat:
             return
 
         # ignore our own messages
@@ -195,7 +168,7 @@ class Express(steam.Client):
         if not isinstance(invite, steam.UserInvite):
             return
 
-        if not self.options.chat.accept_friends:
+        if not self.options.friends.accept_friends:
             logging.info(f"Ignoring friend invite from {invite.author.name}")
             return
 
@@ -234,7 +207,7 @@ class Express(steam.Client):
         self.processed_offers[str(offer_id)] = offer_data
 
     async def join_groups(self) -> None:
-        groups = [103582791463210863, *self.options.groups]
+        groups = [103582791463210863, *self.options.general.groups]
 
         for i in groups:
             group = await self.fetch_clan(i)

@@ -18,7 +18,7 @@ class PricingManager(BaseManager):
         self.session = ClientSession()
 
         self.provider = get_price_provider(
-            self.options.price_provider, self.session, self.on_price_update
+            self.options.general.price_provider, self.session, self.on_price_update
         )
 
     @staticmethod

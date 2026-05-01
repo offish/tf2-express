@@ -84,10 +84,12 @@ Your config should be structured like the example shown below. Options which are
 
 ```json
 {
-    "price_provider": "pricedb",
-    "database_provider": "mongodb",
-    "owners": [],
-    "blacklist": [],
+    "general": {
+        "price_provider": "pricedb",
+        "database_provider": "mongodb",
+        "owners": [],
+        "blacklist": []
+    },
     "backpack_tf": {
         "enable": false,
         "access_token": "token",
@@ -107,9 +109,9 @@ Your config should be structured like the example shown below. Options which are
         "save_trades": true,
         "counter_wrong_values": false
     },
-    "chat": {
-        "enable": false,
-        "accept_friends": false
+    "friends": {
+        "accept_friends": false,
+        "enable_chat": false
     },
     "discord": {
         "enable": false,
@@ -120,7 +122,7 @@ Your config should be structured like the example shown below. Options which are
 }
 ```
 
-#### General options
+#### General Options
 | Option | Default | Description |
 |--------|---------|-------------|
 |`price_provider`| `"pricedb"` | Pricing provider to use. If you want to use your own custom pricer, read [this](). |
@@ -132,7 +134,7 @@ Your config should be structured like the example shown below. Options which are
 |`client_options`| \{} | Optional kwargs dictionary for [steam.py](https://github.com/gobot1234/steam.py) client options to override. |
 
 
-#### `backpack_tf` options
+#### BackpackTF Options
 | Option | Default | Description |
 | --------------- | --------------------- | ----------------------------------- |
 | `enable`        | `False`               | Enable Backpack.tf integration      |
@@ -143,7 +145,7 @@ Your config should be structured like the example shown below. Options which are
 | `use_item_name` | `True`                | Use item name instead of SKU in listing details |
 
 
-#### `inventory` options
+#### Inventory Options
 | Option     | Default            | Description |
 | ---------- | ------------------ |------------ |
 | `provider` | `"steamcommunity"` | Inventory provider (e.g. `steamcommunity`, `steamsupply`, `expressload`) |
@@ -151,23 +153,23 @@ Your config should be structured like the example shown below. Options which are
 | `retries`  | `5`                | Number of max retries when fetching inventory |
 
 
-#### `offers` options
+#### Offers Options
 | Option                      | Default | Description                                                      |
 | --------------------------- | ------- | ---------------------------------------------------------------- |
 | `enable_craft_hats`         | `False` | Enable random craft hats in offers                               |
 | `accept_donations`          | `False` | Automatically accept donation offers                             |
 | `counter_wrong_values`      | `False` | Counter offers with incorrect values                             |
 | `decline_trade_hold`        | `True`  | Decline offers with trade holds                                  |
-| `cancel_sent`           | `False` | Cancel sent offers after a delay                                 |
+| `cancel_sent`               | `False` | Cancel sent offers after a delay                                 |
 | `cancel_sent_after_seconds` | `300`   | Time before canceling sent offers (requires `cancel_sent` enabled) |
 | `save_trades`               | `True`  | Save trade offers to database |
 
 
-#### `chat` options
+#### Friends Options
 | Option           | Default | Description                          |
 | ---------------- | ------- | ------------------------------------ |
-| `enable`         | `False` | Enable processing of chat messages (the bot will never send messages over Steam no matter if this is on or off)  |
 | `accept_friends` | `False` | Automatically accept friend requests |
+| `enable_chat`    | `False` | Enable processing of chat messages (the bot will never send messages over Steam no matter if this is on or off)  |
 
 
 #### `discord` options
